@@ -5,6 +5,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
+  updatePassword,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import {
   doc,
@@ -21,12 +22,21 @@ export async function ensureUserProfile(user) {
     await setDoc(userRef, {
       email: user.email,
       role: "RECEPTION",
+      mustChangePassword: false,
       createdAt: serverTimestamp(),
     });
   }
 
   const updated = await getDoc(userRef);
-  return updated.data().role || "RECEPTION";
+  const data = updated.data() || {};
+  return {
+    role: data.role || "RECEPTION",
+    mustChangePassword: Boolean(data.mustChangePassword),
+  };
+}
+
+export async function changePassword(user, newPassword) {
+  await updatePassword(user, newPassword);
 }
 
 export function bindAuth(ui, onAuthChange, setAuthUI) {
@@ -51,10 +61,13 @@ export function bindAuth(ui, onAuthChange, setAuthUI) {
 
   onAuthStateChanged(auth, async (user) => {
     let role = "RECEPTION";
+    let mustChangePassword = false;
     if (user) {
-      role = await ensureUserProfile(user);
+      const profile = await ensureUserProfile(user);
+      role = profile.role;
+      mustChangePassword = profile.mustChangePassword;
     }
     setAuthUI(ui, user, role);
-    await onAuthChange(user, role);
+    await onAuthChange(user, { role, mustChangePassword });
   });
 }

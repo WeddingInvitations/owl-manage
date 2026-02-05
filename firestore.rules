@@ -17,10 +17,16 @@ service cloud.firestore {
       return request.auth != null && role() == 'RECEPTION';
     }
 
+    function isSelf(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == userId;
-      allow update, delete: if isOwner();
+      allow update: if isOwner() || (isSelf(userId) &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(['mustChangePassword']));
+      allow delete: if isOwner();
     }
 
     match /payments/{docId} {

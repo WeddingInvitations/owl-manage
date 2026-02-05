@@ -155,6 +155,26 @@
         <section id="rolesView" class="view hidden">
           <div id="rolesPanel" class="card hidden">
             <h2>Roles de usuarios (OWNER)</h2>
+            <form id="createUserForm" class="stack">
+              <label>
+                Email
+                <input id="createUserEmail" type="email" required />
+              </label>
+              <label>
+                Contraseña temporal
+                <input id="createUserTempPassword" type="password" required />
+              </label>
+              <label>
+                Rol
+                <select id="createUserRole">
+                  <option value="OWNER">OWNER</option>
+                  <option value="COACH">COACH</option>
+                  <option value="RECEPTION">RECEPTION</option>
+                </select>
+              </label>
+              <button class="btn" type="submit">Crear usuario</button>
+              <p id="createUserStatus" class="muted"></p>
+            </form>
             <form id="roleForm" class="stack">
               <label>
                 UID del usuario
@@ -200,6 +220,27 @@
     <footer class="app-footer">
       <p class="muted">OwlManage MVP · Firebase Auth + Firestore</p>
     </footer>
+
+    <div id="passwordModal" class="modal hidden">
+      <div class="modal-card">
+        <h2>Cambia tu contraseña</h2>
+        <p class="muted">
+          Es la primera vez que entras. Cambia la contraseña temporal.
+        </p>
+        <form id="changePasswordForm" class="stack">
+          <label>
+            Nueva contraseña
+            <input id="newPassword" type="password" required />
+          </label>
+          <label>
+            Repite la contraseña
+            <input id="confirmPassword" type="password" required />
+          </label>
+          <button class="btn" type="submit">Actualizar contraseña</button>
+          <p id="passwordStatus" class="muted"></p>
+        </form>
+      </div>
+    </div>
 
     <script type="module" src="js/main.js"></script>
   </body>

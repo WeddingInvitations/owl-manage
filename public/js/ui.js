@@ -35,6 +35,11 @@ export const ui = {
   athleteStatus: $("athleteStatus"),
   athleteList: $("athleteList"),
   rolesPanel: $("rolesPanel"),
+  createUserForm: $("createUserForm"),
+  createUserEmail: $("createUserEmail"),
+  createUserTempPassword: $("createUserTempPassword"),
+  createUserRole: $("createUserRole"),
+  createUserStatus: $("createUserStatus"),
   roleForm: $("roleForm"),
   roleUserId: $("roleUserId"),
   roleValue: $("roleValue"),
@@ -43,6 +48,11 @@ export const ui = {
   loginView: $("loginView"),
   menuButtons: Array.from(document.querySelectorAll(".menu-btn")),
   views: Array.from(document.querySelectorAll(".view")),
+  passwordModal: $("passwordModal"),
+  changePasswordForm: $("changePasswordForm"),
+  newPassword: $("newPassword"),
+  confirmPassword: $("confirmPassword"),
+  passwordStatus: $("passwordStatus"),
 };
 
 export function setAuthUI(currentUi, user, role) {
@@ -68,4 +78,8 @@ export function setActiveView(viewId, currentUi) {
   currentUi.menuButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.view === viewId);
   });
+}
+
+export function setPasswordModalVisible(currentUi, isVisible) {
+  currentUi.passwordModal.classList.toggle("hidden", !isVisible);
 }

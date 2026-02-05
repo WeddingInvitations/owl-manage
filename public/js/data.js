@@ -109,3 +109,8 @@ export async function updateUserRole(userId, role) {
   const userRef = doc(db, "users", userId);
   await updateDoc(userRef, { role });
 }
+
+export async function setMustChangePassword(userId, mustChangePassword) {
+  const userRef = doc(db, "users", userId);
+  await updateDoc(userRef, { mustChangePassword });
+}

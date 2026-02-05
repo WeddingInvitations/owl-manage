@@ -2,8 +2,14 @@
 // TODO: Completa firebaseConfig.js con tu configuración real.
 // Estructura modular simple: auth, datos, UI.
 
-import { ui, formatCurrency, setAuthUI, setActiveView } from "./ui.js";
-import { bindAuth } from "./auth.js";
+import {
+  ui,
+  formatCurrency,
+  setAuthUI,
+  setActiveView,
+  setPasswordModalVisible,
+} from "./ui.js";
+import { bindAuth, changePassword } from "./auth.js";
 import {
   addPayment,
   addExpense,
@@ -14,10 +20,13 @@ import {
   loadSummary,
   loadUsers,
   updateUserRole,
+  setMustChangePassword,
 } from "./data.js";
+import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
 let currentRole = "RECEPTION";
+let mustChangePassword = false;
 
 async function refreshAll() {
   await loadSummary(ui, formatCurrency);
@@ -49,12 +58,14 @@ setActiveView("summaryView", ui);
 
 bindAuth(
   ui,
-  async (user, role) => {
+  async (user, profile) => {
     currentUser = user;
-    currentRole = role;
+    currentRole = profile.role;
+    mustChangePassword = profile.mustChangePassword;
     if (user) {
       await refreshAll();
     }
+    setPasswordModalVisible(ui, Boolean(user && mustChangePassword));
   },
   setAuthUI
 );
@@ -121,6 +132,51 @@ ui.roleForm.addEventListener("submit", async (event) => {
   await updateUserRole(ui.roleUserId.value.trim(), ui.roleValue.value);
   ui.roleForm.reset();
   await refreshAll();
+});
+
+ui.createUserForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  ui.createUserStatus.textContent = "Creando usuario...";
+  const email = ui.createUserEmail.value.trim();
+  const tempPassword = ui.createUserTempPassword.value;
+  const role = ui.createUserRole.value;
+  try {
+    const result = await createUserWithRole(email, tempPassword, role);
+    ui.createUserStatus.textContent = `Usuario creado: ${result.uid}`;
+    ui.createUserForm.reset();
+    await refreshAll();
+  } catch (error) {
+    ui.createUserStatus.textContent = `Error: ${error.message || error}`;
+  }
+});
+
+ui.changePasswordForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const password = ui.newPassword.value;
+  const confirm = ui.confirmPassword.value;
+  if (password.length < 6) {
+    ui.passwordStatus.textContent = "La contraseña debe tener al menos 6 caracteres.";
+    return;
+  }
+  if (password !== confirm) {
+    ui.passwordStatus.textContent = "Las contraseñas no coinciden.";
+    return;
+  }
+  if (!currentUser) {
+    ui.passwordStatus.textContent = "No hay usuario autenticado.";
+    return;
+  }
+  ui.passwordStatus.textContent = "Actualizando contraseña...";
+  try {
+    await changePassword(currentUser, password);
+    await setMustChangePassword(currentUser.uid, false);
+    mustChangePassword = false;
+    setPasswordModalVisible(ui, false);
+    ui.changePasswordForm.reset();
+    ui.passwordStatus.textContent = "Contraseña actualizada.";
+  } catch (error) {
+    ui.passwordStatus.textContent = `Error: ${error.message || error}`;
+  }
 });
 
 ui.refreshSummary.addEventListener("click", async () => {

@@ -47,6 +47,16 @@ firebase deploy
 ## Colecciones
 - `users`, `payments`, `expenses`, `checkins`, `trainings`, `athletes`
 
+## Alta de usuarios (OWNER)
+Para crear usuarios con contraseña temporal desde la UI necesitas desplegar **Firebase Functions**.
+
+```powershell
+firebase deploy --only functions
+```
+
+Luego desde **Roles** puedes crear usuarios y se marcarán con `mustChangePassword = true`.
+Al iniciar sesión por primera vez, el usuario verá el modal para cambiar su contraseña.
+
 ## Notas
 - La primera vez que un usuario entra se crea en `users` con rol `RECEPTION`.
 - Cambia el rol manualmente desde Firestore Console.
