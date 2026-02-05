@@ -53,6 +53,7 @@ export const ui = {
   newPassword: $("newPassword"),
   confirmPassword: $("confirmPassword"),
   passwordStatus: $("passwordStatus"),
+  modalLogoutBtn: $("modalLogoutBtn"),
 };
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {

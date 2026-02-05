@@ -9,7 +9,7 @@ import {
   setActiveView,
   setPasswordModalVisible,
 } from "./ui.js";
-import { bindAuth, changePassword } from "./auth.js";
+import { bindAuth, changePassword, logout } from "./auth.js";
 import {
   addPayment,
   addExpense,
@@ -178,6 +178,11 @@ ui.changePasswordForm.addEventListener("submit", async (event) => {
   } catch (error) {
     ui.passwordStatus.textContent = `Error: ${error.message || error}`;
   }
+});
+
+ui.modalLogoutBtn.addEventListener("click", async () => {
+  ui.passwordStatus.textContent = "";
+  await logout();
 });
 
 ui.refreshSummary.addEventListener("click", async () => {

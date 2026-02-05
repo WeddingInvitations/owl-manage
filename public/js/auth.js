@@ -39,6 +39,10 @@ export async function changePassword(user, newPassword) {
   await updatePassword(user, newPassword);
 }
 
+export async function logout() {
+  await signOut(auth);
+}
+
 export function bindAuth(ui, onAuthChange, setAuthUI) {
   ui.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
