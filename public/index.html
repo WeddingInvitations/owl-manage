@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OwlManage MVP</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body class="dark">
+    <header class="app-header">
+      <div>
+        <h1>OwlManage</h1>
+        <p class="muted">MVP interno · Contabilidad · Fichajes · Entrenamientos · Pagos</p>
+      </div>
+      <div class="auth-status">
+        <span id="userBadge" class="badge">Invitado</span>
+        <button id="logoutBtn" class="btn ghost" disabled>Cerrar sesión</button>
+      </div>
+    </header>
+
+    <section id="mainShell" class="main-shell hidden">
+      <nav class="side-menu">
+        <h2>Menú</h2>
+        <button class="menu-btn active" data-view="summaryView">Resumen</button>
+        <button class="menu-btn" data-view="paymentsView">Ingresos</button>
+        <button class="menu-btn" data-view="expensesView">Gastos</button>
+        <button class="menu-btn" data-view="checkinsView">Fichajes</button>
+        <button class="menu-btn" data-view="trainingsView">Entrenamientos</button>
+        <button class="menu-btn" data-view="athletesView">Atletas</button>
+        <button class="menu-btn" data-view="rolesView">Roles</button>
+      </nav>
+      <section class="content">
+        <section id="summaryView" class="view">
+          <div class="card">
+            <h2>Resumen</h2>
+            <div class="summary">
+              <div>
+                <p class="label">Ingresos</p>
+                <p id="summaryIncome" class="value">0 €</p>
+              </div>
+              <div>
+                <p class="label">Gastos</p>
+                <p id="summaryExpenses" class="value">0 €</p>
+              </div>
+              <div>
+                <p class="label">Beneficio</p>
+                <p id="summaryProfit" class="value">0 €</p>
+              </div>
+            </div>
+            <button id="refreshSummary" class="btn ghost">Actualizar</button>
+          </div>
+        </section>
+
+        <section id="paymentsView" class="view hidden">
+          <div class="card">
+            <h2>Contabilidad · Ingresos</h2>
+            <form id="paymentForm" class="stack">
+              <label>
+                Concepto
+                <input id="paymentConcept" type="text" required />
+              </label>
+              <label>
+                Importe (€)
+                <input id="paymentAmount" type="number" min="0" step="0.01" required />
+              </label>
+              <button class="btn" type="submit">Registrar ingreso</button>
+            </form>
+            <ul id="paymentList" class="list"></ul>
+          </div>
+        </section>
+
+        <section id="expensesView" class="view hidden">
+          <div class="card">
+            <h2>Contabilidad · Gastos</h2>
+            <form id="expenseForm" class="stack">
+              <label>
+                Concepto
+                <input id="expenseConcept" type="text" required />
+              </label>
+              <label>
+                Importe (€)
+                <input id="expenseAmount" type="number" min="0" step="0.01" required />
+              </label>
+              <button class="btn" type="submit">Registrar gasto</button>
+            </form>
+            <ul id="expenseList" class="list"></ul>
+          </div>
+        </section>
+
+        <section id="checkinsView" class="view hidden">
+          <div class="card">
+            <h2>Fichajes</h2>
+            <form id="checkinForm" class="stack">
+              <label>
+                Nombre
+                <input id="checkinName" type="text" required />
+              </label>
+              <label>
+                Tipo
+                <select id="checkinType">
+                  <option value="IN">Check-in</option>
+                  <option value="OUT">Check-out</option>
+                </select>
+              </label>
+              <button class="btn" type="submit">Registrar fichaje</button>
+            </form>
+            <ul id="checkinList" class="list"></ul>
+          </div>
+        </section>
+
+        <section id="trainingsView" class="view hidden">
+          <div class="card">
+            <h2>Entrenamientos planificados</h2>
+            <form id="trainingForm" class="stack">
+              <label>
+                Título
+                <input id="trainingTitle" type="text" required />
+              </label>
+              <label>
+                Fecha
+                <input id="trainingDate" type="date" required />
+              </label>
+              <label>
+                Coach
+                <input id="trainingCoach" type="text" />
+              </label>
+              <button class="btn" type="submit">Crear sesión</button>
+            </form>
+            <ul id="trainingList" class="list"></ul>
+          </div>
+        </section>
+
+        <section id="athletesView" class="view hidden">
+          <div class="card">
+            <h2>Control de pagos de usuarios</h2>
+            <form id="athleteForm" class="stack">
+              <label>
+                Nombre
+                <input id="athleteName" type="text" required />
+              </label>
+              <label>
+                Estado
+                <select id="athleteStatus">
+                  <option value="ACTIVE">Activo</option>
+                  <option value="PAUSED">Pausado</option>
+                  <option value="CANCELLED">Baja</option>
+                </select>
+              </label>
+              <button class="btn" type="submit">Añadir atleta</button>
+            </form>
+            <ul id="athleteList" class="list"></ul>
+          </div>
+        </section>
+
+        <section id="rolesView" class="view hidden">
+          <div id="rolesPanel" class="card hidden">
+            <h2>Roles de usuarios (OWNER)</h2>
+            <form id="roleForm" class="stack">
+              <label>
+                UID del usuario
+                <input id="roleUserId" type="text" required />
+              </label>
+              <label>
+                Rol
+                <select id="roleValue">
+                  <option value="OWNER">OWNER</option>
+                  <option value="COACH">COACH</option>
+                  <option value="RECEPTION">RECEPTION</option>
+                </select>
+              </label>
+              <button class="btn" type="submit">Actualizar rol</button>
+            </form>
+            <ul id="userList" class="list"></ul>
+          </div>
+        </section>
+      </section>
+    </section>
+
+    <main class="grid">
+      <section class="card" id="loginView">
+        <h2>Acceso</h2>
+        <form id="loginForm" class="stack">
+          <label>
+            Email
+            <input id="loginEmail" type="email" required />
+          </label>
+          <label>
+            Contraseña
+            <input id="loginPassword" type="password" required />
+          </label>
+          <button class="btn" type="submit">Entrar</button>
+          <button id="googleLoginBtn" class="btn ghost" type="button">
+            Entrar con Google
+          </button>
+          <p class="muted">* Usuarios se gestionan en Firebase Auth.</p>
+        </form>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p class="muted">OwlManage MVP · Firebase Auth + Firestore</p>
+    </footer>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
