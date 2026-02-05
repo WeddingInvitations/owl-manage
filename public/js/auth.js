@@ -6,6 +6,8 @@ import {
   signInWithPopup,
   signOut,
   updatePassword,
+  setPersistence,
+  inMemoryPersistence,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import {
   doc,
@@ -44,6 +46,8 @@ export async function logout() {
 }
 
 export function bindAuth(ui, onAuthChange, setAuthUI) {
+  setPersistence(auth, inMemoryPersistence);
+
   ui.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     await signInWithEmailAndPassword(
