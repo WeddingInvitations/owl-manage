@@ -7,9 +7,8 @@ import {
   formatCurrency,
   setAuthUI,
   setActiveView,
-  setPasswordModalVisible,
 } from "./ui.js";
-import { bindAuth, changePassword, logout } from "./auth.js";
+import { bindAuth } from "./auth.js";
 import {
   addPayment,
   addExpense,
@@ -20,13 +19,11 @@ import {
   loadSummary,
   loadUsers,
   updateUserRole,
-  setMustChangePassword,
 } from "./data.js";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
 let currentRole = "RECEPTION";
-let mustChangePassword = false;
 
 async function refreshAll() {
   await loadSummary(ui, formatCurrency);
@@ -55,22 +52,16 @@ ui.menuButtons.forEach((button) => {
 });
 
 setActiveView("summaryView", ui);
-setPasswordModalVisible(ui, false);
 
 bindAuth(
   ui,
   async (user, profile) => {
     currentUser = user;
     currentRole = profile.role;
-    mustChangePassword = profile.mustChangePassword;
-    if (!user) {
-      setPasswordModalVisible(ui, false);
-    }
     if (user) {
       await refreshAll();
     }
-    setPasswordModalVisible(ui, Boolean(user && mustChangePassword));
-    setAuthUI(ui, user, currentRole, mustChangePassword);
+    setAuthUI(ui, user, currentRole, false);
   },
   setAuthUI
 );
@@ -155,39 +146,6 @@ ui.createUserForm.addEventListener("submit", async (event) => {
   }
 });
 
-ui.changePasswordForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const password = ui.newPassword.value;
-  const confirm = ui.confirmPassword.value;
-  if (password.length < 6) {
-    ui.passwordStatus.textContent = "La contraseña debe tener al menos 6 caracteres.";
-    return;
-  }
-  if (password !== confirm) {
-    ui.passwordStatus.textContent = "Las contraseñas no coinciden.";
-    return;
-  }
-  if (!currentUser) {
-    ui.passwordStatus.textContent = "No hay usuario autenticado.";
-    return;
-  }
-  ui.passwordStatus.textContent = "Actualizando contraseña...";
-  try {
-    await changePassword(currentUser, password);
-    await setMustChangePassword(currentUser.uid, false);
-    mustChangePassword = false;
-    setPasswordModalVisible(ui, false);
-    ui.changePasswordForm.reset();
-    ui.passwordStatus.textContent = "Contraseña actualizada.";
-  } catch (error) {
-    ui.passwordStatus.textContent = `Error: ${error.message || error}`;
-  }
-});
-
-ui.modalLogoutBtn.addEventListener("click", async () => {
-  ui.passwordStatus.textContent = "";
-  await logout();
-});
 
 ui.refreshSummary.addEventListener("click", async () => {
   await refreshAll();

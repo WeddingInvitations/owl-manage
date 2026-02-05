@@ -48,12 +48,6 @@ export const ui = {
   loginView: $("loginView"),
   menuButtons: Array.from(document.querySelectorAll(".menu-btn")),
   views: Array.from(document.querySelectorAll(".view")),
-  passwordModal: $("passwordModal"),
-  changePasswordForm: $("changePasswordForm"),
-  newPassword: $("newPassword"),
-  confirmPassword: $("confirmPassword"),
-  passwordStatus: $("passwordStatus"),
-  modalLogoutBtn: $("modalLogoutBtn"),
 };
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
@@ -81,6 +75,3 @@ export function setActiveView(viewId, currentUi) {
   });
 }
 
-export function setPasswordModalVisible(currentUi, isVisible) {
-  currentUi.passwordModal.classList.toggle("hidden", !isVisible);
-}
