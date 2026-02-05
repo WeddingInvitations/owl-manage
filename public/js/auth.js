@@ -47,6 +47,7 @@ export async function logout() {
 
 export function bindAuth(ui, onAuthChange, setAuthUI) {
   setPersistence(auth, inMemoryPersistence);
+  signOut(auth).catch(() => {});
 
   ui.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();

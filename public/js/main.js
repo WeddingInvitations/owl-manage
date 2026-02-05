@@ -55,6 +55,7 @@ ui.menuButtons.forEach((button) => {
 });
 
 setActiveView("summaryView", ui);
+setPasswordModalVisible(ui, false);
 
 bindAuth(
   ui,
