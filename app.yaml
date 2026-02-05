@@ -1,10 +1,10 @@
 runtime: python311
 
 handlers:
-  - url: /(.*)
-    static_files: public/\1
-    upload: public/(.*)
-
   - url: /
     static_files: public/index.html
     upload: public/index.html
+
+  - url: /(.*)
+    static_files: public/\1
+    upload: public/(.*)
