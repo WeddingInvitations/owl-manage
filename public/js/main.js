@@ -66,6 +66,7 @@ bindAuth(
       await refreshAll();
     }
     setPasswordModalVisible(ui, Boolean(user && mustChangePassword));
+    setAuthUI(ui, user, currentRole, mustChangePassword);
   },
   setAuthUI
 );

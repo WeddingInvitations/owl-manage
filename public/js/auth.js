@@ -67,7 +67,7 @@ export function bindAuth(ui, onAuthChange, setAuthUI) {
       role = profile.role;
       mustChangePassword = profile.mustChangePassword;
     }
-    setAuthUI(ui, user, role);
+    setAuthUI(ui, user, role, mustChangePassword);
     await onAuthChange(user, { role, mustChangePassword });
   });
 }

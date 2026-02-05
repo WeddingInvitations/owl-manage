@@ -55,13 +55,13 @@ export const ui = {
   passwordStatus: $("passwordStatus"),
 };
 
-export function setAuthUI(currentUi, user, role) {
+export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {
     currentUi.userBadge.textContent = `${user.email} · ${role}`;
     currentUi.logoutBtn.disabled = false;
     currentUi.rolesPanel.classList.toggle("hidden", role !== "OWNER");
-    currentUi.mainShell.classList.remove("hidden");
     currentUi.loginView.classList.add("hidden");
+    currentUi.mainShell.classList.toggle("hidden", Boolean(mustChangePassword));
   } else {
     currentUi.userBadge.textContent = "Invitado";
     currentUi.logoutBtn.disabled = true;
