@@ -63,6 +63,9 @@ bindAuth(
     currentUser = user;
     currentRole = profile.role;
     mustChangePassword = profile.mustChangePassword;
+    if (!user) {
+      setPasswordModalVisible(ui, false);
+    }
     if (user) {
       await refreshAll();
     }

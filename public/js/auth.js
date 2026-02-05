@@ -46,37 +46,36 @@ export async function logout() {
 }
 
 export function bindAuth(ui, onAuthChange, setAuthUI) {
-  setPersistence(auth, inMemoryPersistence);
-  signOut(auth).catch(() => {});
+  setPersistence(auth, inMemoryPersistence).then(() => {
+    ui.loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await signInWithEmailAndPassword(
+        auth,
+        ui.loginEmail.value,
+        ui.loginPassword.value
+      );
+      ui.loginForm.reset();
+    });
 
-  ui.loginForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await signInWithEmailAndPassword(
-      auth,
-      ui.loginEmail.value,
-      ui.loginPassword.value
-    );
-    ui.loginForm.reset();
-  });
+    ui.googleLoginBtn.addEventListener("click", async () => {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    });
 
-  ui.googleLoginBtn.addEventListener("click", async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  });
+    ui.logoutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+    });
 
-  ui.logoutBtn.addEventListener("click", async () => {
-    await signOut(auth);
-  });
-
-  onAuthStateChanged(auth, async (user) => {
-    let role = "RECEPTION";
-    let mustChangePassword = false;
-    if (user) {
-      const profile = await ensureUserProfile(user);
-      role = profile.role;
-      mustChangePassword = profile.mustChangePassword;
-    }
-    setAuthUI(ui, user, role, mustChangePassword);
-    await onAuthChange(user, { role, mustChangePassword });
+    onAuthStateChanged(auth, async (user) => {
+      let role = "RECEPTION";
+      let mustChangePassword = false;
+      if (user) {
+        const profile = await ensureUserProfile(user);
+        role = profile.role;
+        mustChangePassword = profile.mustChangePassword;
+      }
+      setAuthUI(ui, user, role, mustChangePassword);
+      await onAuthChange(user, { role, mustChangePassword });
+    });
   });
 }
