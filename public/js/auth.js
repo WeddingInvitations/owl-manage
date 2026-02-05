@@ -5,7 +5,6 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
-  updatePassword,
   setPersistence,
   inMemoryPersistence,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -35,10 +34,6 @@ export async function ensureUserProfile(user) {
     role: data.role || "RECEPTION",
     mustChangePassword: Boolean(data.mustChangePassword),
   };
-}
-
-export async function changePassword(user, newPassword) {
-  await updatePassword(user, newPassword);
 }
 
 export async function logout() {
