@@ -261,6 +261,10 @@ export async function loadPaymentsWithAthleteTotals(
   athleteSnap.forEach((docSnap) => {
     const data = docSnap.data();
     if (!data.paid) return;
+    // Solo contar si es el mes de pago
+    const shouldCountIncome = data.isPaymentMonth === true || 
+      (data.isPaymentMonth === undefined && (!data.durationMonths || data.durationMonths === 1));
+    if (!shouldCountIncome) return;
     const amount = Number(data.price || 0);
     if (!amount) return;
     const key = data.month || "sin-fecha";
@@ -272,6 +276,10 @@ export async function loadPaymentsWithAthleteTotals(
   acroSnap.forEach((docSnap) => {
     const data = docSnap.data();
     if (!data.paid) return;
+    // Solo contar si es el mes de pago
+    const shouldCountIncome = data.isPaymentMonth === true || 
+      (data.isPaymentMonth === undefined && (!data.durationMonths || data.durationMonths === 1));
+    if (!shouldCountIncome) return;
     const amount = Number(data.price || 0);
     if (!amount) return;
     const key = data.month || "sin-fecha";
@@ -433,6 +441,11 @@ export async function loadSummary(ui, formatCurrency) {
   athleteSnap.forEach((docSnap) => {
     const data = docSnap.data();
     if (!data.paid) return;
+    // Solo contar el ingreso si es el mes de pago (isPaymentMonth)
+    // Para compatibilidad con datos antiguos: si no existe isPaymentMonth y durationMonths es 1, contar
+    const shouldCountIncome = data.isPaymentMonth === true || 
+      (data.isPaymentMonth === undefined && (!data.durationMonths || data.durationMonths === 1));
+    if (!shouldCountIncome) return;
     const amount = Number(data.price || 0);
     if (!amount) return;
     const key = data.month || "sin-fecha";
@@ -446,6 +459,10 @@ export async function loadSummary(ui, formatCurrency) {
   acroSnap.forEach((docSnap) => {
     const data = docSnap.data();
     if (!data.paid) return;
+    // Solo contar el ingreso si es el mes de pago (isPaymentMonth)
+    const shouldCountIncome = data.isPaymentMonth === true || 
+      (data.isPaymentMonth === undefined && (!data.durationMonths || data.durationMonths === 1));
+    if (!shouldCountIncome) return;
     const amount = Number(data.price || 0);
     if (!amount) return;
     const key = data.month || "sin-fecha";
@@ -459,6 +476,10 @@ export async function loadSummary(ui, formatCurrency) {
   athleteSnap.forEach((docSnap) => {
     const data = docSnap.data();
     if (!data.paid) return;
+    // Solo contar para totales si es el mes de pago
+    const shouldCountIncome = data.isPaymentMonth === true || 
+      (data.isPaymentMonth === undefined && (!data.durationMonths || data.durationMonths === 1));
+    if (!shouldCountIncome) return;
     const amount = Number(data.price || 0);
     if (!amount) return;
     const key = data.month || "sin-fecha";
@@ -470,6 +491,10 @@ export async function loadSummary(ui, formatCurrency) {
   acroSnap.forEach((docSnap) => {
     const data = docSnap.data();
     if (!data.paid) return;
+    // Solo contar para totales si es el mes de pago
+    const shouldCountIncome = data.isPaymentMonth === true || 
+      (data.isPaymentMonth === undefined && (!data.durationMonths || data.durationMonths === 1));
+    if (!shouldCountIncome) return;
     const amount = Number(data.price || 0);
     if (!amount) return;
     const key = data.month || "sin-fecha";

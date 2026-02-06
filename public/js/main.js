@@ -35,7 +35,7 @@ import {
   getAllAcroAthleteMonths,
   getAcroAthleteMonthsForMonth,
   upsertAcroAthleteMonth,
-} from "./data.js?v=20250206s";
+} from "./data.js?v=20250206t";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -369,6 +369,7 @@ async function importAthletesFromCsv(file, monthKey) {
           active: paid,
           durationMonths: plan.durationMonths,
           priceMonthly: plan.priceMonthly,
+          isPaymentMonth: i === 0,
         },
         currentUser?.uid
       );
@@ -706,6 +707,7 @@ async function importAcroAthletesFromCsv(file, monthKey) {
           active: paid,
           durationMonths: plan.durationMonths,
           priceMonthly: plan.priceMonthly,
+          isPaymentMonth: i === 0,
         },
         currentUser?.uid
       );
@@ -1207,6 +1209,7 @@ on(ui.athleteForm, "submit", async (event) => {
         active: paid,
         durationMonths: plan.durationMonths,
         priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
       },
       currentUser?.uid
     );
@@ -1368,6 +1371,7 @@ on(ui.athleteList, "click", async (event) => {
         active: paid,
         durationMonths: plan.durationMonths,
         priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
       },
       currentUser?.uid
     );
@@ -1437,6 +1441,7 @@ on(ui.acroForm, "submit", async (event) => {
         active: paid,
         durationMonths: plan.durationMonths,
         priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
       },
       currentUser?.uid
     );
@@ -1564,6 +1569,7 @@ on(ui.acroList, "click", async (event) => {
         active: paid,
         durationMonths: plan.durationMonths,
         priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
       },
       currentUser?.uid
     );
