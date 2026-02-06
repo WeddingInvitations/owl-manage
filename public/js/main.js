@@ -35,7 +35,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206o";
+} from "./data.js?v=20250206p";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -715,34 +715,7 @@ async function refreshAcroMonthly() {
   if (!selectedAcroListMonth) {
     renderAcroListMonthOptions();
   }
-  const athletes = await getAcrobats();
-  if (ui.acroNameList) {
-    const names = Array.from(
-      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b));
-    ui.acroNameList.innerHTML = "";
-    names.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      ui.acroNameList.appendChild(option);
-    });
-  }
-  if (ui.acroSearchList) {
-    const names = Array.from(
-      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b));
-    ui.acroSearchList.innerHTML = "";
-    names.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      ui.acroSearchList.appendChild(option);
-    });
-  }
-  const searchValue = acroSearchTerm.trim().toLowerCase();
-  const visibleAthletes = searchValue
-    ? athletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
-    : athletes;
-
+  let athletes = await getAcrobats();
   const allMonthRecords = await getAllAcrobatMonths();
   if (athletes.length === 0 && allMonthRecords.length > 0) {
     const fallbackMap = new Map();
@@ -771,6 +744,46 @@ async function refreshAcroMonthly() {
     }
     return;
   }
+
+  if (athletes.length === 0 && allMonthRecords.length > 0) {
+    const fallbackMap = new Map();
+    allMonthRecords.forEach((record) => {
+      if (!fallbackMap.has(record.athleteId)) {
+        fallbackMap.set(record.athleteId, {
+          id: record.athleteId,
+          name: record.athleteName || "(Sin nombre)",
+        });
+      }
+    });
+    athletes = Array.from(fallbackMap.values());
+  }
+
+  if (ui.acroNameList) {
+    const names = Array.from(
+      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    ui.acroNameList.innerHTML = "";
+    names.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      ui.acroNameList.appendChild(option);
+    });
+  }
+  if (ui.acroSearchList) {
+    const names = Array.from(
+      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    ui.acroSearchList.innerHTML = "";
+    names.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      ui.acroSearchList.appendChild(option);
+    });
+  }
+  const searchValue = acroSearchTerm.trim().toLowerCase();
+  const visibleAthletes = searchValue
+    ? athletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    : athletes;
 
   if (!availableMonths.includes(selectedAcroMonth)) {
     selectedAcroMonth = availableMonths[0];
