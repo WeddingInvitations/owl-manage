@@ -147,6 +147,7 @@ function renderMonthlyDetail(key) {
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     .forEach((item) => {
       const row = document.createElement("tr");
+      row.classList.add("row-income");
       row.innerHTML = `
         <td>${item.date}</td>
         <td>${item.concept}</td>
@@ -159,6 +160,7 @@ function renderMonthlyDetail(key) {
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     .forEach((item) => {
       const row = document.createElement("tr");
+      row.classList.add("row-expense");
       row.innerHTML = `
         <td>${item.date}</td>
         <td>${item.concept}</td>
@@ -348,6 +350,7 @@ ui.refreshSummary.addEventListener("click", async () => {
 ui.monthlyYearSelect.addEventListener("change", (event) => {
   selectedYear = event.target.value;
   renderMonthlySummary();
+  ui.monthlyDetailCard.classList.add("hidden");
 });
 
 ui.monthlySummaryBody.addEventListener("click", (event) => {

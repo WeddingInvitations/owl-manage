@@ -206,6 +206,14 @@ select {
   font-weight: 600;
 }
 
+.row-income td {
+  background: rgba(76, 175, 80, 0.12);
+}
+
+.row-expense td {
+  background: rgba(244, 67, 54, 0.12);
+}
+
 .table-total td {
   font-weight: 700;
 }
