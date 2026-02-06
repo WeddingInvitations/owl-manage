@@ -291,6 +291,10 @@ select {
   z-index: 50;
 }
 
+.modal.hidden {
+  display: none;
+}
+
 .modal-content {
   width: min(520px, 100%);
 }
