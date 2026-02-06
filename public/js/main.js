@@ -1080,9 +1080,21 @@ function downloadMonthlyCSV(key) {
   URL.revokeObjectURL(url);
 }
 
+// Mobile nav active state helper (defined early so it's available for bindAuth)
+function updateMobileNavActive(viewId) {
+  if (!ui.mobileNavButtons) return;
+  ui.mobileNavButtons.forEach((btn) => {
+    const isMore = btn.dataset.view === "moreView";
+    const isActive = btn.dataset.view === viewId || 
+      (isMore && ["checkinsView", "trainingsView", "rolesView"].includes(viewId));
+    btn.classList.toggle("active", isActive);
+  });
+}
+
 ui.menuButtons.forEach((button) => {
   button.addEventListener("click", () => {
     setActiveView(button.dataset.view, ui);
+    updateMobileNavActive(button.dataset.view);
   });
 });
 
@@ -1124,8 +1136,13 @@ bindAuth(
     }
     setAuthUI(ui, user, currentRole, false);
     updateMenuVisibility(ui, currentRole);
+    // Mobile nav visibility
+    if (ui.mobileNav) {
+      ui.mobileNav.classList.toggle("hidden", !user);
+    }
     if (currentRole !== "OWNER") {
       setActiveView("checkinsView", ui);
+      updateMobileNavActive("checkinsView");
     }
   },
   setAuthUI
@@ -1575,4 +1592,44 @@ on(ui.acroList, "click", async (event) => {
     );
   }
   await refreshAcroMonthly();
+});
+
+// ========== MOBILE NAVIGATION ==========
+
+function updateMobileNavActive(viewId) {
+// Mobile nav button clicks
+ui.mobileNavButtons?.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const viewId = btn.dataset.view;
+    if (viewId === "moreView") {
+      ui.moreMenu?.classList.remove("hidden");
+    } else {
+      setActiveView(viewId, ui);
+      updateMobileNavActive(viewId);
+    }
+  });
+});
+
+// More menu close
+on(ui.moreMenuClose, "click", () => {
+  ui.moreMenu?.classList.add("hidden");
+});
+
+// More menu options
+document.querySelectorAll("[data-close-more]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const viewId = btn.dataset.view;
+    if (viewId) {
+      setActiveView(viewId, ui);
+      updateMobileNavActive(viewId);
+    }
+    ui.moreMenu?.classList.add("hidden");
+  });
+});
+
+// Close more menu on backdrop click
+on(ui.moreMenu, "click", (event) => {
+  if (event.target === ui.moreMenu) {
+    ui.moreMenu.classList.add("hidden");
+  }
 });

@@ -113,6 +113,11 @@ export const ui = {
   acroPaidFilter: $("acroPaidFilter"),
   acroList: $("acroList"),
   acroListCount: $("acroListCount"),
+  // Mobile navigation
+  mobileNav: $("mobileNav"),
+  mobileNavButtons: Array.from(document.querySelectorAll(".mobile-nav-btn")),
+  moreMenu: $("moreMenu"),
+  moreMenuClose: $("moreMenuClose"),
 };
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {

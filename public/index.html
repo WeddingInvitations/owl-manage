@@ -2,9 +2,12 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>OwlManage </title>
-    <link rel="stylesheet" href="css/styles.css?v=20250206m" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#151824" />
+    <title>OwlManage</title>
+    <link rel="stylesheet" href="css/styles.css?v=20250206n" />
   </head>
   <body class="dark">
     <header class="app-header">
@@ -563,6 +566,49 @@
       <p class="muted">OwlManage MVP · Firebase Auth + Firestore</p>
     </footer>
 
-    <script type="module" src="js/main.js?v=20260206f"></script>
+    <!-- Mobile Bottom Navigation -->
+    <nav id="mobileNav" class="mobile-nav hidden">
+      <button class="mobile-nav-btn active" data-view="summaryView">
+        <span class="icon">📊</span>
+        <span>Resumen</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="paymentsView">
+        <span class="icon">💰</span>
+        <span>Ingresos</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="expensesView">
+        <span class="icon">💸</span>
+        <span>Gastos</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="athletesView">
+        <span class="icon">🏋️</span>
+        <span>Atletas</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="acroView">
+        <span class="icon">🤸</span>
+        <span>Acro</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="moreView">
+        <span class="icon">☰</span>
+        <span>Más</span>
+      </button>
+    </nav>
+
+    <!-- More menu modal for mobile -->
+    <div id="moreMenu" class="modal hidden">
+      <div class="modal-content card">
+        <div class="detail-header">
+          <h3>Más opciones</h3>
+          <button id="moreMenuClose" class="btn ghost small" type="button">Cerrar</button>
+        </div>
+        <div class="stack" style="margin-top: 16px;">
+          <button class="btn ghost" data-view="checkinsView" data-close-more>📋 Fichajes</button>
+          <button class="btn ghost" data-view="trainingsView" data-close-more>🏃 Entrenamientos</button>
+          <button class="btn ghost" data-view="rolesView" data-close-more>👥 Roles</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="js/main.js?v=20260206g"></script>
   </body>
 </html>
