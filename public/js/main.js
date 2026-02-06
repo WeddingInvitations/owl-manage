@@ -27,7 +27,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206";
+} from "./data.js?v=20250206b";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
