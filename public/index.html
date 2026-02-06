@@ -27,7 +27,6 @@
         <button class="menu-btn" data-view="checkinsView">Fichajes</button>
         <button class="menu-btn" data-view="trainingsView">Entrenamientos</button>
         <button class="menu-btn" data-view="athletesView">Atletas</button>
-        <button class="menu-btn" data-view="acrobaticsView">Atletas acrobacias</button>
         <button class="menu-btn" data-view="rolesView">Roles</button>
       </nav>
       <section class="content">
@@ -350,142 +349,7 @@
           </div>
         </section>
 
-        <section id="acrobaticsView" class="view hidden">
-          <div class="card">
-            <h2>Control de pagos · Acrobacias</h2>
-            <div class="detail-header">
-              <div class="table-actions">
-                <button id="acroCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
-                  📄 CSV
-                </button>
-                <button id="acroModalOpen" class="btn" type="button">
-                  Alta de usuario
-                </button>
-              </div>
-            </div>
-          </div>
-          <div id="acroModal" class="modal hidden">
-            <div class="modal-content card">
-              <div class="detail-header">
-                <h3>Alta de usuario · Acrobacias</h3>
-                <button id="acroModalClose" class="btn ghost small" type="button">
-                  Cerrar
-                </button>
-              </div>
-              <form id="acroForm" class="stack">
-                <label>
-                  Nombre
-                  <input id="acroName" type="text" list="acroNameList" required />
-                </label>
-                <datalist id="acroNameList"></datalist>
-                <label>
-                  Mes de pago
-                  <select id="acroPaymentMonth"></select>
-                </label>
-                <label>
-                  Tarifa
-                  <select id="acroTariff">
-                    <option value="4/mes">4/mes</option>
-                    <option value="8/mes">8/mes</option>
-                    <option value="12/mes">12/mes</option>
-                    <option value="Ilimitado">Ilimitado</option>
-                  </select>
-                </label>
-                <label>
-                  Precio (€)
-                  <input id="acroPrice" type="number" min="0" step="0.01" readonly />
-                </label>
-                <label>
-                  Pagado
-                  <select id="acroPaid">
-                    <option value="SI">SI</option>
-                    <option value="NO">NO</option>
-                  </select>
-                </label>
-                <button class="btn" type="submit">Añadir atleta</button>
-              </form>
-            </div>
-          </div>
-          <div id="acroCsvModal" class="modal hidden">
-            <div class="modal-content card">
-              <div class="detail-header">
-                <h3>Carga masiva · Acrobacias</h3>
-                <button id="acroCsvClose" class="btn ghost small" type="button">
-                  Cerrar
-                </button>
-              </div>
-              <form id="acroCsvForm" class="stack">
-                <label>
-                  Archivo CSV
-                  <input id="acroCsvFile" type="file" accept=".csv,text/csv" required />
-                </label>
-                <label>
-                  Mes de pago
-                  <select id="acroCsvMonth"></select>
-                </label>
-                <button class="btn" type="submit">Importar</button>
-                <p id="acroCsvStatus" class="muted"></p>
-              </form>
-            </div>
-          </div>
-          <div class="card">
-            <div class="detail-header">
-              <h3>Resumen mensual</h3>
-              <select id="acroMonthSelect"></select>
-            </div>
-            <div class="summary">
-              <div>
-                <p class="label">Activos</p>
-                <p id="acroSummaryActive" class="value">0</p>
-              </div>
-              <div>
-                <p class="label">Tarifa media</p>
-                <p id="acroSummaryAverage" class="value">0 €</p>
-              </div>
-              <div>
-                <p class="label">Altas nuevas</p>
-                <p id="acroSummaryNew" class="value">0</p>
-              </div>
-              <div>
-                <p class="label">Bajas</p>
-                <p id="acroSummaryDrop" class="value">0</p>
-              </div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="detail-header">
-              <h3>Listado mensual</h3>
-              <select id="acroListMonthSelect"></select>
-              <label>
-                Buscar atleta
-                <input id="acroSearch" type="search" list="acroSearchList" placeholder="Nombre..." />
-              </label>
-              <label>
-                Pagado
-                <select id="acroPaidFilter">
-                  <option value="ALL">Todos</option>
-                  <option value="SI">Pagado</option>
-                  <option value="NO">No pagado</option>
-                </select>
-              </label>
-            </div>
-            <datalist id="acroSearchList"></datalist>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Tarifa</th>
-                  <th>Precio</th>
-                  <th>Pagado</th>
-                  <th>Activo</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody id="acroList"></tbody>
-            </table>
-            <p id="acroListCount" class="muted"></p>
-          </div>
-        </section>
+
 
         <section id="rolesView" class="view hidden">
           <div id="rolesPanel" class="card hidden">
@@ -556,6 +420,6 @@
       <p class="muted">OwlManage MVP · Firebase Auth + Firestore</p>
     </footer>
 
-    <script type="module" src="js/main.js?v=20260206a"></script>
+    <script type="module" src="js/main.js?v=20260206b"></script>
   </body>
 </html>
