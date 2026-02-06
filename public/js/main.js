@@ -736,34 +736,6 @@ async function refreshAcroMonthly() {
     });
     athletes = Array.from(fallbackMap.values());
   }
-  const availableMonths = Array.from(
-    new Set(allMonthRecords.map((record) => record.month).filter(Boolean))
-  ).sort((a, b) => (a < b ? 1 : -1));
-
-  if (availableMonths.length === 0) {
-    ui.acroList.innerHTML = "";
-    ui.acroSummaryActive.textContent = "0";
-    ui.acroSummaryAverage.textContent = formatCurrency(0);
-    ui.acroSummaryNew.textContent = "0";
-    ui.acroSummaryDrop.textContent = "0";
-    if (ui.acroListCount) {
-      ui.acroListCount.textContent = "Mostrando 0 atletas";
-    }
-    return;
-  }
-
-  if (athletes.length === 0 && allMonthRecords.length > 0) {
-    const fallbackMap = new Map();
-    allMonthRecords.forEach((record) => {
-      if (!fallbackMap.has(record.athleteId)) {
-        fallbackMap.set(record.athleteId, {
-          id: record.athleteId,
-          name: record.athleteName || "(Sin nombre)",
-        });
-      }
-    });
-    athletes = Array.from(fallbackMap.values());
-  }
 
   if (ui.acroNameList) {
     const names = Array.from(
@@ -792,52 +764,16 @@ async function refreshAcroMonthly() {
     ? athletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
     : athletes;
 
-  if (!availableMonths.includes(selectedAcroMonth)) {
-    selectedAcroMonth = availableMonths[0];
-    if (ui.acroMonthSelect) {
-      const hasOption = Array.from(ui.acroMonthSelect.options).some(
-        (option) => option.value === selectedAcroMonth
-      );
-      if (!hasOption) {
-        const option = document.createElement("option");
-        option.value = selectedAcroMonth;
-        option.textContent = getMonthLabel(selectedAcroMonth);
-        ui.acroMonthSelect.appendChild(option);
-      }
-      ui.acroMonthSelect.value = selectedAcroMonth;
-    }
-  }
-
-  if (!availableMonths.includes(selectedAcroListMonth)) {
-    selectedAcroListMonth = availableMonths[0] || selectedAcroListMonth;
-    if (ui.acroListMonthSelect && selectedAcroListMonth) {
-      const hasOption = Array.from(ui.acroListMonthSelect.options).some(
-        (option) => option.value === selectedAcroListMonth
-      );
-      if (!hasOption) {
-        const option = document.createElement("option");
-        option.value = selectedAcroListMonth;
-        option.textContent = getMonthLabel(selectedAcroListMonth);
-        ui.acroListMonthSelect.appendChild(option);
-      }
-      ui.acroListMonthSelect.value = selectedAcroListMonth;
-    }
-  }
-
-  const summaryMonthRecords = allMonthRecords.filter(
-    (record) => record.month === selectedAcroMonth
-  );
+  const summaryMonthRecords = await getAcrobatMonthsForMonth(selectedAcroMonth);
   const summaryPreviousMonth = getPreviousMonthKey(selectedAcroMonth);
   const summaryPreviousRecords = summaryPreviousMonth
-    ? allMonthRecords.filter((record) => record.month === summaryPreviousMonth)
+    ? await getAcrobatMonthsForMonth(summaryPreviousMonth)
     : [];
 
-  const listMonthRecords = allMonthRecords.filter(
-    (record) => record.month === selectedAcroListMonth
-  );
+  const listMonthRecords = await getAcrobatMonthsForMonth(selectedAcroListMonth);
   const listPreviousMonth = getPreviousMonthKey(selectedAcroListMonth);
   const listPreviousRecords = listPreviousMonth
-    ? allMonthRecords.filter((record) => record.month === listPreviousMonth)
+    ? await getAcrobatMonthsForMonth(listPreviousMonth)
     : [];
 
   const summaryMonthMap = new Map();
@@ -889,7 +825,14 @@ async function refreshAcroMonthly() {
   });
 
   let visibleCount = 0;
-  visibleAthletes.forEach((athlete) => {
+  const listAthletes = visibleAthletes.length > 0
+    ? visibleAthletes
+    : Array.from(new Map(listMonthRecords.map((record) => [
+        record.athleteId,
+        { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
+      ])).values());
+
+  listAthletes.forEach((athlete) => {
     const current = listMonthMap.get(athlete.id);
     const previous = listPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
