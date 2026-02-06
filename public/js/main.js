@@ -17,6 +17,7 @@ import {
   addTraining,
   createAthlete,
   getAthletes,
+  getAllAthleteMonths,
   getAthleteMonthsForMonth,
   upsertAthleteMonth,
   loadList,
@@ -36,11 +37,27 @@ let availableYears = [];
 let selectedYear = "";
 let selectedAthleteMonth = "";
 
-const tariffPricing = {
-  "8/mes": 70,
-  "12/mes": 80,
-  Ilimitado: 105,
-};
+const tariffPlans = [
+  { key: "8/mes", durationMonths: 1, priceTotal: 70 },
+  { key: "12/mes", durationMonths: 1, priceTotal: 80 },
+  { key: "Ilimitado", durationMonths: 1, priceTotal: 100 },
+  { key: "Trimestre 8/mes", durationMonths: 3, priceTotal: 200 },
+  { key: "Trimestre 12/mes", durationMonths: 3, priceTotal: 230 },
+  { key: "Trimestre ilimitado", durationMonths: 3, priceTotal: 285 },
+  { key: "Semestre 8/mes", durationMonths: 6, priceTotal: 380 },
+  { key: "Semestre 12/mes", durationMonths: 6, priceTotal: 430 },
+  { key: "Semestre ilimitado", durationMonths: 6, priceTotal: 540 },
+  { key: "Anual 8/mes", durationMonths: 12, priceTotal: 715 },
+  { key: "Anual 12/mes", durationMonths: 12, priceTotal: 815 },
+  { key: "Anual ilimitado", durationMonths: 12, priceTotal: 1020 },
+];
+
+const tariffPlanMap = new Map(
+  tariffPlans.map((plan) => [plan.key, {
+    ...plan,
+    priceMonthly: plan.priceTotal / plan.durationMonths,
+  }])
+);
 
 async function refreshAll() {
   const summaryData = await loadSummary(ui, formatCurrency);
@@ -79,6 +96,18 @@ function getPreviousMonthKey(monthKey) {
   return getMonthKey(date);
 }
 
+function addMonthsToKey(monthKey, monthsToAdd) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const date = new Date(year, month - 1 + monthsToAdd, 1);
+  return getMonthKey(date);
+}
+
+function isMonthInRange(targetKey, startKey, durationMonths) {
+  if (!startKey || !targetKey || !durationMonths) return false;
+  const endKey = addMonthsToKey(startKey, durationMonths - 1);
+  return targetKey >= startKey && targetKey <= endKey;
+}
+
 function renderAthleteMonthOptions() {
   const now = new Date();
   const options = [];
@@ -99,7 +128,8 @@ function renderAthleteMonthOptions() {
 
 function setAthletePriceFromTariff() {
   const tariff = ui.athleteTariff.value;
-  ui.athletePrice.value = tariffPricing[tariff] || 0;
+  const plan = tariffPlanMap.get(tariff);
+  ui.athletePrice.value = plan ? plan.priceTotal : 0;
 }
 
 async function refreshAthleteMonthly() {
@@ -107,6 +137,7 @@ async function refreshAthleteMonthly() {
     renderAthleteMonthOptions();
   }
   const athletes = await getAthletes();
+  const allMonthRecords = await getAllAthleteMonths();
   const monthRecords = await getAthleteMonthsForMonth(selectedAthleteMonth);
   const previousMonth = getPreviousMonthKey(selectedAthleteMonth);
   const previousRecords = previousMonth
@@ -117,26 +148,69 @@ async function refreshAthleteMonthly() {
   monthRecords.forEach((record) => monthMap.set(record.athleteId, record));
   const previousMap = new Map();
   previousRecords.forEach((record) => previousMap.set(record.athleteId, record));
+  const athleteHistory = new Map();
+  allMonthRecords.forEach((record) => {
+    if (!athleteHistory.has(record.athleteId)) {
+      athleteHistory.set(record.athleteId, []);
+    }
+    athleteHistory.get(record.athleteId).push(record);
+  });
+  athleteHistory.forEach((records) =>
+    records.sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0))
+  );
 
   ui.athleteList.innerHTML = "";
+
+  const activeNow = new Set();
+  const activePrev = new Set();
+  let totalIncome = 0;
 
   athletes.forEach((athlete) => {
     const current = monthMap.get(athlete.id);
     const previous = previousMap.get(athlete.id);
-    const tariff = current?.tariff || previous?.tariff || "8/mes";
-    const price = current?.price ?? previous?.price ?? tariffPricing[tariff];
-    const paid = current?.paid ?? false;
+    const history = athleteHistory.get(athlete.id) || [];
+    const lastPaid = history.find((record) => record.paid);
+    const coverage = lastPaid
+      ? isMonthInRange(selectedAthleteMonth, lastPaid.month, lastPaid.durationMonths || 1)
+      : false;
+    const prevCoverage = lastPaid
+      ? isMonthInRange(previousMonth, lastPaid.month, lastPaid.durationMonths || 1)
+      : false;
+
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
+    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
+    const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || fallbackPlan;
+    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
+    const paid = current?.paid ?? coverage ?? false;
     const active = Boolean(paid);
+    const planDuration = plan.durationMonths || 1;
+    const planLabel = planDuration === 1
+      ? "Mensual"
+      : planDuration === 3
+        ? "Trimestral"
+        : planDuration === 6
+          ? "Semestral"
+          : "Anual";
+
+    if (paid) {
+      activeNow.add(athlete.id);
+      const divisor = current?.durationMonths || plan.durationMonths || 1;
+      totalIncome += Number((current?.price ?? plan.priceTotal) || 0) / divisor;
+    }
+    if (prevCoverage) {
+      activePrev.add(athlete.id);
+    }
 
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${athlete.name}</td>
       <td>
+        <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
         <select data-role="tariff" data-id="${athlete.id}">
-          ${Object.keys(tariffPricing)
+          ${tariffPlans
             .map(
               (option) =>
-                `<option value="${option}" ${option === tariff ? "selected" : ""}>${option}</option>`
+                `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`
             )
             .join("")}
         </select>
@@ -158,16 +232,7 @@ async function refreshAthleteMonthly() {
     ui.athleteList.appendChild(row);
   });
 
-  const activeNow = new Set(
-    monthRecords.filter((record) => record.paid).map((record) => record.athleteId)
-  );
-  const activePrev = new Set(
-    previousRecords.filter((record) => record.paid).map((record) => record.athleteId)
-  );
   const totalActive = activeNow.size;
-  const totalIncome = monthRecords
-    .filter((record) => record.paid)
-    .reduce((sum, record) => sum + Number(record.price || 0), 0);
   const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
   const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
   const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
@@ -433,7 +498,8 @@ ui.athleteForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const athleteId = await createAthlete(ui.athleteName.value, currentUser?.uid);
   const tariff = ui.athleteTariff.value;
-  const price = tariffPricing[tariff] || 0;
+  const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
+  const price = plan.priceTotal;
   const paid = ui.athletePaid.value === "SI";
   await upsertAthleteMonth(
     athleteId,
@@ -443,6 +509,8 @@ ui.athleteForm.addEventListener("submit", async (event) => {
       price,
       paid,
       active: paid,
+      durationMonths: plan.durationMonths,
+      priceMonthly: plan.priceMonthly,
     },
     currentUser?.uid
   );
@@ -493,7 +561,8 @@ ui.athleteList.addEventListener("change", (event) => {
     `[data-role="price"][data-id="${athleteId}"]`
   );
   if (priceSpan) {
-    const newPrice = tariffPricing[target.value] || 0;
+    const plan = tariffPlanMap.get(target.value);
+    const newPrice = plan ? plan.priceTotal : 0;
     priceSpan.textContent = newPrice.toFixed(2);
   }
 });
@@ -510,7 +579,8 @@ ui.athleteList.addEventListener("click", async (event) => {
   );
   if (!tariffSelect || !paidSelect) return;
   const tariff = tariffSelect.value;
-  const price = tariffPricing[tariff] || 0;
+  const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
+  const price = plan.priceTotal;
   const paid = paidSelect.value === "SI";
   await upsertAthleteMonth(
     athleteId,
@@ -520,6 +590,8 @@ ui.athleteList.addEventListener("click", async (event) => {
       price,
       paid,
       active: paid,
+      durationMonths: plan.durationMonths,
+      priceMonthly: plan.priceMonthly,
     },
     currentUser?.uid
   );

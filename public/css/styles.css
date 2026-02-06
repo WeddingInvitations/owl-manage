@@ -242,6 +242,40 @@ select {
   font-size: 12px;
 }
 
+.plan-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 8px;
+  background: #1d2030;
+  color: #c8d0f0;
+  border: 1px solid var(--border);
+}
+
+.plan-mensual {
+  background: rgba(108, 125, 255, 0.15);
+  color: #9fb0ff;
+}
+
+.plan-trimestral {
+  background: rgba(76, 175, 80, 0.18);
+  color: #9be4a3;
+}
+
+.plan-semestral {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffd166;
+}
+
+.plan-anual {
+  background: rgba(244, 67, 54, 0.2);
+  color: #ff9a8f;
+}
+
 .hidden {
   display: none;
 }
