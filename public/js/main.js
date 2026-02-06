@@ -30,7 +30,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206g";
+} from "./data.js?v=20250206h";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -367,7 +367,7 @@ async function refreshAthleteMonthly() {
       </td>
       <td>${active ? "Activo" : "Inactivo"}</td>
       <td>
-        <button class="btn small" data-role="save" data-id="${athlete.id}">
+        <button class="btn small" data-role="save" data-id="${athlete.id}" data-name="${athlete.name}">
           Guardar
         </button>
       </td>
@@ -648,6 +648,7 @@ on(ui.athleteForm, "submit", async (event) => {
   const athleteId = existing
     ? existing.id
     : await createAthlete(rawName, currentUser?.uid);
+  const athleteName = existing?.name || rawName;
   const tariff = ui.athleteTariff.value;
   const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
   const price = plan.priceTotal;
@@ -660,6 +661,7 @@ on(ui.athleteForm, "submit", async (event) => {
       athleteId,
       monthKey,
       {
+        athleteName,
         tariff,
         price,
         paid,
@@ -747,6 +749,7 @@ on(ui.athleteList, "click", async (event) => {
   const button = event.target.closest("button[data-role='save']");
   if (!button) return;
   const athleteId = button.dataset.id;
+  const athleteName = button.dataset.name || "";
   const tariffSelect = ui.athleteList.querySelector(
     `select[data-role="tariff"][data-id="${athleteId}"]`
   );
@@ -762,6 +765,7 @@ on(ui.athleteList, "click", async (event) => {
     athleteId,
     selectedAthleteMonth,
     {
+      athleteName,
       tariff,
       price,
       paid,
