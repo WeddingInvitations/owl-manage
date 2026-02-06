@@ -785,7 +785,6 @@ async function refreshAcroMonthly() {
   listMonthRecords.forEach((record) => listMonthMap.set(record.athleteId, record));
   const listPreviousMap = new Map();
   listPreviousRecords.forEach((record) => listPreviousMap.set(record.athleteId, record));
-
   const athleteHistory = new Map();
   allMonthRecords.forEach((record) => {
     if (!athleteHistory.has(record.athleteId)) {
@@ -807,12 +806,22 @@ async function refreshAcroMonthly() {
     const current = summaryMonthMap.get(athlete.id);
     const previous = summaryPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
+    const lastPaid = history.find((record) => record.paid);
 
-    const tariff = current?.tariff || previous?.tariff || history[0]?.tariff || "4/mes";
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
-    const price = current?.price ?? previous?.price ?? history[0]?.price ?? plan.priceTotal ?? 0;
+    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
     const paid = Boolean(current?.paid);
+    const active = paid;
+    const planDuration = plan.durationMonths || 1;
+    const planLabel = planDuration === 1
+      ? "Mensual"
+      : planDuration === 3
+        ? "Trimestral"
+        : planDuration === 6
+          ? "Semestral"
+          : "Anual";
 
     if (paid) {
       activeNow.add(athlete.id);
@@ -836,14 +845,13 @@ async function refreshAcroMonthly() {
     const current = listMonthMap.get(athlete.id);
     const previous = listPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
-
-    const tariff = current?.tariff || previous?.tariff || history[0]?.tariff || "4/mes";
+    const lastPaid = history.find((record) => record.paid);
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
-    const price = current?.price ?? previous?.price ?? history[0]?.price ?? plan.priceTotal ?? 0;
+    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
     const paid = Boolean(current?.paid);
     const active = paid;
-
     if (acroPaidFilter === "SI" && !paid) {
       return;
     }
@@ -851,12 +859,20 @@ async function refreshAcroMonthly() {
       return;
     }
     visibleCount += 1;
+    const planDuration = plan.durationMonths || 1;
+    const planLabel = planDuration === 1
+      ? "Mensual"
+      : planDuration === 3
+        ? "Trimestral"
+        : planDuration === 6
+          ? "Semestral"
+          : "Anual";
 
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${athlete.name}</td>
       <td>
-        <span class="plan-badge plan-mensual">Mensual</span>
+        <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
         <select data-role="tariff" data-id="${athlete.id}" data-scope="acro">
           ${acroTariffPlans
             .map(
@@ -883,6 +899,10 @@ async function refreshAcroMonthly() {
     ui.acroList.appendChild(row);
   });
 
+  if (ui.acroListCount) {
+    ui.acroListCount.textContent = `Mostrando ${visibleCount} atletas`;
+  }
+
   const totalActive = activeNow.size;
   const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
   const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
@@ -892,10 +912,6 @@ async function refreshAcroMonthly() {
   ui.acroSummaryAverage.textContent = formatCurrency(averageTariff);
   ui.acroSummaryNew.textContent = String(totalNew);
   ui.acroSummaryDrop.textContent = String(totalDrop);
-
-  if (ui.acroListCount) {
-    ui.acroListCount.textContent = `Mostrando ${visibleCount} atletas`;
-  }
 }
 
 function renderYearOptions() {
