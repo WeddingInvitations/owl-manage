@@ -5,6 +5,7 @@ import {
   getDocs,
   query,
   orderBy,
+  where,
   serverTimestamp,
   doc,
   updateDoc,
@@ -79,11 +80,86 @@ export async function addTraining(title, date, coach, userId) {
 export async function addAthlete(name, status, userId) {
   await addDoc(collection(db, "athletes"), {
     name,
-    status,
     lastPaymentAt: null,
     createdAt: serverTimestamp(),
     createdBy: userId || null,
   });
+}
+
+export async function createAthlete(name, userId) {
+  const docRef = await addDoc(collection(db, "athletes"), {
+    name,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function getAthletes() {
+  const snap = await getDocs(collection(db, "athletes"));
+  const athletes = [];
+  snap.forEach((docSnap) => {
+    athletes.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return athletes;
+}
+
+export async function getAthleteMonth(athleteId, month) {
+  const snap = await getDocs(
+    query(
+      collection(db, "athlete_months"),
+      where("athleteId", "==", athleteId),
+      where("month", "==", month)
+    )
+  );
+  let record = null;
+  snap.forEach((docSnap) => {
+    record = { id: docSnap.id, ...docSnap.data() };
+  });
+  return record;
+}
+
+export async function upsertAthleteMonth(athleteId, month, payload, userId) {
+  const snap = await getDocs(
+    query(
+      collection(db, "athlete_months"),
+      where("athleteId", "==", athleteId),
+      where("month", "==", month)
+    )
+  );
+  let docId = null;
+  snap.forEach((docSnap) => {
+    docId = docSnap.id;
+  });
+
+  if (docId) {
+    await updateDoc(doc(db, "athlete_months", docId), {
+      ...payload,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+    return docId;
+  }
+
+  const docRef = await addDoc(collection(db, "athlete_months"), {
+    athleteId,
+    month,
+    ...payload,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function getAthleteMonthsForMonth(month) {
+  const snap = await getDocs(
+    query(collection(db, "athlete_months"), where("month", "==", month))
+  );
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
 }
 
 export async function loadList(collectionName, target, formatter) {

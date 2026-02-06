@@ -115,15 +115,66 @@
                 <input id="paymentConcept" type="text" required />
               </label>
               <label>
-                Fecha
-                <input id="paymentDate" type="date" required />
+                Tarifa
+                <select id="athleteTariff">
+                  <option value="8/mes">8/mes</option>
+                  <option value="12/mes">12/mes</option>
+                  <option value="Ilimitado">Ilimitado</option>
+                </select>
               </label>
               <label>
-                Importe (€)
-                <input id="paymentAmount" type="number" min="0" step="0.01" required />
+                Precio (€)
+                <input id="athletePrice" type="number" min="0" step="0.01" readonly />
+              </label>
+              <label>
+                Pagado
+                <select id="athletePaid">
+                  <option value="SI">SI</option>
+                  <option value="NO">NO</option>
+                </select>
               </label>
               <button class="btn" type="submit">Registrar ingreso</button>
             </form>
+          </div>
+          <div class="card">
+            <div class="detail-header">
+              <h3>Resumen mensual</h3>
+              <select id="athleteMonthSelect"></select>
+            </div>
+            <div class="summary">
+              <div>
+                <p class="label">Activos</p>
+                <p id="athleteSummaryActive" class="value">0</p>
+              </div>
+              <div>
+                <p class="label">Tarifa media</p>
+                <p id="athleteSummaryAverage" class="value">0 €</p>
+              </div>
+              <div>
+                <p class="label">Altas nuevas</p>
+                <p id="athleteSummaryNew" class="value">0</p>
+              </div>
+              <div>
+                <p class="label">Bajas</p>
+                <p id="athleteSummaryDrop" class="value">0</p>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Listado mensual</h3>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Tarifa</th>
+                  <th>Precio</th>
+                  <th>Pagado</th>
+                  <th>Activo</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="athleteList"></tbody>
+            </table>
             <ul id="paymentList" class="list"></ul>
           </div>
         </section>

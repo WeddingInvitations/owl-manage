@@ -15,7 +15,10 @@ import {
   addExpense,
   addCheckin,
   addTraining,
-  addAthlete,
+  createAthlete,
+  getAthletes,
+  getAthleteMonthsForMonth,
+  upsertAthleteMonth,
   loadList,
   loadGroupedList,
   loadSummary,
@@ -31,6 +34,13 @@ let monthlyDetails = new Map();
 let monthlyTotals = { income: 0, expenses: 0 };
 let availableYears = [];
 let selectedYear = "";
+let selectedAthleteMonth = "";
+
+const tariffPricing = {
+  "8/mes": 70,
+  "12/mes": 80,
+  Ilimitado: 105,
+};
 
 async function refreshAll() {
   const summaryData = await loadSummary(ui, formatCurrency);
@@ -54,10 +64,118 @@ async function refreshAll() {
   await loadList("trainings", ui.trainingList, (data) =>
     `${data.title} · ${data.date} · ${data.coach || ""}`
   );
-  await loadList("athletes", ui.athleteList, (data) =>
-    `${data.name} · ${data.status}`
-  );
   await loadUsers(ui, currentRole);
+}
+
+function getMonthKey(date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${date.getFullYear()}-${month}`;
+}
+
+function getPreviousMonthKey(monthKey) {
+  if (!monthKey) return "";
+  const [year, month] = monthKey.split("-").map(Number);
+  const date = new Date(year, month - 2, 1);
+  return getMonthKey(date);
+}
+
+function renderAthleteMonthOptions() {
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.athleteMonthSelect.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.athleteMonthSelect.appendChild(option);
+  });
+  selectedAthleteMonth = options[0];
+  ui.athleteMonthSelect.value = selectedAthleteMonth;
+}
+
+function setAthletePriceFromTariff() {
+  const tariff = ui.athleteTariff.value;
+  ui.athletePrice.value = tariffPricing[tariff] || 0;
+}
+
+async function refreshAthleteMonthly() {
+  if (!selectedAthleteMonth) {
+    renderAthleteMonthOptions();
+  }
+  const athletes = await getAthletes();
+  const monthRecords = await getAthleteMonthsForMonth(selectedAthleteMonth);
+  const previousMonth = getPreviousMonthKey(selectedAthleteMonth);
+  const previousRecords = previousMonth
+    ? await getAthleteMonthsForMonth(previousMonth)
+    : [];
+
+  const monthMap = new Map();
+  monthRecords.forEach((record) => monthMap.set(record.athleteId, record));
+  const previousMap = new Map();
+  previousRecords.forEach((record) => previousMap.set(record.athleteId, record));
+
+  ui.athleteList.innerHTML = "";
+
+  athletes.forEach((athlete) => {
+    const current = monthMap.get(athlete.id);
+    const previous = previousMap.get(athlete.id);
+    const tariff = current?.tariff || previous?.tariff || "8/mes";
+    const price = current?.price ?? previous?.price ?? tariffPricing[tariff];
+    const paid = current?.paid ?? false;
+    const active = Boolean(paid);
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${athlete.name}</td>
+      <td>
+        <select data-role="tariff" data-id="${athlete.id}">
+          ${Object.keys(tariffPricing)
+            .map(
+              (option) =>
+                `<option value="${option}" ${option === tariff ? "selected" : ""}>${option}</option>`
+            )
+            .join("")}
+        </select>
+      </td>
+      <td><span data-role="price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
+      <td>
+        <select data-role="paid" data-id="${athlete.id}">
+          <option value="SI" ${paid ? "selected" : ""}>SI</option>
+          <option value="NO" ${!paid ? "selected" : ""}>NO</option>
+        </select>
+      </td>
+      <td>${active ? "Activo" : "Inactivo"}</td>
+      <td>
+        <button class="btn small" data-role="save" data-id="${athlete.id}">
+          Guardar
+        </button>
+      </td>
+    `;
+    ui.athleteList.appendChild(row);
+  });
+
+  const activeNow = new Set(
+    monthRecords.filter((record) => record.paid).map((record) => record.athleteId)
+  );
+  const activePrev = new Set(
+    previousRecords.filter((record) => record.paid).map((record) => record.athleteId)
+  );
+  const totalActive = activeNow.size;
+  const totalIncome = monthRecords
+    .filter((record) => record.paid)
+    .reduce((sum, record) => sum + Number(record.price || 0), 0);
+  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
+  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
+  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+
+  ui.athleteSummaryActive.textContent = String(totalActive);
+  ui.athleteSummaryAverage.textContent = formatCurrency(averageTariff);
+  ui.athleteSummaryNew.textContent = String(totalNew);
+  ui.athleteSummaryDrop.textContent = String(totalDrop);
 }
 
 function renderYearOptions() {
@@ -242,6 +360,8 @@ ui.menuButtons.forEach((button) => {
 });
 
 setActiveView("summaryView", ui);
+renderAthleteMonthOptions();
+setAthletePriceFromTariff();
 
 bindAuth(
   ui,
@@ -250,6 +370,7 @@ bindAuth(
     currentRole = profile.role;
     if (user) {
       await refreshAll();
+      await refreshAthleteMonthly();
     }
     setAuthUI(ui, user, currentRole, false);
     updateMenuVisibility(ui, currentRole);
@@ -310,13 +431,25 @@ ui.trainingForm.addEventListener("submit", async (event) => {
 
 ui.athleteForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  await addAthlete(
-    ui.athleteName.value,
-    ui.athleteStatus.value,
+  const athleteId = await createAthlete(ui.athleteName.value, currentUser?.uid);
+  const tariff = ui.athleteTariff.value;
+  const price = tariffPricing[tariff] || 0;
+  const paid = ui.athletePaid.value === "SI";
+  await upsertAthleteMonth(
+    athleteId,
+    selectedAthleteMonth,
+    {
+      tariff,
+      price,
+      paid,
+      active: paid,
+    },
     currentUser?.uid
   );
   ui.athleteForm.reset();
+  setAthletePriceFromTariff();
   await refreshAll();
+  await refreshAthleteMonthly();
 });
 
 ui.roleForm.addEventListener("submit", async (event) => {
@@ -340,6 +473,57 @@ ui.createUserForm.addEventListener("submit", async (event) => {
   } catch (error) {
     ui.createUserStatus.textContent = `Error: ${error.message || error}`;
   }
+});
+
+ui.athleteTariff.addEventListener("change", () => {
+  setAthletePriceFromTariff();
+});
+
+ui.athleteMonthSelect.addEventListener("change", async (event) => {
+  selectedAthleteMonth = event.target.value;
+  await refreshAthleteMonthly();
+});
+
+ui.athleteList.addEventListener("change", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLSelectElement)) return;
+  if (target.dataset.role !== "tariff") return;
+  const athleteId = target.dataset.id;
+  const priceSpan = ui.athleteList.querySelector(
+    `[data-role="price"][data-id="${athleteId}"]`
+  );
+  if (priceSpan) {
+    const newPrice = tariffPricing[target.value] || 0;
+    priceSpan.textContent = newPrice.toFixed(2);
+  }
+});
+
+ui.athleteList.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-role='save']");
+  if (!button) return;
+  const athleteId = button.dataset.id;
+  const tariffSelect = ui.athleteList.querySelector(
+    `select[data-role="tariff"][data-id="${athleteId}"]`
+  );
+  const paidSelect = ui.athleteList.querySelector(
+    `select[data-role="paid"][data-id="${athleteId}"]`
+  );
+  if (!tariffSelect || !paidSelect) return;
+  const tariff = tariffSelect.value;
+  const price = tariffPricing[tariff] || 0;
+  const paid = paidSelect.value === "SI";
+  await upsertAthleteMonth(
+    athleteId,
+    selectedAthleteMonth,
+    {
+      tariff,
+      price,
+      paid,
+      active: paid,
+    },
+    currentUser?.uid
+  );
+  await refreshAthleteMonthly();
 });
 
 
