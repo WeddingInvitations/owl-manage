@@ -35,7 +35,7 @@ import {
   getAllAcroAthleteMonths,
   getAcroAthleteMonthsForMonth,
   upsertAcroAthleteMonth,
-} from "./data.js?v=20250206t";
+} from "./data.js?v=20250206u";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
