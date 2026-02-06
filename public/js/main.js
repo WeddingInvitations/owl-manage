@@ -530,7 +530,7 @@ async function refreshAthleteMonthly() {
       <td>${athlete.name}</td>
       <td>
         <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
-        <select data-role="tariff" data-id="${athlete.id}">
+        <select data-role="tariff" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
           ${tariffPlans
             .map(
               (option) =>
@@ -541,14 +541,14 @@ async function refreshAthleteMonthly() {
       </td>
       <td><span data-role="price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
       <td>
-        <select data-role="paid" data-id="${athlete.id}">
+        <select data-role="paid" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
           <option value="SI" ${paid ? "selected" : ""}>SI</option>
           <option value="NO" ${!paid ? "selected" : ""}>NO</option>
         </select>
       </td>
       <td>${active ? "Activo" : "Inactivo"}</td>
       <td>
-        <button class="btn small" data-role="save" data-id="${athlete.id}" data-name="${athlete.name}">
+        <button class="btn small" data-role="save" data-id="${athlete.id}" data-name="${athlete.name}" ${paid ? "disabled" : ""}>
           Guardar
         </button>
       </td>
@@ -862,7 +862,7 @@ async function refreshAcroMonthly() {
       <td>${athlete.name || "(Sin nombre)"}</td>
       <td>
         <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
-        <select data-role="acro-tariff" data-id="${athlete.id}">
+        <select data-role="acro-tariff" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
           ${acroTariffPlans
             .map(
               (option) =>
@@ -873,14 +873,14 @@ async function refreshAcroMonthly() {
       </td>
       <td><span data-role="acro-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
       <td>
-        <select data-role="acro-paid" data-id="${athlete.id}">
+        <select data-role="acro-paid" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
           <option value="SI" ${paid ? "selected" : ""}>SI</option>
           <option value="NO" ${!paid ? "selected" : ""}>NO</option>
         </select>
       </td>
       <td>${active ? "Activo" : "Inactivo"}</td>
       <td>
-        <button class="btn small" data-role="acro-save" data-id="${athlete.id}" data-name="${athlete.name || ""}">
+        <button class="btn small" data-role="acro-save" data-id="${athlete.id}" data-name="${athlete.name || ""}" ${paid ? "disabled" : ""}>
           Guardar
         </button>
       </td>
@@ -1352,20 +1352,26 @@ on(ui.athleteList, "click", async (event) => {
   const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
   const price = plan.priceTotal;
   const paid = paidSelect.value === "SI";
-  await upsertAthleteMonth(
-    athleteId,
-    selectedAthleteMonth,
-    {
-      athleteName,
-      tariff,
-      price,
-      paid,
-      active: paid,
-      durationMonths: plan.durationMonths,
-      priceMonthly: plan.priceMonthly,
-    },
-    currentUser?.uid
-  );
+  const duration = paid ? (plan.durationMonths || 1) : 1;
+  
+  // Si se marca como pagado y la tarifa es multi-mes, crear registros para meses siguientes
+  for (let i = 0; i < duration; i += 1) {
+    const monthKey = addMonthsToKey(selectedAthleteListMonth, i);
+    await upsertAthleteMonth(
+      athleteId,
+      monthKey,
+      {
+        athleteName,
+        tariff,
+        price,
+        paid,
+        active: paid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+      },
+      currentUser?.uid
+    );
+  }
   await refreshAthleteMonthly();
   await refreshAll();
 });
@@ -1542,19 +1548,25 @@ on(ui.acroList, "click", async (event) => {
   const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
   const price = plan.priceTotal;
   const paid = paidSelect.value === "SI";
-  await upsertAcroAthleteMonth(
-    athleteId,
-    selectedAcroListMonth,
-    {
-      athleteName,
-      tariff,
-      price,
-      paid,
-      active: paid,
-      durationMonths: plan.durationMonths,
-      priceMonthly: plan.priceMonthly,
-    },
-    currentUser?.uid
-  );
+  const duration = paid ? (plan.durationMonths || 1) : 1;
+  
+  // Si se marca como pagado y la tarifa es multi-mes, crear registros para meses siguientes
+  for (let i = 0; i < duration; i += 1) {
+    const monthKey = addMonthsToKey(selectedAcroListMonth, i);
+    await upsertAcroAthleteMonth(
+      athleteId,
+      monthKey,
+      {
+        athleteName,
+        tariff,
+        price,
+        paid,
+        active: paid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+      },
+      currentUser?.uid
+    );
+  }
   await refreshAcroMonthly();
 });
