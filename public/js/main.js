@@ -37,6 +37,11 @@ let availableYears = [];
 let selectedYear = "";
 let selectedAthleteMonth = "";
 
+const on = (element, eventName, handler) => {
+  if (!element) return;
+  element.addEventListener(eventName, handler);
+};
+
 const tariffPlans = [
   { key: "8/mes", durationMonths: 1, priceTotal: 70 },
   { key: "12/mes", durationMonths: 1, priceTotal: 80 },
@@ -447,7 +452,7 @@ bindAuth(
 );
 
 // ---------- Formularios ----------
-ui.paymentForm.addEventListener("submit", async (event) => {
+on(ui.paymentForm, "submit", async (event) => {
   event.preventDefault();
   await addPayment(
     ui.paymentConcept.value,
@@ -459,7 +464,7 @@ ui.paymentForm.addEventListener("submit", async (event) => {
   await refreshAll();
 });
 
-ui.expenseForm.addEventListener("submit", async (event) => {
+on(ui.expenseForm, "submit", async (event) => {
   event.preventDefault();
   await addExpense(
     ui.expenseConcept.value,
@@ -471,7 +476,7 @@ ui.expenseForm.addEventListener("submit", async (event) => {
   await refreshAll();
 });
 
-ui.checkinForm.addEventListener("submit", async (event) => {
+on(ui.checkinForm, "submit", async (event) => {
   event.preventDefault();
   await addCheckin(
     ui.checkinName.value,
@@ -482,7 +487,7 @@ ui.checkinForm.addEventListener("submit", async (event) => {
   await refreshAll();
 });
 
-ui.trainingForm.addEventListener("submit", async (event) => {
+on(ui.trainingForm, "submit", async (event) => {
   event.preventDefault();
   await addTraining(
     ui.trainingTitle.value,
@@ -494,7 +499,7 @@ ui.trainingForm.addEventListener("submit", async (event) => {
   await refreshAll();
 });
 
-ui.athleteForm.addEventListener("submit", async (event) => {
+on(ui.athleteForm, "submit", async (event) => {
   event.preventDefault();
   const athleteId = await createAthlete(ui.athleteName.value, currentUser?.uid);
   const tariff = ui.athleteTariff.value;
@@ -520,14 +525,14 @@ ui.athleteForm.addEventListener("submit", async (event) => {
   await refreshAthleteMonthly();
 });
 
-ui.roleForm.addEventListener("submit", async (event) => {
+on(ui.roleForm, "submit", async (event) => {
   event.preventDefault();
   await updateUserRole(ui.roleUserId.value.trim(), ui.roleValue.value);
   ui.roleForm.reset();
   await refreshAll();
 });
 
-ui.createUserForm.addEventListener("submit", async (event) => {
+on(ui.createUserForm, "submit", async (event) => {
   event.preventDefault();
   ui.createUserStatus.textContent = "Creando usuario...";
   const email = ui.createUserEmail.value.trim();
@@ -543,16 +548,16 @@ ui.createUserForm.addEventListener("submit", async (event) => {
   }
 });
 
-ui.athleteTariff.addEventListener("change", () => {
+on(ui.athleteTariff, "change", () => {
   setAthletePriceFromTariff();
 });
 
-ui.athleteMonthSelect.addEventListener("change", async (event) => {
+on(ui.athleteMonthSelect, "change", async (event) => {
   selectedAthleteMonth = event.target.value;
   await refreshAthleteMonthly();
 });
 
-ui.athleteList.addEventListener("change", (event) => {
+on(ui.athleteList, "change", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLSelectElement)) return;
   if (target.dataset.role !== "tariff") return;
@@ -567,7 +572,7 @@ ui.athleteList.addEventListener("change", (event) => {
   }
 });
 
-ui.athleteList.addEventListener("click", async (event) => {
+on(ui.athleteList, "click", async (event) => {
   const button = event.target.closest("button[data-role='save']");
   if (!button) return;
   const athleteId = button.dataset.id;
@@ -599,17 +604,17 @@ ui.athleteList.addEventListener("click", async (event) => {
 });
 
 
-ui.refreshSummary.addEventListener("click", async () => {
+on(ui.refreshSummary, "click", async () => {
   await refreshAll();
 });
 
-ui.monthlyYearSelect.addEventListener("change", (event) => {
+on(ui.monthlyYearSelect, "change", (event) => {
   selectedYear = event.target.value;
   renderMonthlySummary();
   ui.monthlyDetailCard.classList.add("hidden");
 });
 
-ui.monthlySummaryBody.addEventListener("click", (event) => {
+on(ui.monthlySummaryBody, "click", (event) => {
   const button = event.target.closest("button[data-action]");
   if (!button) return;
   const key = button.dataset.key;
@@ -621,6 +626,6 @@ ui.monthlySummaryBody.addEventListener("click", (event) => {
   }
 });
 
-ui.monthlyDetailClose.addEventListener("click", () => {
+on(ui.monthlyDetailClose, "click", () => {
   ui.monthlyDetailCard.classList.add("hidden");
 });

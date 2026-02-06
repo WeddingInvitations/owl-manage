@@ -69,17 +69,37 @@ export const ui = {
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {
-    currentUi.userBadge.textContent = `${user.email} · ${role}`;
-    currentUi.logoutBtn.disabled = false;
-    currentUi.rolesPanel.classList.toggle("hidden", role !== "OWNER");
-    currentUi.loginView.classList.add("hidden");
-    currentUi.mainShell.classList.toggle("hidden", Boolean(mustChangePassword));
+    if (currentUi.userBadge) {
+      currentUi.userBadge.textContent = `${user.email} · ${role}`;
+    }
+    if (currentUi.logoutBtn) {
+      currentUi.logoutBtn.disabled = false;
+    }
+    if (currentUi.rolesPanel) {
+      currentUi.rolesPanel.classList.toggle("hidden", role !== "OWNER");
+    }
+    if (currentUi.loginView) {
+      currentUi.loginView.classList.add("hidden");
+    }
+    if (currentUi.mainShell) {
+      currentUi.mainShell.classList.toggle("hidden", Boolean(mustChangePassword));
+    }
   } else {
-    currentUi.userBadge.textContent = "Invitado";
-    currentUi.logoutBtn.disabled = true;
-    currentUi.rolesPanel.classList.add("hidden");
-    currentUi.mainShell.classList.add("hidden");
-    currentUi.loginView.classList.remove("hidden");
+    if (currentUi.userBadge) {
+      currentUi.userBadge.textContent = "Invitado";
+    }
+    if (currentUi.logoutBtn) {
+      currentUi.logoutBtn.disabled = true;
+    }
+    if (currentUi.rolesPanel) {
+      currentUi.rolesPanel.classList.add("hidden");
+    }
+    if (currentUi.mainShell) {
+      currentUi.mainShell.classList.add("hidden");
+    }
+    if (currentUi.loginView) {
+      currentUi.loginView.classList.remove("hidden");
+    }
   }
 }
 

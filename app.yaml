@@ -4,6 +4,14 @@ handlers:
   - url: /
     static_files: public/index.html
     upload: public/index.html
+    http_headers:
+      Cache-Control: "no-store, no-cache, must-revalidate, max-age=0"
+
+  - url: /index.html
+    static_files: public/index.html
+    upload: public/index.html
+    http_headers:
+      Cache-Control: "no-store, no-cache, must-revalidate, max-age=0"
 
   - url: /(.*)
     static_files: public/\1
