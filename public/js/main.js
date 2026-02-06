@@ -30,7 +30,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206i";
+} from "./data.js?v=20250206j";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -309,12 +309,6 @@ async function refreshAthleteMonthly() {
     const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
     const paid = current?.paid ?? coverage ?? false;
     const active = Boolean(paid);
-    if (athletePaidFilter === "SI" && !paid) {
-      return;
-    }
-    if (athletePaidFilter === "NO" && paid) {
-      return;
-    }
     const planDuration = plan.durationMonths || 1;
     const planLabel = planDuration === 1
       ? "Mensual"
@@ -334,6 +328,7 @@ async function refreshAthleteMonthly() {
     }
   });
 
+  let visibleCount = 0;
   visibleAthletes.forEach((athlete) => {
     const current = monthMap.get(athlete.id);
     const previous = previousMap.get(athlete.id);
@@ -348,6 +343,13 @@ async function refreshAthleteMonthly() {
     const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
     const paid = current?.paid ?? coverage ?? false;
     const active = Boolean(paid);
+    if (athletePaidFilter === "SI" && !paid) {
+      return;
+    }
+    if (athletePaidFilter === "NO" && paid) {
+      return;
+    }
+    visibleCount += 1;
     const planDuration = plan.durationMonths || 1;
     const planLabel = planDuration === 1
       ? "Mensual"
@@ -387,6 +389,10 @@ async function refreshAthleteMonthly() {
     `;
     ui.athleteList.appendChild(row);
   });
+
+  if (ui.athleteListCount) {
+    ui.athleteListCount.textContent = `Mostrando ${visibleCount} atletas`;
+  }
 
   const totalActive = activeNow.size;
   const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;

@@ -58,6 +58,7 @@ export const ui = {
   athleteSearchList: $("athleteSearchList"),
   athletePaidFilter: $("athletePaidFilter"),
   athleteList: $("athleteList"),
+  athleteListCount: $("athleteListCount"),
   rolesPanel: $("rolesPanel"),
   createUserForm: $("createUserForm"),
   createUserEmail: $("createUserEmail"),
