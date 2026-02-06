@@ -53,6 +53,7 @@ export const ui = {
   athleteModalOpen: $("athleteModalOpen"),
   athleteModalClose: $("athleteModalClose"),
   athleteMonthSelect: $("athleteMonthSelect"),
+  athleteListMonthSelect: $("athleteListMonthSelect"),
   athleteSummaryActive: $("athleteSummaryActive"),
   athleteSummaryAverage: $("athleteSummaryAverage"),
   athleteSummaryNew: $("athleteSummaryNew"),

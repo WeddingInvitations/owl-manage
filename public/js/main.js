@@ -30,7 +30,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206k";
+} from "./data.js?v=20250206l";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -40,6 +40,7 @@ let monthlyTotals = { income: 0, expenses: 0 };
 let availableYears = [];
 let selectedYear = "";
 let selectedAthleteMonth = "";
+let selectedAthleteListMonth = "";
 let availablePaymentMonths = [];
 let selectedPaymentMonth = "";
 let availableExpenseMonths = [];
@@ -207,6 +208,29 @@ function renderAthleteMonthOptions() {
   ui.athleteMonthSelect.value = selectedAthleteMonth;
 }
 
+function renderAthleteListMonthOptions() {
+  if (!ui.athleteListMonthSelect) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 12; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  for (let i = 1; i <= 6; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.athleteListMonthSelect.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.athleteListMonthSelect.appendChild(option);
+  });
+  selectedAthleteListMonth = getMonthKey(now);
+  ui.athleteListMonthSelect.value = selectedAthleteListMonth;
+}
+
 function renderAthletePaymentMonthOptions() {
   if (!ui.athletePaymentMonth) return;
   const now = new Date();
@@ -236,6 +260,9 @@ async function refreshAthleteMonthly() {
   if (!selectedAthleteMonth) {
     renderAthleteMonthOptions();
   }
+  if (!selectedAthleteListMonth) {
+    renderAthleteListMonthOptions();
+  }
   const athletes = await getAthletes();
   if (ui.athleteNameList) {
     const names = Array.from(
@@ -264,16 +291,27 @@ async function refreshAthleteMonthly() {
     });
   }
   const allMonthRecords = await getAllAthleteMonths();
-  const monthRecords = await getAthleteMonthsForMonth(selectedAthleteMonth);
-  const previousMonth = getPreviousMonthKey(selectedAthleteMonth);
-  const previousRecords = previousMonth
-    ? await getAthleteMonthsForMonth(previousMonth)
+  const summaryMonthRecords = await getAthleteMonthsForMonth(selectedAthleteMonth);
+  const summaryPreviousMonth = getPreviousMonthKey(selectedAthleteMonth);
+  const summaryPreviousRecords = summaryPreviousMonth
+    ? await getAthleteMonthsForMonth(summaryPreviousMonth)
     : [];
 
-  const monthMap = new Map();
-  monthRecords.forEach((record) => monthMap.set(record.athleteId, record));
-  const previousMap = new Map();
-  previousRecords.forEach((record) => previousMap.set(record.athleteId, record));
+  const listMonthRecords = await getAthleteMonthsForMonth(selectedAthleteListMonth);
+  const listPreviousMonth = getPreviousMonthKey(selectedAthleteListMonth);
+  const listPreviousRecords = listPreviousMonth
+    ? await getAthleteMonthsForMonth(listPreviousMonth)
+    : [];
+
+  const summaryMonthMap = new Map();
+  summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
+  const summaryPreviousMap = new Map();
+  summaryPreviousRecords.forEach((record) => summaryPreviousMap.set(record.athleteId, record));
+
+  const listMonthMap = new Map();
+  listMonthRecords.forEach((record) => listMonthMap.set(record.athleteId, record));
+  const listPreviousMap = new Map();
+  listPreviousRecords.forEach((record) => listPreviousMap.set(record.athleteId, record));
   const athleteHistory = new Map();
   allMonthRecords.forEach((record) => {
     if (!athleteHistory.has(record.athleteId)) {
@@ -292,15 +330,15 @@ async function refreshAthleteMonthly() {
   let totalIncome = 0;
 
   athletes.forEach((athlete) => {
-    const current = monthMap.get(athlete.id);
-    const previous = previousMap.get(athlete.id);
+    const current = summaryMonthMap.get(athlete.id);
+    const previous = summaryPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
     const coverage = lastPaid
       ? isMonthInRange(selectedAthleteMonth, lastPaid.month, lastPaid.durationMonths || 1)
       : false;
     const prevCoverage = lastPaid
-      ? isMonthInRange(previousMonth, lastPaid.month, lastPaid.durationMonths || 1)
+      ? isMonthInRange(summaryPreviousMonth, lastPaid.month, lastPaid.durationMonths || 1)
       : false;
 
     const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
@@ -330,12 +368,12 @@ async function refreshAthleteMonthly() {
 
   let visibleCount = 0;
   visibleAthletes.forEach((athlete) => {
-    const current = monthMap.get(athlete.id);
-    const previous = previousMap.get(athlete.id);
+    const current = listMonthMap.get(athlete.id);
+    const previous = listPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
     const coverage = lastPaid
-      ? isMonthInRange(selectedAthleteMonth, lastPaid.month, lastPaid.durationMonths || 1)
+      ? isMonthInRange(selectedAthleteListMonth, lastPaid.month, lastPaid.durationMonths || 1)
       : false;
     const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
@@ -590,6 +628,7 @@ setActiveView("summaryView", ui);
 renderAthleteMonthOptions();
 setAthletePriceFromTariff();
 renderAthletePaymentMonthOptions();
+renderAthleteListMonthOptions();
 if (ui.athleteModal) {
   ui.athleteModal.classList.add("hidden");
 }
@@ -741,6 +780,11 @@ on(ui.athleteModalClose, "click", () => {
 
 on(ui.athleteMonthSelect, "change", async (event) => {
   selectedAthleteMonth = event.target.value;
+  await refreshAthleteMonthly();
+});
+
+on(ui.athleteListMonthSelect, "change", async (event) => {
+  selectedAthleteListMonth = event.target.value;
   await refreshAthleteMonthly();
 });
 
