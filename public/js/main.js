@@ -15,6 +15,8 @@ import {
   addExpense,
   addCheckin,
   addTraining,
+  createAthlete,
+  getAthletes,
   getAllAthleteMonths,
   getAthleteMonthsForMonth,
   upsertAthleteMonth,
