@@ -17,6 +17,7 @@ import {
   addTraining,
   addAthlete,
   loadList,
+  loadGroupedList,
   loadSummary,
   loadUsers,
   updateUserRole,
@@ -28,11 +29,11 @@ let currentRole = "RECEPTION";
 
 async function refreshAll() {
   await loadSummary(ui, formatCurrency);
-  await loadList("payments", ui.paymentList, (data) =>
-    `${data.concept} · ${formatCurrency(Number(data.amount || 0))}`
+  await loadGroupedList("payments", ui.paymentList, (data, date) =>
+    `${data.concept} · ${data.date || (date ? date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(data.amount || 0))}`
   );
-  await loadList("expenses", ui.expenseList, (data) =>
-    `${data.concept} · ${formatCurrency(Number(data.amount || 0))}`
+  await loadGroupedList("expenses", ui.expenseList, (data, date) =>
+    `${data.concept} · ${data.date || (date ? date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(data.amount || 0))}`
   );
   await loadList("checkins", ui.checkinList, (data) =>
     `${data.name} · ${data.type}`
@@ -77,6 +78,7 @@ ui.paymentForm.addEventListener("submit", async (event) => {
   await addPayment(
     ui.paymentConcept.value,
     Number(ui.paymentAmount.value),
+    ui.paymentDate.value,
     currentUser?.uid
   );
   ui.paymentForm.reset();
@@ -88,6 +90,7 @@ ui.expenseForm.addEventListener("submit", async (event) => {
   await addExpense(
     ui.expenseConcept.value,
     Number(ui.expenseAmount.value),
+    ui.expenseDate.value,
     currentUser?.uid
   );
   ui.expenseForm.reset();

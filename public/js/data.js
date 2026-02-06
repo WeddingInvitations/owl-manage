@@ -10,19 +10,48 @@ import {
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-export async function addPayment(concept, amount, userId) {
+const monthFormatter = new Intl.DateTimeFormat("es-ES", {
+  month: "long",
+  year: "numeric",
+});
+
+function parseRecordDate(data) {
+  if (data.date) {
+    return new Date(`${data.date}T00:00:00`);
+  }
+  if (data.createdAt && typeof data.createdAt.toDate === "function") {
+    return data.createdAt.toDate();
+  }
+  return null;
+}
+
+function getMonthKey(date) {
+  if (!date) return "sin-fecha";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${date.getFullYear()}-${month}`;
+}
+
+function getMonthLabel(key) {
+  if (key === "sin-fecha") return "Sin fecha";
+  const date = new Date(`${key}-01T00:00:00`);
+  return monthFormatter.format(date);
+}
+
+export async function addPayment(concept, amount, date, userId) {
   await addDoc(collection(db, "payments"), {
     concept,
     amount,
+    date,
     createdAt: serverTimestamp(),
     createdBy: userId || null,
   });
 }
 
-export async function addExpense(concept, amount, userId) {
+export async function addExpense(concept, amount, date, userId) {
   await addDoc(collection(db, "expenses"), {
     concept,
     amount,
+    date,
     createdAt: serverTimestamp(),
     createdBy: userId || null,
   });
@@ -69,24 +98,92 @@ export async function loadList(collectionName, target, formatter) {
   });
 }
 
+export async function loadGroupedList(collectionName, target, formatter) {
+  const snap = await getDocs(collection(db, collectionName));
+  const items = [];
+
+  snap.forEach((docSnap) => {
+    const data = docSnap.data();
+    const date = parseRecordDate(data);
+    items.push({ data, date });
+  });
+
+  items.sort((a, b) => {
+    const aTime = a.date ? a.date.getTime() : 0;
+    const bTime = b.date ? b.date.getTime() : 0;
+    return bTime - aTime;
+  });
+
+  target.innerHTML = "";
+  let currentKey = null;
+
+  items.forEach((item) => {
+    const key = getMonthKey(item.date);
+    if (key !== currentKey) {
+      currentKey = key;
+      const header = document.createElement("li");
+      header.className = "list-header";
+      header.textContent = getMonthLabel(key);
+      target.appendChild(header);
+    }
+    const li = document.createElement("li");
+    li.textContent = formatter(item.data, item.date);
+    target.appendChild(li);
+  });
+}
+
 export async function loadSummary(ui, formatCurrency) {
   const paymentSnap = await getDocs(collection(db, "payments"));
   const expenseSnap = await getDocs(collection(db, "expenses"));
 
   let income = 0;
   let expenses = 0;
+  const monthly = new Map();
 
   paymentSnap.forEach((docSnap) => {
-    income += Number(docSnap.data().amount || 0);
+    const data = docSnap.data();
+    const amount = Number(data.amount || 0);
+    const date = parseRecordDate(data);
+    const key = getMonthKey(date);
+    income += amount;
+    const current = monthly.get(key) || { income: 0, expenses: 0 };
+    current.income += amount;
+    monthly.set(key, current);
   });
 
   expenseSnap.forEach((docSnap) => {
-    expenses += Number(docSnap.data().amount || 0);
+    const data = docSnap.data();
+    const amount = Number(data.amount || 0);
+    const date = parseRecordDate(data);
+    const key = getMonthKey(date);
+    expenses += amount;
+    const current = monthly.get(key) || { income: 0, expenses: 0 };
+    current.expenses += amount;
+    monthly.set(key, current);
   });
 
   ui.summaryIncome.textContent = formatCurrency(income);
   ui.summaryExpenses.textContent = formatCurrency(expenses);
   ui.summaryProfit.textContent = formatCurrency(income - expenses);
+
+  if (ui.monthlySummaryBody) {
+    const keys = Array.from(monthly.keys()).sort((a, b) =>
+      a < b ? 1 : a > b ? -1 : 0
+    );
+    ui.monthlySummaryBody.innerHTML = "";
+    keys.forEach((key) => {
+      const row = document.createElement("tr");
+      const totals = monthly.get(key);
+      const balance = totals.income - totals.expenses;
+      row.innerHTML = `
+        <td>${getMonthLabel(key)}</td>
+        <td>${formatCurrency(totals.income)}</td>
+        <td>${formatCurrency(totals.expenses)}</td>
+        <td>${formatCurrency(balance)}</td>
+      `;
+      ui.monthlySummaryBody.appendChild(row);
+    });
+  }
 }
 
 export async function loadUsers(ui, role) {

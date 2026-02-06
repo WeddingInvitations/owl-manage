@@ -176,8 +176,34 @@ select {
   font-size: 14px;
 }
 
+.list .list-header {
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: capitalize;
+  padding: 6px 4px;
+}
+
 .dark .list li {
   background: #1b1f2c;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .hidden {

@@ -49,6 +49,20 @@
             </div>
             <button id="refreshSummary" class="btn ghost">Actualizar</button>
           </div>
+          <div class="card">
+            <h3>Balance mensual</h3>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Mes</th>
+                  <th>Ingresos</th>
+                  <th>Gastos</th>
+                  <th>Balance</th>
+                </tr>
+              </thead>
+              <tbody id="monthlySummaryBody"></tbody>
+            </table>
+          </div>
         </section>
 
         <section id="paymentsView" class="view hidden">
@@ -58,6 +72,10 @@
               <label>
                 Concepto
                 <input id="paymentConcept" type="text" required />
+              </label>
+              <label>
+                Fecha
+                <input id="paymentDate" type="date" required />
               </label>
               <label>
                 Importe (€)
@@ -76,6 +94,10 @@
               <label>
                 Concepto
                 <input id="expenseConcept" type="text" required />
+              </label>
+              <label>
+                Fecha
+                <input id="expenseDate" type="date" required />
               </label>
               <label>
                 Importe (€)
