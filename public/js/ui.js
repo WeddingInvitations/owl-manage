@@ -75,3 +75,23 @@ export function setActiveView(viewId, currentUi) {
   });
 }
 
+export function updateMenuVisibility(currentUi, role) {
+  const ownerOnlyViews = new Set([
+    "summaryView",
+    "paymentsView",
+    "expensesView",
+    "rolesView",
+  ]);
+
+  currentUi.menuButtons.forEach((button) => {
+    const viewId = button.dataset.view;
+    const shouldHide = role !== "OWNER" && ownerOnlyViews.has(viewId);
+    button.classList.toggle("hidden", shouldHide);
+  });
+
+  currentUi.views.forEach((view) => {
+    const shouldHide = role !== "OWNER" && ownerOnlyViews.has(view.id);
+    view.classList.toggle("hidden", shouldHide || view.classList.contains("hidden"));
+  });
+}
+

@@ -7,6 +7,7 @@ import {
   formatCurrency,
   setAuthUI,
   setActiveView,
+  updateMenuVisibility,
 } from "./ui.js";
 import { bindAuth } from "./auth.js";
 import {
@@ -62,6 +63,10 @@ bindAuth(
       await refreshAll();
     }
     setAuthUI(ui, user, currentRole, false);
+    updateMenuVisibility(ui, currentRole);
+    if (currentRole !== "OWNER") {
+      setActiveView("checkinsView", ui);
+    }
   },
   setAuthUI
 );
