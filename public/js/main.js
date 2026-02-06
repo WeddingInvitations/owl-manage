@@ -744,6 +744,26 @@ async function refreshAcroMonthly() {
     : athletes;
 
   const allMonthRecords = await getAllAcrobatMonths();
+  const availableMonths = Array.from(
+    new Set(allMonthRecords.map((record) => record.month).filter(Boolean))
+  ).sort((a, b) => (a < b ? 1 : -1));
+
+  if (!availableMonths.includes(selectedAcroListMonth)) {
+    selectedAcroListMonth = availableMonths[0] || selectedAcroListMonth;
+    if (ui.acroListMonthSelect && selectedAcroListMonth) {
+      const hasOption = Array.from(ui.acroListMonthSelect.options).some(
+        (option) => option.value === selectedAcroListMonth
+      );
+      if (!hasOption) {
+        const option = document.createElement("option");
+        option.value = selectedAcroListMonth;
+        option.textContent = getMonthLabel(selectedAcroListMonth);
+        ui.acroListMonthSelect.appendChild(option);
+      }
+      ui.acroListMonthSelect.value = selectedAcroListMonth;
+    }
+  }
+
   const summaryMonthRecords = await getAcrobatMonthsForMonth(selectedAcroMonth);
   const summaryPreviousMonth = getPreviousMonthKey(selectedAcroMonth);
   const summaryPreviousRecords = summaryPreviousMonth
