@@ -25,6 +25,7 @@ export const ui = {
   paymentConcept: $("paymentConcept"),
   paymentDate: $("paymentDate"),
   paymentAmount: $("paymentAmount"),
+  paymentMonthSelect: $("paymentMonthSelect"),
   paymentList: $("paymentList"),
   expenseForm: $("expenseForm"),
   expenseConcept: $("expenseConcept"),

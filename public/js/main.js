@@ -23,11 +23,12 @@ import {
   loadList,
   loadGroupedList,
   loadPaymentsWithAthleteTotals,
+  getPaymentMonthsWithAthletes,
   loadSummary,
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206b";
+} from "./data.js?v=20250206c";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -37,6 +38,8 @@ let monthlyTotals = { income: 0, expenses: 0 };
 let availableYears = [];
 let selectedYear = "";
 let selectedAthleteMonth = "";
+let availablePaymentMonths = [];
+let selectedPaymentMonth = "";
 
 const on = (element, eventName, handler) => {
   if (!element) return;
@@ -75,7 +78,7 @@ async function refreshAll() {
   }
   renderYearOptions();
   renderMonthlySummary();
-  await loadPaymentsWithAthleteTotals(ui.paymentList, formatCurrency);
+  await refreshPaymentList();
   await loadGroupedList("expenses", ui.expenseList, (data, date) =>
     `${data.concept} · ${data.date || (date ? date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(data.amount || 0))}`
   );
@@ -91,6 +94,36 @@ async function refreshAll() {
 function getMonthKey(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${date.getFullYear()}-${month}`;
+}
+
+function renderPaymentMonthOptions() {
+  if (!ui.paymentMonthSelect) return;
+  ui.paymentMonthSelect.innerHTML = "";
+  availablePaymentMonths.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    if (key === selectedPaymentMonth) {
+      option.selected = true;
+    }
+    ui.paymentMonthSelect.appendChild(option);
+  });
+}
+
+async function refreshPaymentList() {
+  availablePaymentMonths = await getPaymentMonthsWithAthletes();
+  const currentKey = getMonthKey(new Date());
+  if (!selectedPaymentMonth || !availablePaymentMonths.includes(selectedPaymentMonth)) {
+    selectedPaymentMonth = availablePaymentMonths.includes(currentKey)
+      ? currentKey
+      : (availablePaymentMonths[0] || "");
+  }
+  renderPaymentMonthOptions();
+  await loadPaymentsWithAthleteTotals(
+    ui.paymentList,
+    formatCurrency,
+    selectedPaymentMonth
+  );
 }
 
 function getPreviousMonthKey(monthKey) {
@@ -554,6 +587,11 @@ on(ui.athleteTariff, "change", () => {
 on(ui.athleteMonthSelect, "change", async (event) => {
   selectedAthleteMonth = event.target.value;
   await refreshAthleteMonthly();
+});
+
+on(ui.paymentMonthSelect, "change", async (event) => {
+  selectedPaymentMonth = event.target.value;
+  await refreshPaymentList();
 });
 
 on(ui.athleteList, "change", (event) => {

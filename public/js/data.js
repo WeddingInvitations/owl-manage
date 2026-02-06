@@ -219,7 +219,32 @@ export async function loadGroupedList(collectionName, target, formatter) {
   });
 }
 
-export async function loadPaymentsWithAthleteTotals(target, formatCurrency) {
+export async function getPaymentMonthsWithAthletes() {
+  const paymentSnap = await getDocs(collection(db, "payments"));
+  const athleteSnap = await getDocs(collection(db, "athlete_months"));
+  const months = new Set();
+
+  paymentSnap.forEach((docSnap) => {
+    const date = parseRecordDate(docSnap.data());
+    const key = getMonthKey(date);
+    months.add(key);
+  });
+
+  athleteSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    const key = data.month || "sin-fecha";
+    months.add(key);
+  });
+
+  return Array.from(months).sort((a, b) => (a < b ? 1 : -1));
+}
+
+export async function loadPaymentsWithAthleteTotals(
+  target,
+  formatCurrency,
+  monthKey = ""
+) {
   if (!target) return;
   const paymentSnap = await getDocs(collection(db, "payments"));
   const athleteSnap = await getDocs(collection(db, "athlete_months"));
@@ -254,7 +279,11 @@ export async function loadPaymentsWithAthleteTotals(target, formatCurrency) {
     });
   });
 
-  items.sort((a, b) => {
+  const filtered = monthKey
+    ? items.filter((item) => getMonthKey(item.date) === monthKey)
+    : items;
+
+  filtered.sort((a, b) => {
     const aTime = a.date ? a.date.getTime() : 0;
     const bTime = b.date ? b.date.getTime() : 0;
     return bTime - aTime;
@@ -262,7 +291,7 @@ export async function loadPaymentsWithAthleteTotals(target, formatCurrency) {
 
   target.innerHTML = "";
   let currentKey = null;
-  items.forEach((item) => {
+  filtered.forEach((item) => {
     const key = getMonthKey(item.date);
     if (key !== currentKey) {
       currentKey = key;
