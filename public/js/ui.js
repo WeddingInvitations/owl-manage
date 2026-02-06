@@ -52,6 +52,8 @@ export const ui = {
   athleteSummaryAverage: $("athleteSummaryAverage"),
   athleteSummaryNew: $("athleteSummaryNew"),
   athleteSummaryDrop: $("athleteSummaryDrop"),
+  athleteSearch: $("athleteSearch"),
+  athleteSearchList: $("athleteSearchList"),
   athleteList: $("athleteList"),
   rolesPanel: $("rolesPanel"),
   createUserForm: $("createUserForm"),

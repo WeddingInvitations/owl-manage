@@ -263,7 +263,19 @@
             </div>
           </div>
           <div class="card">
-            <h3>Listado mensual</h3>
+            <div class="detail-header">
+              <h3>Listado mensual</h3>
+              <label>
+                Buscar atleta
+                <input
+                  id="athleteSearch"
+                  type="search"
+                  list="athleteSearchList"
+                  placeholder="Nombre..."
+                />
+              </label>
+            </div>
+            <datalist id="athleteSearchList"></datalist>
             <table class="table">
               <thead>
                 <tr>
@@ -349,6 +361,6 @@
       <p class="muted">OwlManage MVP · Firebase Auth + Firestore</p>
     </footer>
 
-    <script type="module" src="js/main.js?v=20250206d"></script>
+    <script type="module" src="js/main.js?v=20250206e"></script>
   </body>
 </html>

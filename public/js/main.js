@@ -30,7 +30,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206d";
+} from "./data.js?v=20250206e";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -44,6 +44,7 @@ let availablePaymentMonths = [];
 let selectedPaymentMonth = "";
 let availableExpenseMonths = [];
 let selectedExpenseMonth = "";
+let athleteSearchTerm = "";
 
 const on = (element, eventName, handler) => {
   if (!element) return;
@@ -145,6 +146,9 @@ async function refreshPaymentList() {
 async function refreshExpenseList() {
   availableExpenseMonths = await getExpenseMonths();
   const currentKey = getMonthKey(new Date());
+  if (!availableExpenseMonths.includes(currentKey)) {
+    availableExpenseMonths.unshift(currentKey);
+  }
   if (!selectedExpenseMonth || !availableExpenseMonths.includes(selectedExpenseMonth)) {
     selectedExpenseMonth = availableExpenseMonths.includes(currentKey)
       ? currentKey
@@ -206,6 +210,21 @@ async function refreshAthleteMonthly() {
     renderAthleteMonthOptions();
   }
   const athletes = await getAthletes();
+  const searchValue = athleteSearchTerm.trim().toLowerCase();
+  const visibleAthletes = searchValue
+    ? athletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    : athletes;
+  if (ui.athleteSearchList) {
+    const names = Array.from(
+      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    ui.athleteSearchList.innerHTML = "";
+    names.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      ui.athleteSearchList.appendChild(option);
+    });
+  }
   const allMonthRecords = await getAllAthleteMonths();
   const monthRecords = await getAthleteMonthsForMonth(selectedAthleteMonth);
   const previousMonth = getPreviousMonthKey(selectedAthleteMonth);
@@ -269,6 +288,30 @@ async function refreshAthleteMonthly() {
     if (prevCoverage) {
       activePrev.add(athlete.id);
     }
+  });
+
+  visibleAthletes.forEach((athlete) => {
+    const current = monthMap.get(athlete.id);
+    const previous = previousMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const lastPaid = history.find((record) => record.paid);
+    const coverage = lastPaid
+      ? isMonthInRange(selectedAthleteMonth, lastPaid.month, lastPaid.durationMonths || 1)
+      : false;
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
+    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
+    const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || fallbackPlan;
+    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
+    const paid = current?.paid ?? coverage ?? false;
+    const active = Boolean(paid);
+    const planDuration = plan.durationMonths || 1;
+    const planLabel = planDuration === 1
+      ? "Mensual"
+      : planDuration === 3
+        ? "Trimestral"
+        : planDuration === 6
+          ? "Semestral"
+          : "Anual";
 
     const row = document.createElement("tr");
     row.innerHTML = `
@@ -629,6 +672,11 @@ on(ui.paymentMonthSelect, "change", async (event) => {
 on(ui.expenseMonthSelect, "change", async (event) => {
   selectedExpenseMonth = event.target.value;
   await refreshExpenseList();
+});
+
+on(ui.athleteSearch, "input", async (event) => {
+  athleteSearchTerm = event.target.value || "";
+  await refreshAthleteMonthly();
 });
 
 on(ui.athleteList, "change", (event) => {
