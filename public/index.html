@@ -202,9 +202,16 @@
         <section id="athletesView" class="view hidden">
           <div class="card">
             <h2>Control de pagos de usuarios</h2>
-            <button id="athleteModalOpen" class="btn" type="button">
-              Alta de usuario
-            </button>
+            <div class="detail-header">
+              <div class="table-actions">
+                <button id="athleteCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
+                  📄 CSV
+                </button>
+                <button id="athleteModalOpen" class="btn" type="button">
+                  Alta de usuario
+                </button>
+              </div>
+            </div>
           </div>
           <div id="athleteModal" class="modal hidden">
             <div class="modal-content card">
@@ -253,6 +260,28 @@
                   </select>
                 </label>
                 <button class="btn" type="submit">Añadir atleta</button>
+              </form>
+            </div>
+          </div>
+          <div id="athleteCsvModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Carga masiva de atletas</h3>
+                <button id="athleteCsvClose" class="btn ghost small" type="button">
+                  Cerrar
+                </button>
+              </div>
+              <form id="athleteCsvForm" class="stack">
+                <label>
+                  Archivo CSV
+                  <input id="athleteCsvFile" type="file" accept=".csv,text/csv" required />
+                </label>
+                <label>
+                  Mes de pago
+                  <select id="athleteCsvMonth"></select>
+                </label>
+                <button class="btn" type="submit">Importar</button>
+                <p id="athleteCsvStatus" class="muted"></p>
               </form>
             </div>
           </div>
@@ -389,6 +418,6 @@
       <p class="muted">OwlManage MVP · Firebase Auth + Firestore</p>
     </footer>
 
-    <script type="module" src="js/main.js?v=20250206l"></script>
+    <script type="module" src="js/main.js?v=20250206m"></script>
   </body>
 </html>
