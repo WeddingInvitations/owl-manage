@@ -1596,7 +1596,6 @@ on(ui.acroList, "click", async (event) => {
 
 // ========== MOBILE NAVIGATION ==========
 
-function updateMobileNavActive(viewId) {
 // Mobile nav button clicks
 ui.mobileNavButtons?.forEach((btn) => {
   btn.addEventListener("click", () => {

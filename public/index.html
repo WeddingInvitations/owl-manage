@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#151824" />
     <title>OwlManage</title>
-    <link rel="stylesheet" href="css/styles.css?v=20250206n" />
+    <link rel="stylesheet" href="css/styles.css?v=20250206p" />
   </head>
   <body class="dark">
     <header class="app-header">
@@ -58,18 +58,20 @@
               <h3>Balance anual</h3>
               <select id="monthlyYearSelect"></select>
             </div>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Mes</th>
-                  <th>Ingresos</th>
-                  <th>Gastos</th>
-                  <th>Balance</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="monthlySummaryBody"></tbody>
-            </table>
+            <div class="table-container">
+              <table class="table summary-table-mobile">
+                <thead>
+                  <tr>
+                    <th>Mes</th>
+                    <th>Ingresos</th>
+                    <th>Gastos</th>
+                    <th>Balance</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="monthlySummaryBody"></tbody>
+              </table>
+            </div>
           </div>
           <div id="monthlyDetailCard" class="card hidden">
             <div class="detail-header">
@@ -314,41 +316,39 @@
             </div>
           </div>
           <div class="card">
-            <div class="detail-header">
+            <div class="detail-header athlete-list-header">
               <h3>Listado mensual</h3>
-              <select id="athleteListMonthSelect"></select>
-              <label>
-                Buscar atleta
+              <div class="filter-row">
+                <select id="athleteListMonthSelect"></select>
                 <input
                   id="athleteSearch"
                   type="search"
                   list="athleteSearchList"
-                  placeholder="Nombre..."
+                  placeholder="Buscar..."
                 />
-              </label>
-              <label>
-                Pagado
                 <select id="athletePaidFilter">
                   <option value="ALL">Todos</option>
                   <option value="SI">Pagado</option>
                   <option value="NO">No pagado</option>
                 </select>
-              </label>
+              </div>
             </div>
             <datalist id="athleteSearchList"></datalist>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Tarifa</th>
-                  <th>Precio</th>
-                  <th>Pagado</th>
-                  <th>Activo</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody id="athleteList"></tbody>
-            </table>
+            <div class="table-container">
+              <table class="table athlete-table-mobile">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Tarifa</th>
+                    <th>Precio</th>
+                    <th>Pagado</th>
+                    <th>Activo</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="athleteList"></tbody>
+              </table>
+            </div>
             <p id="athleteListCount" class="muted"></p>
           </div>
         </section>
@@ -456,41 +456,39 @@
             </div>
           </div>
           <div class="card">
-            <div class="detail-header">
+            <div class="detail-header athlete-list-header">
               <h3>Listado mensual</h3>
-              <select id="acroListMonthSelect"></select>
-              <label>
-                Buscar atleta
+              <div class="filter-row">
+                <select id="acroListMonthSelect"></select>
                 <input
                   id="acroSearch"
                   type="search"
                   list="acroSearchList"
-                  placeholder="Nombre..."
+                  placeholder="Buscar..."
                 />
-              </label>
-              <label>
-                Pagado
                 <select id="acroPaidFilter">
                   <option value="ALL">Todos</option>
                   <option value="SI">Pagado</option>
                   <option value="NO">No pagado</option>
                 </select>
-              </label>
+              </div>
             </div>
             <datalist id="acroSearchList"></datalist>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Tarifa</th>
-                  <th>Precio</th>
-                  <th>Pagado</th>
-                  <th>Activo</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody id="acroList"></tbody>
-            </table>
+            <div class="table-container">
+              <table class="table athlete-table-mobile">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Tarifa</th>
+                    <th>Precio</th>
+                    <th>Pagado</th>
+                    <th>Activo</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="acroList"></tbody>
+              </table>
+            </div>
             <p id="acroListCount" class="muted"></p>
           </div>
         </section>
@@ -609,6 +607,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260206h"></script>
+    <script type="module" src="js/main.js?v=20260206j"></script>
   </body>
 </html>

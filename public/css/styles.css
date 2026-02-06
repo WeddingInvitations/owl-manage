@@ -330,6 +330,24 @@ select {
   color: var(--muted);
 }
 
+/* Filter row for athlete/acro list headers */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-row select,
+.filter-row input {
+  min-width: 120px;
+}
+
+.athlete-list-header {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 /* ========== MOBILE RESPONSIVE ========== */
 
 /* Mobile menu toggle button */
@@ -529,7 +547,7 @@ select {
     font-size: 18px;
   }
 
-  /* Tables - horizontal scroll */
+  /* Tables - responsive layout */
   .table-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -539,19 +557,22 @@ select {
 
   .table {
     font-size: 12px;
-    min-width: 500px;
+    width: 100%;
+    min-width: auto;
   }
 
   .table th,
   .table td {
-    padding: 8px 6px;
-    white-space: nowrap;
+    padding: 8px 4px;
+    white-space: normal;
+    word-break: break-word;
   }
 
   .table select {
-    font-size: 12px;
-    padding: 6px 4px;
-    min-width: 80px;
+    font-size: 11px;
+    padding: 6px 2px;
+    min-width: 70px;
+    max-width: 90px;
   }
 
   .table .btn.small {
@@ -561,8 +582,124 @@ select {
 
   .plan-badge {
     font-size: 9px;
-    padding: 3px 6px;
-    margin-right: 4px;
+    padding: 2px 5px;
+    margin-right: 2px;
+    display: none; /* Hide on mobile, keep tariff select visible */
+  }
+
+  /* Athlete list table - card layout on mobile */
+  .athlete-table-mobile {
+    display: block;
+    width: 100%;
+  }
+
+  .athlete-table-mobile thead {
+    display: none;
+  }
+
+  .athlete-table-mobile tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .athlete-table-mobile tr {
+    display: flex;
+    flex-wrap: wrap;
+    background: var(--accent);
+    border-radius: 8px;
+    padding: 10px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .athlete-table-mobile td {
+    border: none;
+    padding: 0;
+  }
+
+  /* Name - full width */
+  .athlete-table-mobile td:nth-child(1) {
+    flex: 0 0 100%;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  /* Tariff select */
+  .athlete-table-mobile td:nth-child(2) {
+    flex: 1;
+  }
+
+  .athlete-table-mobile td:nth-child(2) select {
+    width: 100%;
+    max-width: none;
+  }
+
+  /* Price */
+  .athlete-table-mobile td:nth-child(3) {
+    flex: 0 0 auto;
+    font-weight: 600;
+  }
+
+  /* Paid select */
+  .athlete-table-mobile td:nth-child(4) {
+    flex: 0 0 auto;
+  }
+
+  .athlete-table-mobile td:nth-child(4) select {
+    min-width: 50px;
+    max-width: 60px;
+  }
+
+  /* Active status - hide on mobile */
+  .athlete-table-mobile td:nth-child(5) {
+    display: none;
+  }
+
+  /* Save button */
+  .athlete-table-mobile td:nth-child(6) {
+    flex: 0 0 auto;
+  }
+
+  /* Summary table - more compact */
+  .summary-table-mobile th:nth-child(5),
+  .summary-table-mobile td:nth-child(5) {
+    display: none; /* Hide actions column header/cells on very small */
+  }
+
+  .summary-table-mobile .table-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .summary-table-mobile .btn.small {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Filter row for athlete list */
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .filter-row select,
+  .filter-row input {
+    flex: 1;
+    min-width: 80px;
+  }
+
+  .athlete-list-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .athlete-list-header h3 {
+    margin: 0;
   }
 
   /* Lists */
@@ -629,6 +766,28 @@ select {
 
   .table {
     font-size: 11px;
+  }
+
+  .filter-row select,
+  .filter-row input {
+    min-width: 60px;
+    font-size: 12px;
+  }
+
+  /* Athlete table card layout tweaks for extra small */
+  .athlete-table-mobile td:nth-child(2) select {
+    font-size: 11px;
+    padding: 6px 4px;
+  }
+
+  .athlete-table-mobile td:nth-child(4) select {
+    min-width: 45px;
+    font-size: 11px;
+  }
+
+  .athlete-table-mobile .btn.small {
+    padding: 6px;
+    font-size: 10px;
   }
 }
 
