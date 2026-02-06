@@ -19,6 +19,7 @@ import {
   loadList,
   loadGroupedList,
   loadSummary,
+  getMonthLabel,
   loadUsers,
   updateUserRole,
 } from "./data.js";
@@ -27,9 +28,20 @@ import { createUserWithRole } from "./admin.js";
 let currentUser = null;
 let currentRole = "RECEPTION";
 let monthlyDetails = new Map();
+let monthlyTotals = { income: 0, expenses: 0 };
+let availableYears = [];
+let selectedYear = "";
 
 async function refreshAll() {
-  monthlyDetails = await loadSummary(ui, formatCurrency);
+  const summaryData = await loadSummary(ui, formatCurrency);
+  monthlyDetails = summaryData.details;
+  monthlyTotals = summaryData.totals;
+  availableYears = summaryData.years;
+  if (!selectedYear || !availableYears.includes(selectedYear)) {
+    selectedYear = availableYears[0] || "";
+  }
+  renderYearOptions();
+  renderMonthlySummary();
   await loadGroupedList("payments", ui.paymentList, (data, date) =>
     `${data.concept} · ${data.date || (date ? date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(data.amount || 0))}`
   );
@@ -48,6 +60,78 @@ async function refreshAll() {
   await loadUsers(ui, currentRole);
 }
 
+function renderYearOptions() {
+  if (!ui.monthlyYearSelect) return;
+  ui.monthlyYearSelect.innerHTML = "";
+  const fallback = document.createElement("option");
+  fallback.value = "";
+  fallback.textContent = "Sin datos";
+  if (availableYears.length === 0) {
+    ui.monthlyYearSelect.appendChild(fallback);
+    ui.monthlyYearSelect.disabled = true;
+    return;
+  }
+  ui.monthlyYearSelect.disabled = false;
+  availableYears.forEach((year) => {
+    const option = document.createElement("option");
+    option.value = year;
+    option.textContent = year;
+    ui.monthlyYearSelect.appendChild(option);
+  });
+  ui.monthlyYearSelect.value = selectedYear;
+}
+
+function renderMonthlySummary() {
+  if (!ui.monthlySummaryBody) return;
+  const rows = [];
+  const monthKeys = Array.from(monthlyDetails.keys()).filter((key) => {
+    return selectedYear && key.startsWith(`${selectedYear}-`);
+  });
+
+  monthKeys.sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+  ui.monthlySummaryBody.innerHTML = "";
+
+  let yearIncome = 0;
+  let yearExpenses = 0;
+
+  monthKeys.forEach((key) => {
+    const details = monthlyDetails.get(key);
+    const income = details.payments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const expenses = details.expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const balance = income - expenses;
+    yearIncome += income;
+    yearExpenses += expenses;
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${getMonthLabel(key)}</td>
+      <td>${formatCurrency(income)}</td>
+      <td>${formatCurrency(expenses)}</td>
+      <td>${formatCurrency(balance)}</td>
+      <td>
+        <div class="table-actions">
+          <button class="btn small ghost" data-action="detail" data-key="${key}">Ver detalle</button>
+          <button class="btn small" data-action="csv" data-key="${key}">CSV</button>
+        </div>
+      </td>
+    `;
+    ui.monthlySummaryBody.appendChild(row);
+  });
+
+  if (monthKeys.length > 0) {
+    const totalRow = document.createElement("tr");
+    totalRow.className = "table-total";
+    totalRow.innerHTML = `
+      <td>Total ${selectedYear}</td>
+      <td>${formatCurrency(yearIncome)}</td>
+      <td>${formatCurrency(yearExpenses)}</td>
+      <td>${formatCurrency(yearIncome - yearExpenses)}</td>
+      <td></td>
+    `;
+    ui.monthlySummaryBody.appendChild(totalRow);
+  }
+}
+
 function renderMonthlyDetail(key) {
   const details = monthlyDetails.get(key);
   if (!details) {
@@ -55,7 +139,7 @@ function renderMonthlyDetail(key) {
     return;
   }
 
-  ui.monthlyDetailTitle.textContent = `Detalle mensual · ${key}`;
+  ui.monthlyDetailTitle.textContent = `Detalle mensual · ${getMonthLabel(key)}`;
   ui.monthlyIncomeBody.innerHTML = "";
   ui.monthlyExpenseBody.innerHTML = "";
 
@@ -82,6 +166,17 @@ function renderMonthlyDetail(key) {
       `;
       ui.monthlyExpenseBody.appendChild(row);
     });
+
+  const totalIncome = details.payments.reduce(
+    (sum, item) => sum + Number(item.amount || 0),
+    0
+  );
+  const totalExpenses = details.expenses.reduce(
+    (sum, item) => sum + Number(item.amount || 0),
+    0
+  );
+  const balance = totalIncome - totalExpenses;
+  ui.monthlyDetailBalance.textContent = `Balance total: ${formatCurrency(balance)}`;
 
   ui.monthlyDetailCard.classList.remove("hidden");
 }
@@ -248,6 +343,11 @@ ui.createUserForm.addEventListener("submit", async (event) => {
 
 ui.refreshSummary.addEventListener("click", async () => {
   await refreshAll();
+});
+
+ui.monthlyYearSelect.addEventListener("change", (event) => {
+  selectedYear = event.target.value;
+  renderMonthlySummary();
 });
 
 ui.monthlySummaryBody.addEventListener("click", (event) => {

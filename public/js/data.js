@@ -31,7 +31,7 @@ function getMonthKey(date) {
   return `${date.getFullYear()}-${month}`;
 }
 
-function getMonthLabel(key) {
+export function getMonthLabel(key) {
   if (key === "sin-fecha") return "Sin fecha";
   const date = new Date(`${key}-01T00:00:00`);
   return monthFormatter.format(date);
@@ -183,43 +183,16 @@ export async function loadSummary(ui, formatCurrency) {
   ui.summaryExpenses.textContent = formatCurrency(expenses);
   ui.summaryProfit.textContent = formatCurrency(income - expenses);
 
-  if (ui.monthlySummaryBody) {
-    const keys = Array.from(monthly.keys()).sort((a, b) =>
-      a < b ? 1 : a > b ? -1 : 0
-    );
-    ui.monthlySummaryBody.innerHTML = "";
-    keys.forEach((key) => {
-      const row = document.createElement("tr");
-      const totals = monthly.get(key);
-      const balance = totals.income - totals.expenses;
-      row.innerHTML = `
-        <td>${getMonthLabel(key)}</td>
-        <td>${formatCurrency(totals.income)}</td>
-        <td>${formatCurrency(totals.expenses)}</td>
-        <td>${formatCurrency(balance)}</td>
-        <td>
-          <div class="table-actions">
-            <button class="btn small ghost" data-action="detail" data-key="${key}">Ver detalle</button>
-            <button class="btn small" data-action="csv" data-key="${key}">CSV</button>
-          </div>
-        </td>
-      `;
-      ui.monthlySummaryBody.appendChild(row);
-    });
+  const years = Array.from(monthly.keys())
+    .filter((key) => key !== "sin-fecha")
+    .map((key) => key.split("-")[0]);
 
-    const totalRow = document.createElement("tr");
-    totalRow.className = "table-total";
-    totalRow.innerHTML = `
-      <td>Total</td>
-      <td>${formatCurrency(income)}</td>
-      <td>${formatCurrency(expenses)}</td>
-      <td>${formatCurrency(income - expenses)}</td>
-      <td></td>
-    `;
-    ui.monthlySummaryBody.appendChild(totalRow);
-  }
-
-  return details;
+  return {
+    details,
+    monthly,
+    totals: { income, expenses },
+    years: Array.from(new Set(years)).sort((a, b) => (a < b ? 1 : -1)),
+  };
 }
 
 export async function loadUsers(ui, role) {
