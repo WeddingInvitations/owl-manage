@@ -31,6 +31,7 @@ export const ui = {
   expenseConcept: $("expenseConcept"),
   expenseDate: $("expenseDate"),
   expenseAmount: $("expenseAmount"),
+  expenseMonthSelect: $("expenseMonthSelect"),
   expenseList: $("expenseList"),
   checkinForm: $("checkinForm"),
   checkinName: $("checkinName"),

@@ -24,11 +24,13 @@ import {
   loadGroupedList,
   loadPaymentsWithAthleteTotals,
   getPaymentMonthsWithAthletes,
+  loadExpensesForMonth,
+  getExpenseMonths,
   loadSummary,
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206c";
+} from "./data.js?v=20250206d";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -40,6 +42,8 @@ let selectedYear = "";
 let selectedAthleteMonth = "";
 let availablePaymentMonths = [];
 let selectedPaymentMonth = "";
+let availableExpenseMonths = [];
+let selectedExpenseMonth = "";
 
 const on = (element, eventName, handler) => {
   if (!element) return;
@@ -79,9 +83,7 @@ async function refreshAll() {
   renderYearOptions();
   renderMonthlySummary();
   await refreshPaymentList();
-  await loadGroupedList("expenses", ui.expenseList, (data, date) =>
-    `${data.concept} · ${data.date || (date ? date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(data.amount || 0))}`
-  );
+  await refreshExpenseList();
   await loadList("checkins", ui.checkinList, (data) =>
     `${data.name} · ${data.type}`
   );
@@ -110,6 +112,20 @@ function renderPaymentMonthOptions() {
   });
 }
 
+function renderExpenseMonthOptions() {
+  if (!ui.expenseMonthSelect) return;
+  ui.expenseMonthSelect.innerHTML = "";
+  availableExpenseMonths.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    if (key === selectedExpenseMonth) {
+      option.selected = true;
+    }
+    ui.expenseMonthSelect.appendChild(option);
+  });
+}
+
 async function refreshPaymentList() {
   availablePaymentMonths = await getPaymentMonthsWithAthletes();
   const currentKey = getMonthKey(new Date());
@@ -123,6 +139,22 @@ async function refreshPaymentList() {
     ui.paymentList,
     formatCurrency,
     selectedPaymentMonth
+  );
+}
+
+async function refreshExpenseList() {
+  availableExpenseMonths = await getExpenseMonths();
+  const currentKey = getMonthKey(new Date());
+  if (!selectedExpenseMonth || !availableExpenseMonths.includes(selectedExpenseMonth)) {
+    selectedExpenseMonth = availableExpenseMonths.includes(currentKey)
+      ? currentKey
+      : (availableExpenseMonths[0] || "");
+  }
+  renderExpenseMonthOptions();
+  await loadExpensesForMonth(
+    ui.expenseList,
+    formatCurrency,
+    selectedExpenseMonth
   );
 }
 
@@ -592,6 +624,11 @@ on(ui.athleteMonthSelect, "change", async (event) => {
 on(ui.paymentMonthSelect, "change", async (event) => {
   selectedPaymentMonth = event.target.value;
   await refreshPaymentList();
+});
+
+on(ui.expenseMonthSelect, "change", async (event) => {
+  selectedExpenseMonth = event.target.value;
+  await refreshExpenseList();
 });
 
 on(ui.athleteList, "change", (event) => {

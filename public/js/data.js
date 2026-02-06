@@ -306,6 +306,57 @@ export async function loadPaymentsWithAthleteTotals(
   });
 }
 
+export async function getExpenseMonths() {
+  const expenseSnap = await getDocs(collection(db, "expenses"));
+  const months = new Set();
+
+  expenseSnap.forEach((docSnap) => {
+    const date = parseRecordDate(docSnap.data());
+    const key = getMonthKey(date);
+    months.add(key);
+  });
+
+  return Array.from(months).sort((a, b) => (a < b ? 1 : -1));
+}
+
+export async function loadExpensesForMonth(target, formatCurrency, monthKey = "") {
+  if (!target) return;
+  const expenseSnap = await getDocs(collection(db, "expenses"));
+  const items = [];
+
+  expenseSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    const date = parseRecordDate(data);
+    items.push({ data, date });
+  });
+
+  const filtered = monthKey
+    ? items.filter((item) => getMonthKey(item.date) === monthKey)
+    : items;
+
+  filtered.sort((a, b) => {
+    const aTime = a.date ? a.date.getTime() : 0;
+    const bTime = b.date ? b.date.getTime() : 0;
+    return bTime - aTime;
+  });
+
+  target.innerHTML = "";
+  let currentKey = null;
+  filtered.forEach((item) => {
+    const key = getMonthKey(item.date);
+    if (key !== currentKey) {
+      currentKey = key;
+      const header = document.createElement("li");
+      header.className = "list-header";
+      header.textContent = getMonthLabel(key);
+      target.appendChild(header);
+    }
+    const li = document.createElement("li");
+    li.textContent = `${item.data.concept || ""} · ${item.data.date || (item.date ? item.date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(item.data.amount || 0))}`;
+    target.appendChild(li);
+  });
+}
+
 export async function loadSummary(ui, formatCurrency) {
   const paymentSnap = await getDocs(collection(db, "payments"));
   const expenseSnap = await getDocs(collection(db, "expenses"));
