@@ -162,6 +162,15 @@ export async function getAthleteMonthsForMonth(month) {
   return records;
 }
 
+export async function getAllAthleteMonths() {
+  const snap = await getDocs(collection(db, "athlete_months"));
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
 export async function loadList(collectionName, target, formatter) {
   const q = query(collection(db, collectionName), orderBy("createdAt", "desc"));
   const snap = await getDocs(q);
