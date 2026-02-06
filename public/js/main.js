@@ -521,6 +521,7 @@ function renderAcroCsvMonthOptions() {
 }
 
 function setAcroPriceFromTariff() {
+  if (!ui.acroTariff || !ui.acroPrice) return;
   const tariff = ui.acroTariff.value;
   const plan = acroTariffPlanMap.get(tariff);
   ui.acroPrice.value = plan ? plan.priceTotal : 0;
