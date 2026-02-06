@@ -30,7 +30,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206m";
+} from "./data.js?v=20250206n";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -436,19 +436,13 @@ async function refreshAthleteMonthly() {
     const previous = summaryPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
-    const coverage = lastPaid
-      ? isMonthInRange(selectedAthleteMonth, lastPaid.month, lastPaid.durationMonths || 1)
-      : false;
-    const prevCoverage = lastPaid
-      ? isMonthInRange(summaryPreviousMonth, lastPaid.month, lastPaid.durationMonths || 1)
-      : false;
 
     const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || fallbackPlan;
     const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
-    const paid = current?.paid ?? coverage ?? false;
-    const active = Boolean(paid);
+    const paid = Boolean(current?.paid);
+    const active = paid;
     const planDuration = plan.durationMonths || 1;
     const planLabel = planDuration === 1
       ? "Mensual"
@@ -463,7 +457,7 @@ async function refreshAthleteMonthly() {
       const divisor = current?.durationMonths || plan.durationMonths || 1;
       totalIncome += Number((current?.price ?? plan.priceTotal) || 0) / divisor;
     }
-    if (prevCoverage) {
+    if (previous?.paid) {
       activePrev.add(athlete.id);
     }
   });
@@ -474,15 +468,12 @@ async function refreshAthleteMonthly() {
     const previous = listPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
-    const coverage = lastPaid
-      ? isMonthInRange(selectedAthleteListMonth, lastPaid.month, lastPaid.durationMonths || 1)
-      : false;
     const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || fallbackPlan;
     const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
-    const paid = current?.paid ?? coverage ?? false;
-    const active = Boolean(paid);
+    const paid = Boolean(current?.paid);
+    const active = paid;
     if (athletePaidFilter === "SI" && !paid) {
       return;
     }
