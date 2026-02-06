@@ -172,6 +172,7 @@ export async function getAllAthleteMonths() {
 }
 
 export async function loadList(collectionName, target, formatter) {
+  if (!target) return;
   const q = query(collection(db, collectionName), orderBy("createdAt", "desc"));
   const snap = await getDocs(q);
   target.innerHTML = "";
@@ -184,6 +185,7 @@ export async function loadList(collectionName, target, formatter) {
 }
 
 export async function loadGroupedList(collectionName, target, formatter) {
+  if (!target) return;
   const snap = await getDocs(collection(db, collectionName));
   const items = [];
 
