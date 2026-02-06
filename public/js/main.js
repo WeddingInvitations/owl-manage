@@ -1224,6 +1224,19 @@ on(ui.acroForm, "submit", async (event) => {
   ui.acroForm.reset();
   setAcroPriceFromTariff();
   renderAcroPaymentMonthOptions();
+  if (ui.acroListMonthSelect && startMonth) {
+    const hasOption = Array.from(ui.acroListMonthSelect.options).some(
+      (option) => option.value === startMonth
+    );
+    if (!hasOption) {
+      const option = document.createElement("option");
+      option.value = startMonth;
+      option.textContent = getMonthLabel(startMonth);
+      ui.acroListMonthSelect.appendChild(option);
+    }
+    selectedAcroListMonth = startMonth;
+    ui.acroListMonthSelect.value = startMonth;
+  }
   if (ui.acroModal) {
     ui.acroModal.classList.add("hidden");
   }
