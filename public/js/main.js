@@ -601,6 +601,7 @@ on(ui.athleteList, "click", async (event) => {
     currentUser?.uid
   );
   await refreshAthleteMonthly();
+  await refreshAll();
 });
 
 

@@ -222,6 +222,7 @@ export async function loadGroupedList(collectionName, target, formatter) {
 export async function loadSummary(ui, formatCurrency) {
   const paymentSnap = await getDocs(collection(db, "payments"));
   const expenseSnap = await getDocs(collection(db, "expenses"));
+  const athleteSnap = await getDocs(collection(db, "athlete_months"));
 
   let income = 0;
   let expenses = 0;
@@ -261,6 +262,26 @@ export async function loadSummary(ui, formatCurrency) {
     bucket.expenses.push({
       date: data.date || (date ? date.toISOString().slice(0, 10) : ""),
       concept: data.concept || "",
+      amount,
+    });
+    details.set(key, bucket);
+  });
+
+  athleteSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    income += amount;
+    const current = monthly.get(key) || { income: 0, expenses: 0 };
+    current.income += amount;
+    monthly.set(key, current);
+
+    const bucket = details.get(key) || { payments: [], expenses: [] };
+    bucket.payments.push({
+      date: data.month ? `${data.month}-01` : "",
+      concept: "Cuota atleta",
       amount,
     });
     details.set(key, bucket);
