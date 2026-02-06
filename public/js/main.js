@@ -748,6 +748,34 @@ async function refreshAcroMonthly() {
     new Set(allMonthRecords.map((record) => record.month).filter(Boolean))
   ).sort((a, b) => (a < b ? 1 : -1));
 
+  if (availableMonths.length === 0) {
+    ui.acroList.innerHTML = "";
+    ui.acroSummaryActive.textContent = "0";
+    ui.acroSummaryAverage.textContent = formatCurrency(0);
+    ui.acroSummaryNew.textContent = "0";
+    ui.acroSummaryDrop.textContent = "0";
+    if (ui.acroListCount) {
+      ui.acroListCount.textContent = "Mostrando 0 atletas";
+    }
+    return;
+  }
+
+  if (!availableMonths.includes(selectedAcroMonth)) {
+    selectedAcroMonth = availableMonths[0];
+    if (ui.acroMonthSelect) {
+      const hasOption = Array.from(ui.acroMonthSelect.options).some(
+        (option) => option.value === selectedAcroMonth
+      );
+      if (!hasOption) {
+        const option = document.createElement("option");
+        option.value = selectedAcroMonth;
+        option.textContent = getMonthLabel(selectedAcroMonth);
+        ui.acroMonthSelect.appendChild(option);
+      }
+      ui.acroMonthSelect.value = selectedAcroMonth;
+    }
+  }
+
   if (!availableMonths.includes(selectedAcroListMonth)) {
     selectedAcroListMonth = availableMonths[0] || selectedAcroListMonth;
     if (ui.acroListMonthSelect && selectedAcroListMonth) {
