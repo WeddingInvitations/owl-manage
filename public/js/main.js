@@ -383,7 +383,7 @@ async function importAcrobatsFromCsv(file, monthKey) {
   if (rows.length === 0) {
     throw new Error("CSV vacío o sin datos");
   }
-  const athletes = await getAcrobats();
+  let athletes = await getAcrobats();
   const athleteMap = new Map(
     athletes.map((athlete) => [athlete.name?.toLowerCase(), athlete])
   );
@@ -744,6 +744,18 @@ async function refreshAcroMonthly() {
     : athletes;
 
   const allMonthRecords = await getAllAcrobatMonths();
+  if (athletes.length === 0 && allMonthRecords.length > 0) {
+    const fallbackMap = new Map();
+    allMonthRecords.forEach((record) => {
+      if (!fallbackMap.has(record.athleteId)) {
+        fallbackMap.set(record.athleteId, {
+          id: record.athleteId,
+          name: record.athleteName || "(Sin nombre)",
+        });
+      }
+    });
+    athletes = Array.from(fallbackMap.values());
+  }
   const availableMonths = Array.from(
     new Set(allMonthRecords.map((record) => record.month).filter(Boolean))
   ).sort((a, b) => (a < b ? 1 : -1));
