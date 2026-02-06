@@ -26,9 +26,10 @@ import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
 let currentRole = "RECEPTION";
+let monthlyDetails = new Map();
 
 async function refreshAll() {
-  await loadSummary(ui, formatCurrency);
+  monthlyDetails = await loadSummary(ui, formatCurrency);
   await loadGroupedList("payments", ui.paymentList, (data, date) =>
     `${data.concept} · ${data.date || (date ? date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(data.amount || 0))}`
   );
@@ -45,6 +46,83 @@ async function refreshAll() {
     `${data.name} · ${data.status}`
   );
   await loadUsers(ui, currentRole);
+}
+
+function renderMonthlyDetail(key) {
+  const details = monthlyDetails.get(key);
+  if (!details) {
+    ui.monthlyDetailCard.classList.add("hidden");
+    return;
+  }
+
+  ui.monthlyDetailTitle.textContent = `Detalle mensual · ${key}`;
+  ui.monthlyIncomeBody.innerHTML = "";
+  ui.monthlyExpenseBody.innerHTML = "";
+
+  details.payments
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .forEach((item) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${item.date}</td>
+        <td>${item.concept}</td>
+        <td>${formatCurrency(item.amount)}</td>
+      `;
+      ui.monthlyIncomeBody.appendChild(row);
+    });
+
+  details.expenses
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .forEach((item) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${item.date}</td>
+        <td>${item.concept}</td>
+        <td>${formatCurrency(item.amount)}</td>
+      `;
+      ui.monthlyExpenseBody.appendChild(row);
+    });
+
+  ui.monthlyDetailCard.classList.remove("hidden");
+}
+
+function downloadMonthlyCSV(key) {
+  const details = monthlyDetails.get(key);
+  if (!details) return;
+
+  const rows = [
+    ["Tipo", "Fecha", "Concepto", "Importe"],
+    ...details.payments.map((item) => [
+      "Ingreso",
+      item.date,
+      item.concept,
+      item.amount,
+    ]),
+    ...details.expenses.map((item) => [
+      "Gasto",
+      item.date,
+      item.concept,
+      item.amount,
+    ]),
+  ];
+
+  const csv = rows
+    .map((row) =>
+      row
+        .map((value) =>
+          `"${String(value).replaceAll('"', '""')}"`
+        )
+        .join(",")
+    )
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `balance-${key}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 ui.menuButtons.forEach((button) => {
@@ -157,4 +235,20 @@ ui.createUserForm.addEventListener("submit", async (event) => {
 
 ui.refreshSummary.addEventListener("click", async () => {
   await refreshAll();
+});
+
+ui.monthlySummaryBody.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) return;
+  const key = button.dataset.key;
+  if (button.dataset.action === "detail") {
+    renderMonthlyDetail(key);
+  }
+  if (button.dataset.action === "csv") {
+    downloadMonthlyCSV(key);
+  }
+});
+
+ui.monthlyDetailClose.addEventListener("click", () => {
+  ui.monthlyDetailCard.classList.add("hidden");
 });

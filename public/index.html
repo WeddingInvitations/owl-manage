@@ -58,10 +58,47 @@
                   <th>Ingresos</th>
                   <th>Gastos</th>
                   <th>Balance</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody id="monthlySummaryBody"></tbody>
             </table>
+          </div>
+          <div id="monthlyDetailCard" class="card hidden">
+            <div class="detail-header">
+              <h3 id="monthlyDetailTitle">Detalle mensual</h3>
+              <button id="monthlyDetailClose" class="btn ghost" type="button">
+                Cerrar
+              </button>
+            </div>
+            <div class="detail-grid">
+              <div>
+                <h4>Ingresos</h4>
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Concepto</th>
+                      <th>Importe</th>
+                    </tr>
+                  </thead>
+                  <tbody id="monthlyIncomeBody"></tbody>
+                </table>
+              </div>
+              <div>
+                <h4>Gastos</h4>
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Concepto</th>
+                      <th>Importe</th>
+                    </tr>
+                  </thead>
+                  <tbody id="monthlyExpenseBody"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </section>
 

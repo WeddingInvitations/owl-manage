@@ -206,6 +206,30 @@ select {
   font-weight: 600;
 }
 
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn.small {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .hidden {
   display: none;
 }

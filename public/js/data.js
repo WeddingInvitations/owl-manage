@@ -139,6 +139,7 @@ export async function loadSummary(ui, formatCurrency) {
   let income = 0;
   let expenses = 0;
   const monthly = new Map();
+  const details = new Map();
 
   paymentSnap.forEach((docSnap) => {
     const data = docSnap.data();
@@ -149,6 +150,14 @@ export async function loadSummary(ui, formatCurrency) {
     const current = monthly.get(key) || { income: 0, expenses: 0 };
     current.income += amount;
     monthly.set(key, current);
+
+    const bucket = details.get(key) || { payments: [], expenses: [] };
+    bucket.payments.push({
+      date: data.date || (date ? date.toISOString().slice(0, 10) : ""),
+      concept: data.concept || "",
+      amount,
+    });
+    details.set(key, bucket);
   });
 
   expenseSnap.forEach((docSnap) => {
@@ -160,6 +169,14 @@ export async function loadSummary(ui, formatCurrency) {
     const current = monthly.get(key) || { income: 0, expenses: 0 };
     current.expenses += amount;
     monthly.set(key, current);
+
+    const bucket = details.get(key) || { payments: [], expenses: [] };
+    bucket.expenses.push({
+      date: data.date || (date ? date.toISOString().slice(0, 10) : ""),
+      concept: data.concept || "",
+      amount,
+    });
+    details.set(key, bucket);
   });
 
   ui.summaryIncome.textContent = formatCurrency(income);
@@ -180,10 +197,18 @@ export async function loadSummary(ui, formatCurrency) {
         <td>${formatCurrency(totals.income)}</td>
         <td>${formatCurrency(totals.expenses)}</td>
         <td>${formatCurrency(balance)}</td>
+        <td>
+          <div class="table-actions">
+            <button class="btn small ghost" data-action="detail" data-key="${key}">Ver detalle</button>
+            <button class="btn small" data-action="csv" data-key="${key}">CSV</button>
+          </div>
+        </td>
       `;
       ui.monthlySummaryBody.appendChild(row);
     });
   }
+
+  return details;
 }
 
 export async function loadUsers(ui, role) {
