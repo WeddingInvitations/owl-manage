@@ -22,6 +22,7 @@ import {
   upsertAthleteMonth,
   loadList,
   loadGroupedList,
+  loadPaymentsWithAthleteTotals,
   loadSummary,
   getMonthLabel,
   loadUsers,
@@ -74,9 +75,7 @@ async function refreshAll() {
   }
   renderYearOptions();
   renderMonthlySummary();
-  await loadGroupedList("payments", ui.paymentList, (data, date) =>
-    `${data.concept} · ${data.date || (date ? date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(data.amount || 0))}`
-  );
+  await loadPaymentsWithAthleteTotals(ui.paymentList, formatCurrency);
   await loadGroupedList("expenses", ui.expenseList, (data, date) =>
     `${data.concept} · ${data.date || (date ? date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(data.amount || 0))}`
   );

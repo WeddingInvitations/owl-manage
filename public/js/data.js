@@ -219,6 +219,64 @@ export async function loadGroupedList(collectionName, target, formatter) {
   });
 }
 
+export async function loadPaymentsWithAthleteTotals(target, formatCurrency) {
+  if (!target) return;
+  const paymentSnap = await getDocs(collection(db, "payments"));
+  const athleteSnap = await getDocs(collection(db, "athlete_months"));
+  const items = [];
+
+  paymentSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    const date = parseRecordDate(data);
+    items.push({ data, date });
+  });
+
+  const athleteTotals = new Map();
+  athleteSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    const current = athleteTotals.get(key) || 0;
+    athleteTotals.set(key, current + amount);
+  });
+
+  athleteTotals.forEach((total, key) => {
+    const date = key === "sin-fecha" ? null : new Date(`${key}-01T00:00:00`);
+    items.push({
+      data: {
+        concept: "Cuotas atletas (total)",
+        date: key === "sin-fecha" ? "" : `${key}-01`,
+        amount: total,
+      },
+      date,
+    });
+  });
+
+  items.sort((a, b) => {
+    const aTime = a.date ? a.date.getTime() : 0;
+    const bTime = b.date ? b.date.getTime() : 0;
+    return bTime - aTime;
+  });
+
+  target.innerHTML = "";
+  let currentKey = null;
+  items.forEach((item) => {
+    const key = getMonthKey(item.date);
+    if (key !== currentKey) {
+      currentKey = key;
+      const header = document.createElement("li");
+      header.className = "list-header";
+      header.textContent = getMonthLabel(key);
+      target.appendChild(header);
+    }
+    const li = document.createElement("li");
+    li.textContent = `${item.data.concept || ""} · ${item.data.date || (item.date ? item.date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(item.data.amount || 0))}`;
+    target.appendChild(li);
+  });
+}
+
 export async function loadSummary(ui, formatCurrency) {
   const paymentSnap = await getDocs(collection(db, "payments"));
   const expenseSnap = await getDocs(collection(db, "expenses"));
@@ -277,12 +335,25 @@ export async function loadSummary(ui, formatCurrency) {
     const current = monthly.get(key) || { income: 0, expenses: 0 };
     current.income += amount;
     monthly.set(key, current);
+  });
 
+  const athleteTotals = new Map();
+  athleteSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    const current = athleteTotals.get(key) || 0;
+    athleteTotals.set(key, current + amount);
+  });
+
+  athleteTotals.forEach((total, key) => {
     const bucket = details.get(key) || { payments: [], expenses: [] };
     bucket.payments.push({
-      date: data.month ? `${data.month}-01` : "",
-      concept: "Cuota atleta",
-      amount,
+      date: key === "sin-fecha" ? "" : `${key}-01`,
+      concept: "Cuotas atletas (total)",
+      amount: total,
     });
     details.set(key, bucket);
   });
