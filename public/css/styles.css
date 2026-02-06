@@ -55,14 +55,17 @@ body {
   background: var(--accent);
   border-right: 1px solid var(--border);
   padding: 24px 16px;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+  align-items: stretch;
 }
 
 .side-menu h2 {
   margin: 0 0 8px;
   font-size: 16px;
   color: var(--muted);
+  flex-shrink: 0;
 }
 
 .menu-btn {
@@ -74,9 +77,14 @@ body {
   text-align: left;
   cursor: pointer;
   width: 100%;
+  min-height: 44px;
+  max-height: 44px;
   height: 44px;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+  flex-grow: 0;
+  box-sizing: border-box;
 }
 
 .menu-btn.active,
