@@ -30,7 +30,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206h";
+} from "./data.js?v=20250206i";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -46,6 +46,7 @@ let availableExpenseMonths = [];
 let selectedExpenseMonth = "";
 let athleteSearchTerm = "";
 let selectedAthletePaymentMonth = "";
+let athletePaidFilter = "ALL";
 
 const on = (element, eventName, handler) => {
   if (!element) return;
@@ -100,6 +101,15 @@ function getMonthKey(date) {
   return `${date.getFullYear()}-${month}`;
 }
 
+function getCurrentYearMonths() {
+  const year = new Date().getFullYear();
+  const months = [];
+  for (let month = 1; month <= 12; month += 1) {
+    months.push(`${year}-${String(month).padStart(2, "0")}`);
+  }
+  return months;
+}
+
 function renderPaymentMonthOptions() {
   if (!ui.paymentMonthSelect) return;
   ui.paymentMonthSelect.innerHTML = "";
@@ -129,7 +139,7 @@ function renderExpenseMonthOptions() {
 }
 
 async function refreshPaymentList() {
-  availablePaymentMonths = await getPaymentMonthsWithAthletes();
+  availablePaymentMonths = getCurrentYearMonths();
   const currentKey = getMonthKey(new Date());
   if (!selectedPaymentMonth || !availablePaymentMonths.includes(selectedPaymentMonth)) {
     selectedPaymentMonth = availablePaymentMonths.includes(currentKey)
@@ -145,11 +155,8 @@ async function refreshPaymentList() {
 }
 
 async function refreshExpenseList() {
-  availableExpenseMonths = await getExpenseMonths();
+  availableExpenseMonths = getCurrentYearMonths();
   const currentKey = getMonthKey(new Date());
-  if (!availableExpenseMonths.includes(currentKey)) {
-    availableExpenseMonths.unshift(currentKey);
-  }
   if (!selectedExpenseMonth || !availableExpenseMonths.includes(selectedExpenseMonth)) {
     selectedExpenseMonth = availableExpenseMonths.includes(currentKey)
       ? currentKey
@@ -302,6 +309,12 @@ async function refreshAthleteMonthly() {
     const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
     const paid = current?.paid ?? coverage ?? false;
     const active = Boolean(paid);
+    if (athletePaidFilter === "SI" && !paid) {
+      return;
+    }
+    if (athletePaidFilter === "NO" && paid) {
+      return;
+    }
     const planDuration = plan.durationMonths || 1;
     const planLabel = planDuration === 1
       ? "Mensual"
@@ -727,6 +740,11 @@ on(ui.expenseMonthSelect, "change", async (event) => {
 
 on(ui.athleteSearch, "input", async (event) => {
   athleteSearchTerm = event.target.value || "";
+  await refreshAthleteMonthly();
+});
+
+on(ui.athletePaidFilter, "change", async (event) => {
+  athletePaidFilter = event.target.value || "ALL";
   await refreshAthleteMonthly();
 });
 
