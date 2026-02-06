@@ -706,6 +706,9 @@ async function refreshAthleteMonthly() {
 }
 
 async function refreshAcroMonthly() {
+  if (!ui.acroList || !ui.acroSummaryActive || !ui.acroSummaryAverage || !ui.acroSummaryNew || !ui.acroSummaryDrop) {
+    return;
+  }
   if (!selectedAcroMonth) {
     renderAcroMonthOptions();
   }
