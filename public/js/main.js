@@ -632,7 +632,14 @@ async function refreshAthleteMonthly() {
   });
 
   let visibleCount = 0;
-  visibleAthletes.forEach((athlete) => {
+  const listAthletes = visibleAthletes.length > 0
+    ? visibleAthletes
+    : Array.from(new Map(listMonthRecords.map((record) => [
+        record.athleteId,
+        { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
+      ])).values());
+
+  listAthletes.forEach((athlete) => {
     const current = listMonthMap.get(athlete.id);
     const previous = listPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
@@ -817,16 +824,20 @@ async function refreshAcroMonthly() {
     }
   }
 
-  const summaryMonthRecords = await getAcrobatMonthsForMonth(selectedAcroMonth);
+  const summaryMonthRecords = allMonthRecords.filter(
+    (record) => record.month === selectedAcroMonth
+  );
   const summaryPreviousMonth = getPreviousMonthKey(selectedAcroMonth);
   const summaryPreviousRecords = summaryPreviousMonth
-    ? await getAcrobatMonthsForMonth(summaryPreviousMonth)
+    ? allMonthRecords.filter((record) => record.month === summaryPreviousMonth)
     : [];
 
-  const listMonthRecords = await getAcrobatMonthsForMonth(selectedAcroListMonth);
+  const listMonthRecords = allMonthRecords.filter(
+    (record) => record.month === selectedAcroListMonth
+  );
   const listPreviousMonth = getPreviousMonthKey(selectedAcroListMonth);
   const listPreviousRecords = listPreviousMonth
-    ? await getAcrobatMonthsForMonth(listPreviousMonth)
+    ? allMonthRecords.filter((record) => record.month === listPreviousMonth)
     : [];
 
   const summaryMonthMap = new Map();
