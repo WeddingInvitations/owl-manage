@@ -30,7 +30,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206e";
+} from "./data.js?v=20250206f";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -45,6 +45,7 @@ let selectedPaymentMonth = "";
 let availableExpenseMonths = [];
 let selectedExpenseMonth = "";
 let athleteSearchTerm = "";
+let selectedAthletePaymentMonth = "";
 
 const on = (element, eventName, handler) => {
   if (!element) return;
@@ -197,6 +198,25 @@ function renderAthleteMonthOptions() {
   });
   selectedAthleteMonth = options[0];
   ui.athleteMonthSelect.value = selectedAthleteMonth;
+}
+
+function renderAthletePaymentMonthOptions() {
+  if (!ui.athletePaymentMonth) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.athletePaymentMonth.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.athletePaymentMonth.appendChild(option);
+  });
+  selectedAthletePaymentMonth = options[0];
+  ui.athletePaymentMonth.value = selectedAthletePaymentMonth;
 }
 
 function setAthletePriceFromTariff() {
@@ -539,6 +559,7 @@ ui.menuButtons.forEach((button) => {
 setActiveView("summaryView", ui);
 renderAthleteMonthOptions();
 setAthletePriceFromTariff();
+renderAthletePaymentMonthOptions();
 
 bindAuth(
   ui,
@@ -613,19 +634,24 @@ on(ui.athleteForm, "submit", async (event) => {
   const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
   const price = plan.priceTotal;
   const paid = ui.athletePaid.value === "SI";
-  await upsertAthleteMonth(
-    athleteId,
-    selectedAthleteMonth,
-    {
-      tariff,
-      price,
-      paid,
-      active: paid,
-      durationMonths: plan.durationMonths,
-      priceMonthly: plan.priceMonthly,
-    },
-    currentUser?.uid
-  );
+  const startMonth = selectedAthletePaymentMonth || selectedAthleteMonth;
+  const duration = plan.durationMonths || 1;
+  for (let i = 0; i < duration; i += 1) {
+    const monthKey = addMonthsToKey(startMonth, i);
+    await upsertAthleteMonth(
+      athleteId,
+      monthKey,
+      {
+        tariff,
+        price,
+        paid,
+        active: paid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+      },
+      currentUser?.uid
+    );
+  }
   ui.athleteForm.reset();
   setAthletePriceFromTariff();
   await refreshAll();
@@ -662,6 +688,10 @@ on(ui.athleteTariff, "change", () => {
 on(ui.athleteMonthSelect, "change", async (event) => {
   selectedAthleteMonth = event.target.value;
   await refreshAthleteMonthly();
+});
+
+on(ui.athletePaymentMonth, "change", (event) => {
+  selectedAthletePaymentMonth = event.target.value;
 });
 
 on(ui.paymentMonthSelect, "change", async (event) => {
