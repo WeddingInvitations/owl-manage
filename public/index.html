@@ -115,6 +115,93 @@
                 <input id="paymentConcept" type="text" required />
               </label>
               <label>
+                Fecha
+                <input id="paymentDate" type="date" required />
+              </label>
+              <label>
+                Importe (€)
+                <input id="paymentAmount" type="number" min="0" step="0.01" required />
+              </label>
+              <button class="btn" type="submit">Registrar ingreso</button>
+            </form>
+            <ul id="paymentList" class="list"></ul>
+          </div>
+        </section>
+
+        <section id="expensesView" class="view hidden">
+          <div class="card">
+            <h2>Contabilidad · Gastos</h2>
+            <form id="expenseForm" class="stack">
+              <label>
+                Concepto
+                <input id="expenseConcept" type="text" required />
+              </label>
+              <label>
+                Fecha
+                <input id="expenseDate" type="date" required />
+              </label>
+              <label>
+                Importe (€)
+                <input id="expenseAmount" type="number" min="0" step="0.01" required />
+              </label>
+              <button class="btn" type="submit">Registrar gasto</button>
+            </form>
+            <ul id="expenseList" class="list"></ul>
+          </div>
+        </section>
+
+        <section id="checkinsView" class="view hidden">
+          <div class="card">
+            <h2>Fichajes</h2>
+            <form id="checkinForm" class="stack">
+              <label>
+                Nombre
+                <input id="checkinName" type="text" required />
+              </label>
+              <label>
+                Tipo
+                <select id="checkinType">
+                  <option value="IN">Check-in</option>
+                  <option value="OUT">Check-out</option>
+                </select>
+              </label>
+              <button class="btn" type="submit">Registrar fichaje</button>
+            </form>
+            <ul id="checkinList" class="list"></ul>
+          </div>
+        </section>
+
+        <section id="trainingsView" class="view hidden">
+          <div class="card">
+            <h2>Entrenamientos planificados</h2>
+            <form id="trainingForm" class="stack">
+              <label>
+                Título
+                <input id="trainingTitle" type="text" required />
+              </label>
+              <label>
+                Fecha
+                <input id="trainingDate" type="date" required />
+              </label>
+              <label>
+                Coach
+                <input id="trainingCoach" type="text" />
+              </label>
+              <button class="btn" type="submit">Crear sesión</button>
+            </form>
+            <ul id="trainingList" class="list"></ul>
+          </div>
+        </section>
+
+        <section id="athletesView" class="view hidden">
+          <div class="card">
+            <h2>Control de pagos de usuarios</h2>
+            <form id="athleteForm" class="stack">
+              <label>
+                Nombre
+                <input id="athleteName" type="text" required />
+              </label>
+              <label>
                 Tarifa
                 <select id="athleteTariff">
                   <option value="8/mes">8/mes</option>
@@ -187,107 +274,21 @@
           </div>
         </section>
 
-        <section id="expensesView" class="view hidden">
-          <div class="card">
-            <h2>Contabilidad · Gastos</h2>
-            <form id="expenseForm" class="stack">
+        <section id="rolesView" class="view hidden">
+          <div id="rolesPanel" class="card hidden">
+            <h2>Roles de usuarios (OWNER)</h2>
+            <form id="createUserForm" class="stack">
               <label>
-                Concepto
-                <input id="expenseConcept" type="text" required />
+                Email
+                <input id="createUserEmail" type="email" required />
               </label>
               <label>
-                Fecha
-                <input id="expenseDate" type="date" required />
+                Contraseña temporal
+                <input id="createUserTempPassword" type="password" required />
               </label>
               <label>
-                Importe (€)
-                <input id="expenseAmount" type="number" min="0" step="0.01" required />
-              </label>
-              <button class="btn" type="submit">Registrar gasto</button>
-            </form>
-            <ul id="expenseList" class="list"></ul>
-          </div>
-        </section>
-
-        <section id="checkinsView" class="view hidden">
-          <div class="card">
-            <h2>Fichajes</h2>
-            <form id="checkinForm" class="stack">
-                  <label>
-                    Fecha
-                    <input id="paymentDate" type="date" required />
-                  </label>
-                  <label>
-                Tarifa
-                <select id="athleteTariff">
-                  <option value="8/mes">8/mes</option>
-                  <option value="12/mes">12/mes</option>
-                  <option value="Ilimitado">Ilimitado</option>
-                  <option value="Trimestre 8/mes">Trimestre 8/mes</option>
-                  <option value="Trimestre 12/mes">Trimestre 12/mes</option>
-                  <option value="Trimestre ilimitado">Trimestre ilimitado</option>
-                  <option value="Semestre 8/mes">Semestre 8/mes</option>
-                  <option value="Semestre 12/mes">Semestre 12/mes</option>
-                  <option value="Semestre ilimitado">Semestre ilimitado</option>
-                  <option value="Anual 8/mes">Anual 8/mes</option>
-                  <option value="Anual 12/mes">Anual 12/mes</option>
-                  <option value="Anual ilimitado">Anual ilimitado</option>
-                </select>
-              </label>
-              <label>
-                Precio (€)
-                <input id="athletePrice" type="number" min="0" step="0.01" readonly />
-              </label>
-              <label>
-                Pagado
-                <select id="athletePaid">
-                  <option value="SI">SI</option>
-                  <option value="NO">NO</option>
-                </select>
-              </div>
-            </section>
-              <label>
+                Rol
                 <select id="createUserRole">
-          <div class="card">
-            <div class="detail-header">
-              <h3>Resumen mensual</h3>
-              <select id="athleteMonthSelect"></select>
-            </div>
-            <div class="summary">
-              <div>
-                <p class="label">Activos</p>
-                <p id="athleteSummaryActive" class="value">0</p>
-              </div>
-              <div>
-                <p class="label">Tarifa media</p>
-                <p id="athleteSummaryAverage" class="value">0 €</p>
-              </div>
-              <div>
-                <p class="label">Altas nuevas</p>
-                <p id="athleteSummaryNew" class="value">0</p>
-              </div>
-              <div>
-                <p class="label">Bajas</p>
-                <p id="athleteSummaryDrop" class="value">0</p>
-              </div>
-            </div>
-          </div>
-          <div class="card">
-            <h3>Listado mensual</h3>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Tarifa</th>
-                  <th>Precio</th>
-                  <th>Pagado</th>
-                  <th>Activo</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody id="athleteList"></tbody>
-            </table>
-          </div>
                   <option value="OWNER">OWNER</option>
                   <option value="COACH">COACH</option>
                   <option value="RECEPTION">RECEPTION</option>
@@ -298,6 +299,22 @@
             </form>
             <form id="roleForm" class="stack">
               <label>
+                UID del usuario
+                <input id="roleUserId" type="text" required />
+              </label>
+              <label>
+                Rol
+                <select id="roleValue">
+                  <option value="OWNER">OWNER</option>
+                  <option value="COACH">COACH</option>
+                  <option value="RECEPTION">RECEPTION</option>
+                </select>
+              </label>
+              <button class="btn" type="submit">Actualizar rol</button>
+            </form>
+            <ul id="userList" class="list"></ul>
+          </div>
+        </section>
                 UID del usuario
                 <input id="roleUserId" type="text" required />
               </label>
