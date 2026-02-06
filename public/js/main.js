@@ -30,7 +30,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206j";
+} from "./data.js?v=20250206k";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -590,6 +590,9 @@ setActiveView("summaryView", ui);
 renderAthleteMonthOptions();
 setAthletePriceFromTariff();
 renderAthletePaymentMonthOptions();
+if (ui.athleteModal) {
+  ui.athleteModal.classList.add("hidden");
+}
 
 bindAuth(
   ui,
@@ -694,6 +697,9 @@ on(ui.athleteForm, "submit", async (event) => {
   ui.athleteForm.reset();
   setAthletePriceFromTariff();
   renderAthletePaymentMonthOptions();
+  if (ui.athleteModal) {
+    ui.athleteModal.classList.add("hidden");
+  }
   await refreshAll();
   await refreshAthleteMonthly();
 });
@@ -723,6 +729,14 @@ on(ui.createUserForm, "submit", async (event) => {
 
 on(ui.athleteTariff, "change", () => {
   setAthletePriceFromTariff();
+});
+
+on(ui.athleteModalOpen, "click", () => {
+  ui.athleteModal?.classList.remove("hidden");
+});
+
+on(ui.athleteModalClose, "click", () => {
+  ui.athleteModal?.classList.add("hidden");
 });
 
 on(ui.athleteMonthSelect, "change", async (event) => {

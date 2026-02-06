@@ -202,46 +202,59 @@
         <section id="athletesView" class="view hidden">
           <div class="card">
             <h2>Control de pagos de usuarios</h2>
-            <form id="athleteForm" class="stack">
-              <label>
-                Nombre
-                <input id="athleteName" type="text" list="athleteNameList" required />
-              </label>
-              <datalist id="athleteNameList"></datalist>
-              <label>
-                Mes de pago
-                <select id="athletePaymentMonth"></select>
-              </label>
-              <label>
-                Tarifa
-                <select id="athleteTariff">
-                  <option value="8/mes">8/mes</option>
-                  <option value="12/mes">12/mes</option>
-                  <option value="Ilimitado">Ilimitado</option>
-                  <option value="Trimestre 8/mes">Trimestre 8/mes</option>
-                  <option value="Trimestre 12/mes">Trimestre 12/mes</option>
-                  <option value="Trimestre ilimitado">Trimestre ilimitado</option>
-                  <option value="Semestre 8/mes">Semestre 8/mes</option>
-                  <option value="Semestre 12/mes">Semestre 12/mes</option>
-                  <option value="Semestre ilimitado">Semestre ilimitado</option>
-                  <option value="Anual 8/mes">Anual 8/mes</option>
-                  <option value="Anual 12/mes">Anual 12/mes</option>
-                  <option value="Anual ilimitado">Anual ilimitado</option>
-                </select>
-              </label>
-              <label>
-                Precio (€)
-                <input id="athletePrice" type="number" min="0" step="0.01" readonly />
-              </label>
-              <label>
-                Pagado
-                <select id="athletePaid">
-                  <option value="SI">SI</option>
-                  <option value="NO">NO</option>
-                </select>
-              </label>
-              <button class="btn" type="submit">Añadir atleta</button>
-            </form>
+            <button id="athleteModalOpen" class="btn" type="button">
+              Alta de usuario
+            </button>
+          </div>
+          <div id="athleteModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Alta de usuario</h3>
+                <button id="athleteModalClose" class="btn ghost small" type="button">
+                  Cerrar
+                </button>
+              </div>
+              <form id="athleteForm" class="stack">
+                <label>
+                  Nombre
+                  <input id="athleteName" type="text" list="athleteNameList" required />
+                </label>
+                <datalist id="athleteNameList"></datalist>
+                <label>
+                  Mes de pago
+                  <select id="athletePaymentMonth"></select>
+                </label>
+                <label>
+                  Tarifa
+                  <select id="athleteTariff">
+                    <option value="8/mes">8/mes</option>
+                    <option value="12/mes">12/mes</option>
+                    <option value="Ilimitado">Ilimitado</option>
+                    <option value="Trimestre 8/mes">Trimestre 8/mes</option>
+                    <option value="Trimestre 12/mes">Trimestre 12/mes</option>
+                    <option value="Trimestre ilimitado">Trimestre ilimitado</option>
+                    <option value="Semestre 8/mes">Semestre 8/mes</option>
+                    <option value="Semestre 12/mes">Semestre 12/mes</option>
+                    <option value="Semestre ilimitado">Semestre ilimitado</option>
+                    <option value="Anual 8/mes">Anual 8/mes</option>
+                    <option value="Anual 12/mes">Anual 12/mes</option>
+                    <option value="Anual ilimitado">Anual ilimitado</option>
+                  </select>
+                </label>
+                <label>
+                  Precio (€)
+                  <input id="athletePrice" type="number" min="0" step="0.01" readonly />
+                </label>
+                <label>
+                  Pagado
+                  <select id="athletePaid">
+                    <option value="SI">SI</option>
+                    <option value="NO">NO</option>
+                  </select>
+                </label>
+                <button class="btn" type="submit">Añadir atleta</button>
+              </form>
+            </div>
           </div>
           <div class="card">
             <div class="detail-header">
@@ -375,6 +388,6 @@
       <p class="muted">OwlManage MVP · Firebase Auth + Firestore</p>
     </footer>
 
-    <script type="module" src="js/main.js?v=20250206j"></script>
+    <script type="module" src="js/main.js?v=20250206k"></script>
   </body>
 </html>
