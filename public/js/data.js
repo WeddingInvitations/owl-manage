@@ -95,8 +95,26 @@ export async function createAthlete(name, userId) {
   return docRef.id;
 }
 
+export async function createAcrobat(name, userId) {
+  const docRef = await addDoc(collection(db, "athletes_acrobacias"), {
+    name,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
 export async function getAthletes() {
   const snap = await getDocs(collection(db, "athletes"));
+  const athletes = [];
+  snap.forEach((docSnap) => {
+    athletes.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return athletes;
+}
+
+export async function getAcrobats() {
+  const snap = await getDocs(collection(db, "athletes_acrobacias"));
   const athletes = [];
   snap.forEach((docSnap) => {
     athletes.push({ id: docSnap.id, ...docSnap.data() });
@@ -151,6 +169,38 @@ export async function upsertAthleteMonth(athleteId, month, payload, userId) {
   return docRef.id;
 }
 
+export async function upsertAcrobatMonth(athleteId, month, payload, userId) {
+  const snap = await getDocs(
+    query(
+      collection(db, "athlete_acrobacias_months"),
+      where("athleteId", "==", athleteId),
+      where("month", "==", month)
+    )
+  );
+  let docId = null;
+  snap.forEach((docSnap) => {
+    docId = docSnap.id;
+  });
+
+  if (docId) {
+    await updateDoc(doc(db, "athlete_acrobacias_months", docId), {
+      ...payload,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+    return docId;
+  }
+
+  const docRef = await addDoc(collection(db, "athlete_acrobacias_months"), {
+    athleteId,
+    month,
+    ...payload,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
 export async function getAthleteMonthsForMonth(month) {
   const snap = await getDocs(
     query(collection(db, "athlete_months"), where("month", "==", month))
@@ -162,8 +212,28 @@ export async function getAthleteMonthsForMonth(month) {
   return records;
 }
 
+export async function getAcrobatMonthsForMonth(month) {
+  const snap = await getDocs(
+    query(collection(db, "athlete_acrobacias_months"), where("month", "==", month))
+  );
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
 export async function getAllAthleteMonths() {
   const snap = await getDocs(collection(db, "athlete_months"));
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
+export async function getAllAcrobatMonths() {
+  const snap = await getDocs(collection(db, "athlete_acrobacias_months"));
   const records = [];
   snap.forEach((docSnap) => {
     records.push({ id: docSnap.id, ...docSnap.data() });
@@ -222,6 +292,7 @@ export async function loadGroupedList(collectionName, target, formatter) {
 export async function getPaymentMonthsWithAthletes() {
   const paymentSnap = await getDocs(collection(db, "payments"));
   const athleteSnap = await getDocs(collection(db, "athlete_months"));
+  const acroSnap = await getDocs(collection(db, "athlete_acrobacias_months"));
   const months = new Set();
 
   paymentSnap.forEach((docSnap) => {
@@ -231,6 +302,13 @@ export async function getPaymentMonthsWithAthletes() {
   });
 
   athleteSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    const key = data.month || "sin-fecha";
+    months.add(key);
+  });
+
+  acroSnap.forEach((docSnap) => {
     const data = docSnap.data();
     if (!data.paid) return;
     const key = data.month || "sin-fecha";
@@ -248,6 +326,7 @@ export async function loadPaymentsWithAthleteTotals(
   if (!target) return;
   const paymentSnap = await getDocs(collection(db, "payments"));
   const athleteSnap = await getDocs(collection(db, "athlete_months"));
+  const acroSnap = await getDocs(collection(db, "athlete_acrobacias_months"));
   const items = [];
 
   paymentSnap.forEach((docSnap) => {
@@ -267,11 +346,34 @@ export async function loadPaymentsWithAthleteTotals(
     athleteTotals.set(key, current + amount);
   });
 
+  const acroTotals = new Map();
+  acroSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    const current = acroTotals.get(key) || 0;
+    acroTotals.set(key, current + amount);
+  });
+
   athleteTotals.forEach((total, key) => {
     const date = key === "sin-fecha" ? null : new Date(`${key}-01T00:00:00`);
     items.push({
       data: {
         concept: "Cuotas atletas (total)",
+        date: key === "sin-fecha" ? "" : `${key}-01`,
+        amount: total,
+      },
+      date,
+    });
+  });
+
+  acroTotals.forEach((total, key) => {
+    const date = key === "sin-fecha" ? null : new Date(`${key}-01T00:00:00`);
+    items.push({
+      data: {
+        concept: "Cuotas acrobacias (total)",
         date: key === "sin-fecha" ? "" : `${key}-01`,
         amount: total,
       },
@@ -361,6 +463,7 @@ export async function loadSummary(ui, formatCurrency) {
   const paymentSnap = await getDocs(collection(db, "payments"));
   const expenseSnap = await getDocs(collection(db, "expenses"));
   const athleteSnap = await getDocs(collection(db, "athlete_months"));
+  const acroSnap = await getDocs(collection(db, "athlete_acrobacias_months"));
 
   let income = 0;
   let expenses = 0;
@@ -417,6 +520,18 @@ export async function loadSummary(ui, formatCurrency) {
     monthly.set(key, current);
   });
 
+  acroSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    income += amount;
+    const current = monthly.get(key) || { income: 0, expenses: 0 };
+    current.income += amount;
+    monthly.set(key, current);
+  });
+
   const athleteTotals = new Map();
   athleteSnap.forEach((docSnap) => {
     const data = docSnap.data();
@@ -428,11 +543,32 @@ export async function loadSummary(ui, formatCurrency) {
     athleteTotals.set(key, current + amount);
   });
 
+  const acroTotals = new Map();
+  acroSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    const current = acroTotals.get(key) || 0;
+    acroTotals.set(key, current + amount);
+  });
+
   athleteTotals.forEach((total, key) => {
     const bucket = details.get(key) || { payments: [], expenses: [] };
     bucket.payments.push({
       date: key === "sin-fecha" ? "" : `${key}-01`,
       concept: "Cuotas atletas (total)",
+      amount: total,
+    });
+    details.set(key, bucket);
+  });
+
+  acroTotals.forEach((total, key) => {
+    const bucket = details.get(key) || { payments: [], expenses: [] };
+    bucket.payments.push({
+      date: key === "sin-fecha" ? "" : `${key}-01`,
+      concept: "Cuotas acrobacias (total)",
       amount: total,
     });
     details.set(key, bucket);

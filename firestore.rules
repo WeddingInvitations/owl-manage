@@ -58,5 +58,15 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create, update, delete: if isOwner() || isReception();
     }
+
+    match /athletes_acrobacias/{docId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isOwner() || isReception();
+    }
+
+    match /athlete_acrobacias_months/{docId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isOwner() || isReception();
+    }
   }
 }

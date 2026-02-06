@@ -16,10 +16,15 @@ import {
   addCheckin,
   addTraining,
   createAthlete,
+  createAcrobat,
   getAthletes,
+  getAcrobats,
   getAllAthleteMonths,
+  getAllAcrobatMonths,
   getAthleteMonthsForMonth,
+  getAcrobatMonthsForMonth,
   upsertAthleteMonth,
+  upsertAcrobatMonth,
   loadList,
   loadGroupedList,
   loadPaymentsWithAthleteTotals,
@@ -30,7 +35,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206n";
+} from "./data.js?v=20250206o";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -49,6 +54,12 @@ let athleteSearchTerm = "";
 let selectedAthletePaymentMonth = "";
 let athletePaidFilter = "ALL";
 let selectedAthleteCsvMonth = "";
+let selectedAcroMonth = "";
+let selectedAcroListMonth = "";
+let acroSearchTerm = "";
+let selectedAcroPaymentMonth = "";
+let acroPaidFilter = "ALL";
+let selectedAcroCsvMonth = "";
 
 const on = (element, eventName, handler) => {
   if (!element) return;
@@ -70,8 +81,22 @@ const tariffPlans = [
   { key: "Anual ilimitado", durationMonths: 12, priceTotal: 1020 },
 ];
 
+const acroTariffPlans = [
+  { key: "4/mes", durationMonths: 1, priceTotal: 45 },
+  { key: "8/mes", durationMonths: 1, priceTotal: 65 },
+  { key: "12/mes", durationMonths: 1, priceTotal: 85 },
+  { key: "Ilimitado", durationMonths: 1, priceTotal: 105 },
+];
+
 const tariffPlanMap = new Map(
   tariffPlans.map((plan) => [plan.key, {
+    ...plan,
+    priceMonthly: plan.priceTotal / plan.durationMonths,
+  }])
+);
+
+const acroTariffPlanMap = new Map(
+  acroTariffPlans.map((plan) => [plan.key, {
     ...plan,
     priceMonthly: plan.priceTotal / plan.durationMonths,
   }])
@@ -274,11 +299,11 @@ function renderAthleteCsvMonthOptions() {
   ui.athleteCsvMonth.value = selectedAthleteCsvMonth;
 }
 
-function normalizeTariff(value) {
-  if (!value) return "8/mes";
+function normalizeTariff(value, plans, fallbackKey) {
+  if (!value) return fallbackKey;
   const normalized = value.trim();
-  const match = tariffPlans.find((plan) => plan.key.toLowerCase() === normalized.toLowerCase());
-  return match ? match.key : "8/mes";
+  const match = plans.find((plan) => plan.key.toLowerCase() === normalized.toLowerCase());
+  return match ? match.key : fallbackKey;
 }
 
 function parseCsvRows(content) {
@@ -316,7 +341,7 @@ async function importAthletesFromCsv(file, monthKey) {
     if (!name) continue;
     const paidValue = (row.pagado || row.paid || "").toString().trim().toUpperCase();
     const paid = paidValue === "SI" || paidValue === "TRUE" || paidValue === "1" || paidValue === "YES";
-    const tariff = normalizeTariff(row.tarifa || row.plan || "");
+    const tariff = normalizeTariff(row.tarifa || row.plan || "", tariffPlans, "8/mes");
     const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
     const price = row.precio ? Number(row.precio) : plan.priceTotal;
     const duration = plan.durationMonths || 1;
@@ -352,10 +377,153 @@ async function importAthletesFromCsv(file, monthKey) {
   return processed;
 }
 
+async function importAcrobatsFromCsv(file, monthKey) {
+  const text = await file.text();
+  const rows = parseCsvRows(text);
+  if (rows.length === 0) {
+    throw new Error("CSV vacío o sin datos");
+  }
+  const athletes = await getAcrobats();
+  const athleteMap = new Map(
+    athletes.map((athlete) => [athlete.name?.toLowerCase(), athlete])
+  );
+  let processed = 0;
+
+  for (const row of rows) {
+    const name = row.nombre || row.name || "";
+    if (!name) continue;
+    const paidValue = (row.pagado || row.paid || "").toString().trim().toUpperCase();
+    const paid = paidValue === "SI" || paidValue === "TRUE" || paidValue === "1" || paidValue === "YES";
+    const tariff = normalizeTariff(row.tarifa || row.plan || "", acroTariffPlans, "4/mes");
+    const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
+    const price = row.precio ? Number(row.precio) : plan.priceTotal;
+    const duration = plan.durationMonths || 1;
+
+    let athlete = athleteMap.get(name.toLowerCase());
+    if (!athlete) {
+      const id = await createAcrobat(name, currentUser?.uid);
+      athlete = { id, name };
+      athleteMap.set(name.toLowerCase(), athlete);
+    }
+
+    for (let i = 0; i < duration; i += 1) {
+      const targetMonth = addMonthsToKey(monthKey, i);
+      await upsertAcrobatMonth(
+        athlete.id,
+        targetMonth,
+        {
+          athleteName: athlete.name,
+          tariff,
+          price,
+          paid,
+          active: paid,
+          durationMonths: plan.durationMonths,
+          priceMonthly: plan.priceMonthly,
+        },
+        currentUser?.uid
+      );
+    }
+
+    processed += 1;
+  }
+
+  return processed;
+}
+
 function setAthletePriceFromTariff() {
   const tariff = ui.athleteTariff.value;
   const plan = tariffPlanMap.get(tariff);
   ui.athletePrice.value = plan ? plan.priceTotal : 0;
+}
+
+function renderAcroMonthOptions() {
+  if (!ui.acroMonthSelect) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.acroMonthSelect.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.acroMonthSelect.appendChild(option);
+  });
+  selectedAcroMonth = options[0];
+  ui.acroMonthSelect.value = selectedAcroMonth;
+}
+
+function renderAcroListMonthOptions() {
+  if (!ui.acroListMonthSelect) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 12; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  for (let i = 1; i <= 6; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.acroListMonthSelect.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.acroListMonthSelect.appendChild(option);
+  });
+  selectedAcroListMonth = getMonthKey(now);
+  ui.acroListMonthSelect.value = selectedAcroListMonth;
+}
+
+function renderAcroPaymentMonthOptions() {
+  if (!ui.acroPaymentMonth) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.acroPaymentMonth.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.acroPaymentMonth.appendChild(option);
+  });
+  selectedAcroPaymentMonth = options[0];
+  ui.acroPaymentMonth.value = selectedAcroPaymentMonth;
+}
+
+function renderAcroCsvMonthOptions() {
+  if (!ui.acroCsvMonth) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 12; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  for (let i = 1; i <= 6; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.acroCsvMonth.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.acroCsvMonth.appendChild(option);
+  });
+  selectedAcroCsvMonth = getMonthKey(now);
+  ui.acroCsvMonth.value = selectedAcroCsvMonth;
+}
+
+function setAcroPriceFromTariff() {
+  const tariff = ui.acroTariff.value;
+  const plan = acroTariffPlanMap.get(tariff);
+  ui.acroPrice.value = plan ? plan.priceTotal : 0;
 }
 
 async function refreshAthleteMonthly() {
@@ -534,6 +702,169 @@ async function refreshAthleteMonthly() {
   ui.athleteSummaryAverage.textContent = formatCurrency(averageTariff);
   ui.athleteSummaryNew.textContent = String(totalNew);
   ui.athleteSummaryDrop.textContent = String(totalDrop);
+}
+
+async function refreshAcroMonthly() {
+  if (!selectedAcroMonth) {
+    renderAcroMonthOptions();
+  }
+  if (!selectedAcroListMonth) {
+    renderAcroListMonthOptions();
+  }
+  const athletes = await getAcrobats();
+  if (ui.acroNameList) {
+    const names = Array.from(
+      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    ui.acroNameList.innerHTML = "";
+    names.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      ui.acroNameList.appendChild(option);
+    });
+  }
+  if (ui.acroSearchList) {
+    const names = Array.from(
+      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    ui.acroSearchList.innerHTML = "";
+    names.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      ui.acroSearchList.appendChild(option);
+    });
+  }
+  const searchValue = acroSearchTerm.trim().toLowerCase();
+  const visibleAthletes = searchValue
+    ? athletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    : athletes;
+
+  const allMonthRecords = await getAllAcrobatMonths();
+  const summaryMonthRecords = await getAcrobatMonthsForMonth(selectedAcroMonth);
+  const summaryPreviousMonth = getPreviousMonthKey(selectedAcroMonth);
+  const summaryPreviousRecords = summaryPreviousMonth
+    ? await getAcrobatMonthsForMonth(summaryPreviousMonth)
+    : [];
+
+  const listMonthRecords = await getAcrobatMonthsForMonth(selectedAcroListMonth);
+  const listPreviousMonth = getPreviousMonthKey(selectedAcroListMonth);
+  const listPreviousRecords = listPreviousMonth
+    ? await getAcrobatMonthsForMonth(listPreviousMonth)
+    : [];
+
+  const summaryMonthMap = new Map();
+  summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
+  const summaryPreviousMap = new Map();
+  summaryPreviousRecords.forEach((record) => summaryPreviousMap.set(record.athleteId, record));
+
+  const listMonthMap = new Map();
+  listMonthRecords.forEach((record) => listMonthMap.set(record.athleteId, record));
+  const listPreviousMap = new Map();
+  listPreviousRecords.forEach((record) => listPreviousMap.set(record.athleteId, record));
+
+  const athleteHistory = new Map();
+  allMonthRecords.forEach((record) => {
+    if (!athleteHistory.has(record.athleteId)) {
+      athleteHistory.set(record.athleteId, []);
+    }
+    athleteHistory.get(record.athleteId).push(record);
+  });
+  athleteHistory.forEach((records) =>
+    records.sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0))
+  );
+
+  ui.acroList.innerHTML = "";
+
+  const activeNow = new Set();
+  const activePrev = new Set();
+  let totalIncome = 0;
+
+  athletes.forEach((athlete) => {
+    const current = summaryMonthMap.get(athlete.id);
+    const previous = summaryPreviousMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+
+    const tariff = current?.tariff || previous?.tariff || history[0]?.tariff || "4/mes";
+    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
+    const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
+    const price = current?.price ?? previous?.price ?? history[0]?.price ?? plan.priceTotal ?? 0;
+    const paid = Boolean(current?.paid);
+
+    if (paid) {
+      activeNow.add(athlete.id);
+      const divisor = current?.durationMonths || plan.durationMonths || 1;
+      totalIncome += Number((current?.price ?? plan.priceTotal) || 0) / divisor;
+    }
+    if (previous?.paid) {
+      activePrev.add(athlete.id);
+    }
+  });
+
+  let visibleCount = 0;
+  visibleAthletes.forEach((athlete) => {
+    const current = listMonthMap.get(athlete.id);
+    const previous = listPreviousMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+
+    const tariff = current?.tariff || previous?.tariff || history[0]?.tariff || "4/mes";
+    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
+    const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
+    const price = current?.price ?? previous?.price ?? history[0]?.price ?? plan.priceTotal ?? 0;
+    const paid = Boolean(current?.paid);
+    const active = paid;
+
+    if (acroPaidFilter === "SI" && !paid) {
+      return;
+    }
+    if (acroPaidFilter === "NO" && paid) {
+      return;
+    }
+    visibleCount += 1;
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${athlete.name}</td>
+      <td>
+        <span class="plan-badge plan-mensual">Mensual</span>
+        <select data-role="tariff" data-id="${athlete.id}" data-scope="acro">
+          ${acroTariffPlans
+            .map(
+              (option) =>
+                `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`
+            )
+            .join("")}
+        </select>
+      </td>
+      <td><span data-role="price" data-id="${athlete.id}" data-scope="acro">${price.toFixed(2)}</span> €</td>
+      <td>
+        <select data-role="paid" data-id="${athlete.id}" data-scope="acro">
+          <option value="SI" ${paid ? "selected" : ""}>SI</option>
+          <option value="NO" ${!paid ? "selected" : ""}>NO</option>
+        </select>
+      </td>
+      <td>${active ? "Activo" : "Inactivo"}</td>
+      <td>
+        <button class="btn small" data-role="save" data-id="${athlete.id}" data-name="${athlete.name}" data-scope="acro">
+          Guardar
+        </button>
+      </td>
+    `;
+    ui.acroList.appendChild(row);
+  });
+
+  const totalActive = activeNow.size;
+  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
+  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
+  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+
+  ui.acroSummaryActive.textContent = String(totalActive);
+  ui.acroSummaryAverage.textContent = formatCurrency(averageTariff);
+  ui.acroSummaryNew.textContent = String(totalNew);
+  ui.acroSummaryDrop.textContent = String(totalDrop);
+
+  if (ui.acroListCount) {
+    ui.acroListCount.textContent = `Mostrando ${visibleCount} atletas`;
+  }
 }
 
 function renderYearOptions() {
@@ -723,11 +1054,22 @@ setAthletePriceFromTariff();
 renderAthletePaymentMonthOptions();
 renderAthleteListMonthOptions();
 renderAthleteCsvMonthOptions();
+renderAcroMonthOptions();
+setAcroPriceFromTariff();
+renderAcroPaymentMonthOptions();
+renderAcroListMonthOptions();
+renderAcroCsvMonthOptions();
 if (ui.athleteModal) {
   ui.athleteModal.classList.add("hidden");
 }
 if (ui.athleteCsvModal) {
   ui.athleteCsvModal.classList.add("hidden");
+}
+if (ui.acroModal) {
+  ui.acroModal.classList.add("hidden");
+}
+if (ui.acroCsvModal) {
+  ui.acroCsvModal.classList.add("hidden");
 }
 
 bindAuth(
@@ -738,6 +1080,7 @@ bindAuth(
     if (user) {
       await refreshAll();
       await refreshAthleteMonthly();
+      await refreshAcroMonthly();
     }
     setAuthUI(ui, user, currentRole, false);
     updateMenuVisibility(ui, currentRole);
@@ -840,6 +1183,50 @@ on(ui.athleteForm, "submit", async (event) => {
   await refreshAthleteMonthly();
 });
 
+on(ui.acroForm, "submit", async (event) => {
+  event.preventDefault();
+  const rawName = ui.acroName.value.trim();
+  const athletes = await getAcrobats();
+  const existing = athletes.find(
+    (athlete) => athlete.name?.toLowerCase() === rawName.toLowerCase()
+  );
+  const athleteId = existing
+    ? existing.id
+    : await createAcrobat(rawName, currentUser?.uid);
+  const athleteName = existing?.name || rawName;
+  const tariff = ui.acroTariff.value;
+  const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
+  const price = plan.priceTotal;
+  const paid = ui.acroPaid.value === "SI";
+  const startMonth = ui.acroPaymentMonth?.value || selectedAcroPaymentMonth || selectedAcroMonth;
+  const duration = plan.durationMonths || 1;
+  for (let i = 0; i < duration; i += 1) {
+    const monthKey = addMonthsToKey(startMonth, i);
+    await upsertAcrobatMonth(
+      athleteId,
+      monthKey,
+      {
+        athleteName,
+        tariff,
+        price,
+        paid,
+        active: paid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+      },
+      currentUser?.uid
+    );
+  }
+  ui.acroForm.reset();
+  setAcroPriceFromTariff();
+  renderAcroPaymentMonthOptions();
+  if (ui.acroModal) {
+    ui.acroModal.classList.add("hidden");
+  }
+  await refreshAll();
+  await refreshAcroMonthly();
+});
+
 on(ui.roleForm, "submit", async (event) => {
   event.preventDefault();
   await updateUserRole(ui.roleUserId.value.trim(), ui.roleValue.value);
@@ -867,12 +1254,24 @@ on(ui.athleteTariff, "change", () => {
   setAthletePriceFromTariff();
 });
 
+on(ui.acroTariff, "change", () => {
+  setAcroPriceFromTariff();
+});
+
 on(ui.athleteModalOpen, "click", () => {
   ui.athleteModal?.classList.remove("hidden");
 });
 
 on(ui.athleteModalClose, "click", () => {
   ui.athleteModal?.classList.add("hidden");
+});
+
+on(ui.acroModalOpen, "click", () => {
+  ui.acroModal?.classList.remove("hidden");
+});
+
+on(ui.acroModalClose, "click", () => {
+  ui.acroModal?.classList.add("hidden");
 });
 
 on(ui.athleteCsvOpen, "click", () => {
@@ -884,8 +1283,21 @@ on(ui.athleteCsvClose, "click", () => {
   ui.athleteCsvModal?.classList.add("hidden");
 });
 
+on(ui.acroCsvOpen, "click", () => {
+  renderAcroCsvMonthOptions();
+  ui.acroCsvModal?.classList.remove("hidden");
+});
+
+on(ui.acroCsvClose, "click", () => {
+  ui.acroCsvModal?.classList.add("hidden");
+});
+
 on(ui.athleteCsvMonth, "change", (event) => {
   selectedAthleteCsvMonth = event.target.value;
+});
+
+on(ui.acroCsvMonth, "change", (event) => {
+  selectedAcroCsvMonth = event.target.value;
 });
 
 on(ui.athleteCsvForm, "submit", async (event) => {
@@ -906,9 +1318,32 @@ on(ui.athleteCsvForm, "submit", async (event) => {
   }
 });
 
+on(ui.acroCsvForm, "submit", async (event) => {
+  event.preventDefault();
+  if (!ui.acroCsvFile?.files?.length) return;
+  ui.acroCsvStatus.textContent = "Importando...";
+  const monthKey = ui.acroCsvMonth?.value || selectedAcroCsvMonth || getMonthKey(new Date());
+  try {
+    const processed = await importAcrobatsFromCsv(ui.acroCsvFile.files[0], monthKey);
+    ui.acroCsvStatus.textContent = `Importados ${processed} atletas.`;
+    ui.acroCsvForm.reset();
+    renderAcroCsvMonthOptions();
+    ui.acroCsvModal?.classList.add("hidden");
+    await refreshAll();
+    await refreshAcroMonthly();
+  } catch (error) {
+    ui.acroCsvStatus.textContent = `Error: ${error.message || error}`;
+  }
+});
+
 on(ui.athleteMonthSelect, "change", async (event) => {
   selectedAthleteMonth = event.target.value;
   await refreshAthleteMonthly();
+});
+
+on(ui.acroMonthSelect, "change", async (event) => {
+  selectedAcroMonth = event.target.value;
+  await refreshAcroMonthly();
 });
 
 on(ui.athleteListMonthSelect, "change", async (event) => {
@@ -916,8 +1351,17 @@ on(ui.athleteListMonthSelect, "change", async (event) => {
   await refreshAthleteMonthly();
 });
 
+on(ui.acroListMonthSelect, "change", async (event) => {
+  selectedAcroListMonth = event.target.value;
+  await refreshAcroMonthly();
+});
+
 on(ui.athletePaymentMonth, "change", (event) => {
   selectedAthletePaymentMonth = event.target.value;
+});
+
+on(ui.acroPaymentMonth, "change", (event) => {
+  selectedAcroPaymentMonth = event.target.value;
 });
 
 on(ui.paymentMonthSelect, "change", async (event) => {
@@ -935,9 +1379,19 @@ on(ui.athleteSearch, "input", async (event) => {
   await refreshAthleteMonthly();
 });
 
+on(ui.acroSearch, "input", async (event) => {
+  acroSearchTerm = event.target.value || "";
+  await refreshAcroMonthly();
+});
+
 on(ui.athletePaidFilter, "change", async (event) => {
   athletePaidFilter = event.target.value || "ALL";
   await refreshAthleteMonthly();
+});
+
+on(ui.acroPaidFilter, "change", async (event) => {
+  acroPaidFilter = event.target.value || "ALL";
+  await refreshAcroMonthly();
 });
 
 on(ui.athleteList, "change", (event) => {
@@ -986,6 +1440,55 @@ on(ui.athleteList, "click", async (event) => {
     currentUser?.uid
   );
   await refreshAthleteMonthly();
+  await refreshAll();
+});
+
+on(ui.acroList, "change", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLSelectElement)) return;
+  if (target.dataset.role !== "tariff") return;
+  const athleteId = target.dataset.id;
+  const priceSpan = ui.acroList.querySelector(
+    `[data-role="price"][data-id="${athleteId}"][data-scope="acro"]`
+  );
+  if (priceSpan) {
+    const plan = acroTariffPlanMap.get(target.value);
+    const newPrice = plan ? plan.priceTotal : 0;
+    priceSpan.textContent = newPrice.toFixed(2);
+  }
+});
+
+on(ui.acroList, "click", async (event) => {
+  const button = event.target.closest("button[data-role='save'][data-scope='acro']");
+  if (!button) return;
+  const athleteId = button.dataset.id;
+  const athleteName = button.dataset.name || "";
+  const tariffSelect = ui.acroList.querySelector(
+    `select[data-role="tariff"][data-id="${athleteId}"][data-scope="acro"]`
+  );
+  const paidSelect = ui.acroList.querySelector(
+    `select[data-role="paid"][data-id="${athleteId}"][data-scope="acro"]`
+  );
+  if (!tariffSelect || !paidSelect) return;
+  const tariff = tariffSelect.value;
+  const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
+  const price = plan.priceTotal;
+  const paid = paidSelect.value === "SI";
+  await upsertAcrobatMonth(
+    athleteId,
+    selectedAcroMonth,
+    {
+      athleteName,
+      tariff,
+      price,
+      paid,
+      active: paid,
+      durationMonths: plan.durationMonths,
+      priceMonthly: plan.priceMonthly,
+    },
+    currentUser?.uid
+  );
+  await refreshAcroMonthly();
   await refreshAll();
 });
 
