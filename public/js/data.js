@@ -206,6 +206,17 @@ export async function loadSummary(ui, formatCurrency) {
       `;
       ui.monthlySummaryBody.appendChild(row);
     });
+
+    const totalRow = document.createElement("tr");
+    totalRow.className = "table-total";
+    totalRow.innerHTML = `
+      <td>Total</td>
+      <td>${formatCurrency(income)}</td>
+      <td>${formatCurrency(expenses)}</td>
+      <td>${formatCurrency(income - expenses)}</td>
+      <td></td>
+    `;
+    ui.monthlySummaryBody.appendChild(totalRow);
   }
 
   return details;

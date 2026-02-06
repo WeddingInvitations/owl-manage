@@ -90,6 +90,16 @@ function downloadMonthlyCSV(key) {
   const details = monthlyDetails.get(key);
   if (!details) return;
 
+  const totalIncome = details.payments.reduce(
+    (sum, item) => sum + Number(item.amount || 0),
+    0
+  );
+  const totalExpenses = details.expenses.reduce(
+    (sum, item) => sum + Number(item.amount || 0),
+    0
+  );
+  const totalBalance = totalIncome - totalExpenses;
+
   const rows = [
     ["Tipo", "Fecha", "Concepto", "Importe"],
     ...details.payments.map((item) => [
@@ -104,6 +114,9 @@ function downloadMonthlyCSV(key) {
       item.concept,
       item.amount,
     ]),
+    ["TOTAL INGRESOS", "", "", totalIncome],
+    ["TOTAL GASTOS", "", "", totalExpenses],
+    ["BALANCE", "", "", totalBalance],
   ];
 
   const csv = rows
