@@ -205,8 +205,9 @@
             <form id="athleteForm" class="stack">
               <label>
                 Nombre
-                <input id="athleteName" type="text" required />
+                <input id="athleteName" type="text" list="athleteNameList" required />
               </label>
+              <datalist id="athleteNameList"></datalist>
               <label>
                 Mes de pago
                 <select id="athletePaymentMonth"></select>
@@ -365,6 +366,6 @@
       <p class="muted">OwlManage MVP · Firebase Auth + Firestore</p>
     </footer>
 
-    <script type="module" src="js/main.js?v=20250206f"></script>
+    <script type="module" src="js/main.js?v=20250206g"></script>
   </body>
 </html>

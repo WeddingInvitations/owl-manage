@@ -30,7 +30,7 @@ import {
   getMonthLabel,
   loadUsers,
   updateUserRole,
-} from "./data.js?v=20250206f";
+} from "./data.js?v=20250206g";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -230,6 +230,17 @@ async function refreshAthleteMonthly() {
     renderAthleteMonthOptions();
   }
   const athletes = await getAthletes();
+  if (ui.athleteNameList) {
+    const names = Array.from(
+      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    ui.athleteNameList.innerHTML = "";
+    names.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      ui.athleteNameList.appendChild(option);
+    });
+  }
   const searchValue = athleteSearchTerm.trim().toLowerCase();
   const visibleAthletes = searchValue
     ? athletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
@@ -629,12 +640,19 @@ on(ui.trainingForm, "submit", async (event) => {
 
 on(ui.athleteForm, "submit", async (event) => {
   event.preventDefault();
-  const athleteId = await createAthlete(ui.athleteName.value, currentUser?.uid);
+  const rawName = ui.athleteName.value.trim();
+  const athletes = await getAthletes();
+  const existing = athletes.find(
+    (athlete) => athlete.name?.toLowerCase() === rawName.toLowerCase()
+  );
+  const athleteId = existing
+    ? existing.id
+    : await createAthlete(rawName, currentUser?.uid);
   const tariff = ui.athleteTariff.value;
   const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
   const price = plan.priceTotal;
   const paid = ui.athletePaid.value === "SI";
-  const startMonth = selectedAthletePaymentMonth || selectedAthleteMonth;
+  const startMonth = ui.athletePaymentMonth?.value || selectedAthletePaymentMonth || selectedAthleteMonth;
   const duration = plan.durationMonths || 1;
   for (let i = 0; i < duration; i += 1) {
     const monthKey = addMonthsToKey(startMonth, i);
@@ -654,6 +672,7 @@ on(ui.athleteForm, "submit", async (event) => {
   }
   ui.athleteForm.reset();
   setAthletePriceFromTariff();
+  renderAthletePaymentMonthOptions();
   await refreshAll();
   await refreshAthleteMonthly();
 });

@@ -44,6 +44,7 @@ export const ui = {
   trainingList: $("trainingList"),
   athleteForm: $("athleteForm"),
   athleteName: $("athleteName"),
+  athleteNameList: $("athleteNameList"),
   athletePaymentMonth: $("athletePaymentMonth"),
   athleteTariff: $("athleteTariff"),
   athletePrice: $("athletePrice"),
