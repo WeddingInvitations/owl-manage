@@ -35,7 +35,7 @@ import {
   getAllAcroAthleteMonths,
   getAcroAthleteMonthsForMonth,
   upsertAcroAthleteMonth,
-} from "./data.js?v=20250206r";
+} from "./data.js?v=20250206s";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -85,6 +85,21 @@ const tariffPlans = [
 
 const tariffPlanMap = new Map(
   tariffPlans.map((plan) => [plan.key, {
+    ...plan,
+    priceMonthly: plan.priceTotal / plan.durationMonths,
+  }])
+);
+
+// Tarifas específicas para Acrobacias
+const acroTariffPlans = [
+  { key: "4/mes", durationMonths: 1, priceTotal: 45 },
+  { key: "8/mes", durationMonths: 1, priceTotal: 65 },
+  { key: "12/mes", durationMonths: 1, priceTotal: 85 },
+  { key: "Ilimitado", durationMonths: 1, priceTotal: 105 },
+];
+
+const acroTariffPlanMap = new Map(
+  acroTariffPlans.map((plan) => [plan.key, {
     ...plan,
     priceMonthly: plan.priceTotal / plan.durationMonths,
   }])
@@ -645,7 +660,7 @@ function renderAcroCsvMonthOptions() {
 function setAcroPriceFromTariff() {
   if (!ui.acroTariff || !ui.acroPrice) return;
   const tariff = ui.acroTariff.value;
-  const plan = tariffPlanMap.get(tariff);
+  const plan = acroTariffPlanMap.get(tariff);
   ui.acroPrice.value = plan ? plan.priceTotal : 0;
 }
 
@@ -666,8 +681,8 @@ async function importAcroAthletesFromCsv(file, monthKey) {
     if (!name) continue;
     const paidValue = (row.pagado || row.paid || "").toString().trim().toUpperCase();
     const paid = paidValue === "SI" || paidValue === "TRUE" || paidValue === "1" || paidValue === "YES";
-    const tariff = normalizeTariff(row.tarifa || row.plan || "", tariffPlans, "8/mes");
-    const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
+    const tariff = normalizeTariff(row.tarifa || row.plan || "", acroTariffPlans, "4/mes");
+    const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
     const price = row.precio ? Number(row.precio) : plan.priceTotal;
     const duration = plan.durationMonths || 1;
 
@@ -790,9 +805,9 @@ async function refreshAcroMonthly() {
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
 
-    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
-    const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || fallbackPlan;
+    const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
     const paid = Boolean(current?.paid);
 
     if (paid) {
@@ -818,9 +833,9 @@ async function refreshAcroMonthly() {
     const previous = listPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
-    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
-    const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || fallbackPlan;
+    const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
     const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
     const paid = Boolean(current?.paid);
     const active = paid;
@@ -848,7 +863,7 @@ async function refreshAcroMonthly() {
       <td>
         <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
         <select data-role="acro-tariff" data-id="${athlete.id}">
-          ${tariffPlans
+          ${acroTariffPlans
             .map(
               (option) =>
                 `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`
@@ -1397,7 +1412,7 @@ on(ui.acroForm, "submit", async (event) => {
     : await createAcroAthlete(rawName, currentUser?.uid);
   const athleteName = existing?.name || rawName;
   const tariff = ui.acroTariff.value;
-  const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
+  const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
   const price = plan.priceTotal;
   const paid = ui.acroPaid.value === "SI";
   const startMonth = ui.acroPaymentMonth?.value || selectedAcroPaymentMonth || selectedAcroMonth;
@@ -1505,7 +1520,7 @@ on(ui.acroList, "change", (event) => {
     `[data-role="acro-price"][data-id="${athleteId}"]`
   );
   if (priceSpan) {
-    const plan = tariffPlanMap.get(target.value);
+    const plan = acroTariffPlanMap.get(target.value);
     const newPrice = plan ? plan.priceTotal : 0;
     priceSpan.textContent = newPrice.toFixed(2);
   }
@@ -1524,7 +1539,7 @@ on(ui.acroList, "click", async (event) => {
   );
   if (!tariffSelect || !paidSelect) return;
   const tariff = tariffSelect.value;
-  const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
+  const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
   const price = plan.priceTotal;
   const paid = paidSelect.value === "SI";
   await upsertAcroAthleteMonth(
