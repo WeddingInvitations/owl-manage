@@ -481,3 +481,75 @@ export async function setMustChangePassword(userId, mustChangePassword) {
   const userRef = doc(db, "users", userId);
   await updateDoc(userRef, { mustChangePassword });
 }
+
+// ========== ATLETAS ACROBACIAS ==========
+
+export async function createAcroAthlete(name, userId) {
+  const docRef = await addDoc(collection(db, "athletes_acrobacias"), {
+    name,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function getAcroAthletes() {
+  const snap = await getDocs(collection(db, "athletes_acrobacias"));
+  const athletes = [];
+  snap.forEach((docSnap) => {
+    athletes.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return athletes;
+}
+
+export async function upsertAcroAthleteMonth(athleteId, month, payload, userId) {
+  const snap = await getDocs(
+    query(
+      collection(db, "athlete_acrobacias_months"),
+      where("athleteId", "==", athleteId),
+      where("month", "==", month)
+    )
+  );
+  let docId = null;
+  snap.forEach((docSnap) => {
+    docId = docSnap.id;
+  });
+
+  if (docId) {
+    await updateDoc(doc(db, "athlete_acrobacias_months", docId), {
+      ...payload,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+    return docId;
+  }
+
+  const docRef = await addDoc(collection(db, "athlete_acrobacias_months"), {
+    athleteId,
+    month,
+    ...payload,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function getAcroAthleteMonthsForMonth(month) {
+  const snap = await getDocs(
+    query(collection(db, "athlete_acrobacias_months"), where("month", "==", month))
+  );
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
+export async function getAllAcroAthleteMonths() {
+  const snap = await getDocs(collection(db, "athlete_acrobacias_months"));
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
