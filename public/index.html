@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#151824" />
     <title>OwlManage</title>
-    <link rel="stylesheet" href="css/styles.css?v=20250206p" />
+    <link rel="stylesheet" href="css/styles.css?v=20250218d" />
   </head>
   <body class="dark">
     <header class="app-header">
@@ -156,6 +156,44 @@
               </form>
             </div>
           </div>
+          <div id="paymentEditModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Editar ingreso</h3>
+                <button id="paymentEditClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="paymentEditForm" class="stack">
+                <input id="paymentEditId" type="hidden" />
+                <label>
+                  Concepto
+                  <input id="paymentEditConcept" type="text" required />
+                </label>
+                <label>
+                  Fecha
+                  <input id="paymentEditDate" type="date" required />
+                </label>
+                <label>
+                  Importe (€)
+                  <input id="paymentEditAmount" type="number" min="0" step="0.01" required />
+                </label>
+                <button class="btn" type="submit">Guardar cambios</button>
+              </form>
+            </div>
+          </div>
+          <div id="paymentDeleteModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Eliminar ingreso</h3>
+              </div>
+              <p>¿Estás seguro de que quieres eliminar este ingreso?</p>
+              <p id="paymentDeleteInfo" class="muted"></p>
+              <input id="paymentDeleteId" type="hidden" />
+              <div class="btn-group">
+                <button id="paymentDeleteConfirm" class="btn danger" type="button">Eliminar</button>
+                <button id="paymentDeleteCancel" class="btn ghost" type="button">Cancelar</button>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section id="expensesView" class="view hidden">
@@ -200,6 +238,44 @@
                 <button class="btn" type="submit">Importar</button>
                 <p id="expenseCsvStatus" class="muted"></p>
               </form>
+            </div>
+          </div>
+          <div id="expenseEditModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Editar gasto</h3>
+                <button id="expenseEditClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="expenseEditForm" class="stack">
+                <input id="expenseEditId" type="hidden" />
+                <label>
+                  Concepto
+                  <input id="expenseEditConcept" type="text" required />
+                </label>
+                <label>
+                  Fecha
+                  <input id="expenseEditDate" type="date" required />
+                </label>
+                <label>
+                  Importe (€)
+                  <input id="expenseEditAmount" type="number" min="0" step="0.01" required />
+                </label>
+                <button class="btn" type="submit">Guardar cambios</button>
+              </form>
+            </div>
+          </div>
+          <div id="expenseDeleteModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Eliminar gasto</h3>
+              </div>
+              <p>¿Estás seguro de que quieres eliminar este gasto?</p>
+              <p id="expenseDeleteInfo" class="muted"></p>
+              <input id="expenseDeleteId" type="hidden" />
+              <div class="btn-group">
+                <button id="expenseDeleteConfirm" class="btn danger" type="button">Eliminar</button>
+                <button id="expenseDeleteCancel" class="btn ghost" type="button">Cancelar</button>
+              </div>
             </div>
           </div>
         </section>
@@ -649,6 +725,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260218c"></script>
+    <script type="module" src="js/main.js?v=20250218d"></script>
   </body>
 </html>

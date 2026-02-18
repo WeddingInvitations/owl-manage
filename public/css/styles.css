@@ -149,9 +149,58 @@ select {
   border: 1px solid var(--primary);
 }
 
+.btn.danger {
+  background: #dc3545;
+  color: white;
+}
+
+.btn.danger:hover {
+  background: #c82333;
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.btn-icon:hover {
+  background: rgba(0,0,0,0.1);
+}
+
+.btn-icon.btn-delete:hover {
+  background: rgba(220, 53, 69, 0.15);
+}
+
+.record-actions {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.list li span {
+  flex: 1;
 }
 
 .summary {

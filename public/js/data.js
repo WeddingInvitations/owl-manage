@@ -3,12 +3,14 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   query,
   orderBy,
   where,
   serverTimestamp,
   doc,
   updateDoc,
+  deleteDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 const monthFormatter = new Intl.DateTimeFormat("es-ES", {
@@ -48,6 +50,28 @@ export async function addPayment(concept, amount, date, userId) {
   });
 }
 
+export async function updatePayment(paymentId, concept, amount, date, userId) {
+  await updateDoc(doc(db, "payments", paymentId), {
+    concept,
+    amount,
+    date,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  });
+}
+
+export async function deletePayment(paymentId) {
+  await deleteDoc(doc(db, "payments", paymentId));
+}
+
+export async function getPayment(paymentId) {
+  const docSnap = await getDoc(doc(db, "payments", paymentId));
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() };
+  }
+  return null;
+}
+
 export async function addExpense(concept, amount, date, userId) {
   await addDoc(collection(db, "expenses"), {
     concept,
@@ -56,6 +80,28 @@ export async function addExpense(concept, amount, date, userId) {
     createdAt: serverTimestamp(),
     createdBy: userId || null,
   });
+}
+
+export async function updateExpense(expenseId, concept, amount, date, userId) {
+  await updateDoc(doc(db, "expenses", expenseId), {
+    concept,
+    amount,
+    date,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  });
+}
+
+export async function deleteExpense(expenseId) {
+  await deleteDoc(doc(db, "expenses", expenseId));
+}
+
+export async function getExpense(expenseId) {
+  const docSnap = await getDoc(doc(db, "expenses", expenseId));
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() };
+  }
+  return null;
 }
 
 export async function addCheckin(name, type, userId) {
@@ -243,7 +289,9 @@ export async function getPaymentMonthsWithAthletes() {
 export async function loadPaymentsWithAthleteTotals(
   target,
   formatCurrency,
-  monthKey = ""
+  monthKey = "",
+  onEdit = null,
+  onDelete = null
 ) {
   if (!target) return;
   const paymentSnap = await getDocs(collection(db, "payments"));
@@ -254,7 +302,7 @@ export async function loadPaymentsWithAthleteTotals(
   paymentSnap.forEach((docSnap) => {
     const data = docSnap.data();
     const date = parseRecordDate(data);
-    items.push({ data, date });
+    items.push({ id: docSnap.id, data, date, editable: true });
   });
 
   const athleteTotals = new Map();
@@ -290,24 +338,28 @@ export async function loadPaymentsWithAthleteTotals(
   athleteTotals.forEach((total, key) => {
     const date = key === "sin-fecha" ? null : new Date(`${key}-01T00:00:00`);
     items.push({
+      id: null,
       data: {
         concept: "Cuotas atletas (total)",
         date: key === "sin-fecha" ? "" : `${key}-01`,
         amount: total,
       },
       date,
+      editable: false,
     });
   });
 
   acroTotals.forEach((total, key) => {
     const date = key === "sin-fecha" ? null : new Date(`${key}-01T00:00:00`);
     items.push({
+      id: null,
       data: {
         concept: "Cuotas acrobacias (total)",
         date: key === "sin-fecha" ? "" : `${key}-01`,
         amount: total,
       },
       date,
+      editable: false,
     });
   });
 
@@ -333,7 +385,31 @@ export async function loadPaymentsWithAthleteTotals(
       target.appendChild(header);
     }
     const li = document.createElement("li");
-    li.textContent = `${item.data.concept || ""} · ${item.data.date || (item.date ? item.date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(item.data.amount || 0))}`;
+    const textSpan = document.createElement("span");
+    textSpan.textContent = `${item.data.concept || ""} · ${item.data.date || (item.date ? item.date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(item.data.amount || 0))}`;
+    li.appendChild(textSpan);
+    
+    if (item.editable && item.id) {
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "record-actions";
+      
+      const editBtn = document.createElement("button");
+      editBtn.className = "btn-icon btn-edit";
+      editBtn.innerHTML = "✏️";
+      editBtn.title = "Editar";
+      editBtn.onclick = () => onEdit && onEdit(item.id, item.data);
+      
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "btn-icon btn-delete";
+      deleteBtn.innerHTML = "🗑️";
+      deleteBtn.title = "Eliminar";
+      deleteBtn.onclick = () => onDelete && onDelete(item.id, item.data);
+      
+      actionsDiv.appendChild(editBtn);
+      actionsDiv.appendChild(deleteBtn);
+      li.appendChild(actionsDiv);
+    }
+    
     target.appendChild(li);
   });
 }
@@ -351,7 +427,7 @@ export async function getExpenseMonths() {
   return Array.from(months).sort((a, b) => (a < b ? 1 : -1));
 }
 
-export async function loadExpensesForMonth(target, formatCurrency, monthKey = "") {
+export async function loadExpensesForMonth(target, formatCurrency, monthKey = "", onEdit = null, onDelete = null) {
   if (!target) return;
   const expenseSnap = await getDocs(collection(db, "expenses"));
   const items = [];
@@ -359,7 +435,7 @@ export async function loadExpensesForMonth(target, formatCurrency, monthKey = ""
   expenseSnap.forEach((docSnap) => {
     const data = docSnap.data();
     const date = parseRecordDate(data);
-    items.push({ data, date });
+    items.push({ id: docSnap.id, data, date });
   });
 
   const filtered = monthKey
@@ -384,7 +460,31 @@ export async function loadExpensesForMonth(target, formatCurrency, monthKey = ""
       target.appendChild(header);
     }
     const li = document.createElement("li");
-    li.textContent = `${item.data.concept || ""} · ${item.data.date || (item.date ? item.date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(item.data.amount || 0))}`;
+    const textSpan = document.createElement("span");
+    textSpan.textContent = `${item.data.concept || ""} · ${item.data.date || (item.date ? item.date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(item.data.amount || 0))}`;
+    li.appendChild(textSpan);
+    
+    if (item.id) {
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "record-actions";
+      
+      const editBtn = document.createElement("button");
+      editBtn.className = "btn-icon btn-edit";
+      editBtn.innerHTML = "✏️";
+      editBtn.title = "Editar";
+      editBtn.onclick = () => onEdit && onEdit(item.id, item.data);
+      
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "btn-icon btn-delete";
+      deleteBtn.innerHTML = "🗑️";
+      deleteBtn.title = "Eliminar";
+      deleteBtn.onclick = () => onDelete && onDelete(item.id, item.data);
+      
+      actionsDiv.appendChild(editBtn);
+      actionsDiv.appendChild(deleteBtn);
+      li.appendChild(actionsDiv);
+    }
+    
     target.appendChild(li);
   });
 }

@@ -8,7 +8,7 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js?v=20260218a";
+} from "./ui.js?v=20250218d";
 import { bindAuth } from "./auth.js";
 import {
   addPayment,
@@ -35,7 +35,11 @@ import {
   getAllAcroAthleteMonths,
   getAcroAthleteMonthsForMonth,
   upsertAcroAthleteMonth,
-} from "./data.js?v=20250206u";
+  updatePayment,
+  deletePayment,
+  updateExpense,
+  deleteExpense,
+} from "./data.js?v=20250218d";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -180,7 +184,9 @@ async function refreshPaymentList() {
   await loadPaymentsWithAthleteTotals(
     ui.paymentList,
     formatCurrency,
-    selectedPaymentMonth
+    selectedPaymentMonth,
+    handleEditPayment,
+    handleDeletePayment
   );
 }
 
@@ -196,7 +202,9 @@ async function refreshExpenseList() {
   await loadExpensesForMonth(
     ui.expenseList,
     formatCurrency,
-    selectedExpenseMonth
+    selectedExpenseMonth,
+    handleEditExpense,
+    handleDeleteExpense
   );
 }
 
@@ -1277,6 +1285,118 @@ on(ui.paymentForm, "submit", async (event) => {
   );
   ui.paymentForm.reset();
   await refreshAll();
+});
+
+// Payment Edit/Delete handlers
+function handleEditPayment(paymentId, paymentData) {
+  ui.paymentEditId.value = paymentId;
+  ui.paymentEditConcept.value = paymentData.concept || "";
+  ui.paymentEditDate.value = paymentData.date || "";
+  ui.paymentEditAmount.value = paymentData.amount || 0;
+  ui.paymentEditModal?.classList.remove("hidden");
+}
+
+function handleDeletePayment(paymentId, paymentData) {
+  ui.paymentDeleteId.value = paymentId;
+  ui.paymentDeleteInfo.textContent = `${paymentData.concept || ""} · ${paymentData.date || ""} · ${formatCurrency(Number(paymentData.amount || 0))}`;
+  ui.paymentDeleteModal?.classList.remove("hidden");
+}
+
+on(ui.paymentEditClose, "click", () => {
+  ui.paymentEditModal?.classList.add("hidden");
+});
+
+on(ui.paymentEditForm, "submit", async (event) => {
+  event.preventDefault();
+  const paymentId = ui.paymentEditId.value;
+  if (!paymentId) return;
+  try {
+    await updatePayment(
+      paymentId,
+      ui.paymentEditConcept.value,
+      Number(ui.paymentEditAmount.value),
+      ui.paymentEditDate.value,
+      currentUser?.uid
+    );
+    ui.paymentEditModal?.classList.add("hidden");
+    await refreshAll();
+  } catch (error) {
+    console.error("Error updating payment:", error);
+    alert("Error al actualizar el ingreso: " + (error.message || error));
+  }
+});
+
+on(ui.paymentDeleteConfirm, "click", async () => {
+  const paymentId = ui.paymentDeleteId.value;
+  if (!paymentId) return;
+  try {
+    await deletePayment(paymentId);
+    ui.paymentDeleteModal?.classList.add("hidden");
+    await refreshAll();
+  } catch (error) {
+    console.error("Error deleting payment:", error);
+    alert("Error al eliminar el ingreso: " + (error.message || error));
+  }
+});
+
+on(ui.paymentDeleteCancel, "click", () => {
+  ui.paymentDeleteModal?.classList.add("hidden");
+});
+
+// Expense Edit/Delete handlers
+function handleEditExpense(expenseId, expenseData) {
+  ui.expenseEditId.value = expenseId;
+  ui.expenseEditConcept.value = expenseData.concept || "";
+  ui.expenseEditDate.value = expenseData.date || "";
+  ui.expenseEditAmount.value = expenseData.amount || 0;
+  ui.expenseEditModal?.classList.remove("hidden");
+}
+
+function handleDeleteExpense(expenseId, expenseData) {
+  ui.expenseDeleteId.value = expenseId;
+  ui.expenseDeleteInfo.textContent = `${expenseData.concept || ""} · ${expenseData.date || ""} · ${formatCurrency(Number(expenseData.amount || 0))}`;
+  ui.expenseDeleteModal?.classList.remove("hidden");
+}
+
+on(ui.expenseEditClose, "click", () => {
+  ui.expenseEditModal?.classList.add("hidden");
+});
+
+on(ui.expenseEditForm, "submit", async (event) => {
+  event.preventDefault();
+  const expenseId = ui.expenseEditId.value;
+  if (!expenseId) return;
+  try {
+    await updateExpense(
+      expenseId,
+      ui.expenseEditConcept.value,
+      Number(ui.expenseEditAmount.value),
+      ui.expenseEditDate.value,
+      currentUser?.uid
+    );
+    ui.expenseEditModal?.classList.add("hidden");
+    await refreshAll();
+  } catch (error) {
+    console.error("Error updating expense:", error);
+    alert("Error al actualizar el gasto: " + (error.message || error));
+  }
+});
+
+on(ui.expenseDeleteConfirm, "click", async () => {
+  const expenseId = ui.expenseDeleteId.value;
+  if (!expenseId) return;
+  try {
+    await deleteExpense(expenseId);
+    ui.expenseDeleteModal?.classList.add("hidden");
+    await refreshAll();
+  } catch (error) {
+    console.error("Error deleting expense:", error);
+    alert("Error al eliminar el gasto: " + (error.message || error));
+  }
+});
+
+on(ui.expenseDeleteCancel, "click", () => {
+  ui.expenseDeleteModal?.classList.add("hidden");
 });
 
 // Payment CSV handlers
