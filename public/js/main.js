@@ -8,7 +8,7 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js";
+} from "./ui.js?v=20260218a";
 import { bindAuth } from "./auth.js";
 import {
   addPayment,
