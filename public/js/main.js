@@ -1178,13 +1178,40 @@ function parsePaymentExpenseCsvRows(content) {
   // Ignorar primera fila (cabecera)
   const dataLines = lines.slice(1);
   return dataLines.map((line) => {
-    // Manejar CSV con comillas
-    const values = line.match(/("([^"]|"")*"|[^,]*)/g) || [];
-    const cleaned = values.map((v) => v.trim().replace(/^"|"$/g, "").replace(/""/g, '"'));
+    // Manejar CSV con comillas y sin comillas
+    const values = [];
+    let current = "";
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        values.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    values.push(current.trim());
+    
+    // Limpiar comillas externas
+    const cleaned = values.map((v) => v.replace(/^"|"$/g, "").trim());
+    
+    // Parsear importe (manejar tanto punto como coma decimal)
+    const amountStr = (cleaned[2] || "0").replace(",", ".");
+    const amount = parseFloat(amountStr) || 0;
+    
     return {
       concept: cleaned[0] || "",
       date: cleaned[1] || "",
-      amount: parseFloat(cleaned[2]) || 0,
+      amount,
     };
   });
 }
@@ -1192,13 +1219,23 @@ function parsePaymentExpenseCsvRows(content) {
 async function importPaymentsFromCsv(file) {
   const text = await file.text();
   const rows = parsePaymentExpenseCsvRows(text);
+  console.log("Rows parsed:", rows);
   if (rows.length === 0) {
     throw new Error("CSV vacío o sin datos (solo cabecera)");
   }
   let processed = 0;
   for (const row of rows) {
-    if (!row.concept || !row.date || row.amount <= 0) continue;
+    console.log("Processing row:", row);
+    if (!row.concept || !row.date) {
+      console.log("Skipping - missing concept or date");
+      continue;
+    }
+    if (row.amount <= 0) {
+      console.log("Skipping - amount <= 0:", row.amount);
+      continue;
+    }
     await addPayment(row.concept, row.amount, row.date, currentUser?.uid);
+    console.log("Added payment:", row);
     processed += 1;
   }
   return processed;
@@ -1207,13 +1244,23 @@ async function importPaymentsFromCsv(file) {
 async function importExpensesFromCsv(file) {
   const text = await file.text();
   const rows = parsePaymentExpenseCsvRows(text);
+  console.log("Rows parsed:", rows);
   if (rows.length === 0) {
     throw new Error("CSV vacío o sin datos (solo cabecera)");
   }
   let processed = 0;
   for (const row of rows) {
-    if (!row.concept || !row.date || row.amount <= 0) continue;
+    console.log("Processing row:", row);
+    if (!row.concept || !row.date) {
+      console.log("Skipping - missing concept or date");
+      continue;
+    }
+    if (row.amount <= 0) {
+      console.log("Skipping - amount <= 0:", row.amount);
+      continue;
+    }
     await addExpense(row.concept, row.amount, row.date, currentUser?.uid);
+    console.log("Added expense:", row);
     processed += 1;
   }
   return processed;
