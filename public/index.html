@@ -116,7 +116,11 @@
           <div class="card">
             <div class="detail-header">
               <h2>Contabilidad · Ingresos</h2>
-              <select id="paymentMonthSelect"></select>
+              <div class="filter-row">
+                <select id="paymentMonthSelect"></select>
+                <button id="paymentCsvOpen" class="btn ghost small" type="button" title="Importar CSV">📄 CSV</button>
+                <button id="paymentTemplateDownload" class="btn ghost small" type="button" title="Descargar plantilla">⬇ Plantilla</button>
+              </div>
             </div>
             <form id="paymentForm" class="stack">
               <label>
@@ -135,13 +139,34 @@
             </form>
             <ul id="paymentList" class="list"></ul>
           </div>
+          <div id="paymentCsvModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Importar ingresos desde CSV</h3>
+                <button id="paymentCsvClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="paymentCsvForm" class="stack">
+                <p class="muted">El CSV debe tener 3 columnas: Concepto, Fecha (YYYY-MM-DD), Importe. La primera fila (cabecera) se ignorará.</p>
+                <label>
+                  Archivo CSV
+                  <input id="paymentCsvFile" type="file" accept=".csv,text/csv" required />
+                </label>
+                <button class="btn" type="submit">Importar</button>
+                <p id="paymentCsvStatus" class="muted"></p>
+              </form>
+            </div>
+          </div>
         </section>
 
         <section id="expensesView" class="view hidden">
           <div class="card">
             <div class="detail-header">
               <h2>Contabilidad · Gastos</h2>
-              <select id="expenseMonthSelect"></select>
+              <div class="filter-row">
+                <select id="expenseMonthSelect"></select>
+                <button id="expenseCsvOpen" class="btn ghost small" type="button" title="Importar CSV">📄 CSV</button>
+                <button id="expenseTemplateDownload" class="btn ghost small" type="button" title="Descargar plantilla">⬇ Plantilla</button>
+              </div>
             </div>
             <form id="expenseForm" class="stack">
               <label>
@@ -159,6 +184,23 @@
               <button class="btn" type="submit">Registrar gasto</button>
             </form>
             <ul id="expenseList" class="list"></ul>
+          </div>
+          <div id="expenseCsvModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Importar gastos desde CSV</h3>
+                <button id="expenseCsvClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="expenseCsvForm" class="stack">
+                <p class="muted">El CSV debe tener 3 columnas: Concepto, Fecha (YYYY-MM-DD), Importe. La primera fila (cabecera) se ignorará.</p>
+                <label>
+                  Archivo CSV
+                  <input id="expenseCsvFile" type="file" accept=".csv,text/csv" required />
+                </label>
+                <button class="btn" type="submit">Importar</button>
+                <p id="expenseCsvStatus" class="muted"></p>
+              </form>
+            </div>
           </div>
         </section>
 
@@ -607,6 +649,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20260206j"></script>
+    <script type="module" src="js/main.js?v=20260218a"></script>
   </body>
 </html>

@@ -1148,6 +1148,77 @@ bindAuth(
   setAuthUI
 );
 
+// ---------- Funciones de importación CSV para pagos/gastos ----------
+
+function downloadCsvTemplate(filename, type) {
+  const headers = ["Concepto", "Fecha", "Importe"];
+  const exampleRow = type === "payment" 
+    ? ["Cuota mensual", "2026-02-01", "50.00"]
+    : ["Material oficina", "2026-02-01", "25.00"];
+  
+  const csv = [headers, exampleRow]
+    .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+  
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function parsePaymentExpenseCsvRows(content) {
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length <= 1) return []; // Solo cabecera o vacío
+  // Ignorar primera fila (cabecera)
+  const dataLines = lines.slice(1);
+  return dataLines.map((line) => {
+    // Manejar CSV con comillas
+    const values = line.match(/("([^"]|"")*"|[^,]*)/g) || [];
+    const cleaned = values.map((v) => v.trim().replace(/^"|"$/g, "").replace(/""/g, '"'));
+    return {
+      concept: cleaned[0] || "",
+      date: cleaned[1] || "",
+      amount: parseFloat(cleaned[2]) || 0,
+    };
+  });
+}
+
+async function importPaymentsFromCsv(file) {
+  const text = await file.text();
+  const rows = parsePaymentExpenseCsvRows(text);
+  if (rows.length === 0) {
+    throw new Error("CSV vacío o sin datos (solo cabecera)");
+  }
+  let processed = 0;
+  for (const row of rows) {
+    if (!row.concept || !row.date || row.amount <= 0) continue;
+    await addPayment(row.concept, row.amount, row.date, currentUser?.uid);
+    processed += 1;
+  }
+  return processed;
+}
+
+async function importExpensesFromCsv(file) {
+  const text = await file.text();
+  const rows = parsePaymentExpenseCsvRows(text);
+  if (rows.length === 0) {
+    throw new Error("CSV vacío o sin datos (solo cabecera)");
+  }
+  let processed = 0;
+  for (const row of rows) {
+    if (!row.concept || !row.date || row.amount <= 0) continue;
+    await addExpense(row.concept, row.amount, row.date, currentUser?.uid);
+    processed += 1;
+  }
+  return processed;
+}
+
 // ---------- Formularios ----------
 on(ui.paymentForm, "submit", async (event) => {
   event.preventDefault();
@@ -1161,6 +1232,34 @@ on(ui.paymentForm, "submit", async (event) => {
   await refreshAll();
 });
 
+// Payment CSV handlers
+on(ui.paymentCsvOpen, "click", () => {
+  ui.paymentCsvModal?.classList.remove("hidden");
+});
+
+on(ui.paymentCsvClose, "click", () => {
+  ui.paymentCsvModal?.classList.add("hidden");
+});
+
+on(ui.paymentCsvForm, "submit", async (event) => {
+  event.preventDefault();
+  if (!ui.paymentCsvFile?.files?.length) return;
+  ui.paymentCsvStatus.textContent = "Importando...";
+  try {
+    const processed = await importPaymentsFromCsv(ui.paymentCsvFile.files[0]);
+    ui.paymentCsvStatus.textContent = `Importados ${processed} ingresos.`;
+    ui.paymentCsvForm.reset();
+    ui.paymentCsvModal?.classList.add("hidden");
+    await refreshAll();
+  } catch (error) {
+    ui.paymentCsvStatus.textContent = `Error: ${error.message || error}`;
+  }
+});
+
+on(ui.paymentTemplateDownload, "click", () => {
+  downloadCsvTemplate("plantilla-ingresos.csv", "payment");
+});
+
 on(ui.expenseForm, "submit", async (event) => {
   event.preventDefault();
   await addExpense(
@@ -1171,6 +1270,34 @@ on(ui.expenseForm, "submit", async (event) => {
   );
   ui.expenseForm.reset();
   await refreshAll();
+});
+
+// Expense CSV handlers
+on(ui.expenseCsvOpen, "click", () => {
+  ui.expenseCsvModal?.classList.remove("hidden");
+});
+
+on(ui.expenseCsvClose, "click", () => {
+  ui.expenseCsvModal?.classList.add("hidden");
+});
+
+on(ui.expenseCsvForm, "submit", async (event) => {
+  event.preventDefault();
+  if (!ui.expenseCsvFile?.files?.length) return;
+  ui.expenseCsvStatus.textContent = "Importando...";
+  try {
+    const processed = await importExpensesFromCsv(ui.expenseCsvFile.files[0]);
+    ui.expenseCsvStatus.textContent = `Importados ${processed} gastos.`;
+    ui.expenseCsvForm.reset();
+    ui.expenseCsvModal?.classList.add("hidden");
+    await refreshAll();
+  } catch (error) {
+    ui.expenseCsvStatus.textContent = `Error: ${error.message || error}`;
+  }
+});
+
+on(ui.expenseTemplateDownload, "click", () => {
+  downloadCsvTemplate("plantilla-gastos.csv", "expense");
 });
 
 on(ui.checkinForm, "submit", async (event) => {
