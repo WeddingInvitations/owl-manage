@@ -8,7 +8,7 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js?v=20250219b";
+} from "./ui.js?v=20250219c";
 import { bindAuth } from "./auth.js";
 import {
   addPayment,
@@ -44,7 +44,7 @@ import {
   deletePayment,
   updateExpense,
   deleteExpense,
-} from "./data.js?v=20250219b";
+} from "./data.js?v=20250219c";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -1798,6 +1798,165 @@ async function refreshCheckinAdmin() {
 on(ui.checkinAdminMonthSelect, "change", async (event) => {
   selectedCheckinAdminMonth = event.target.value;
   await refreshCheckinAdmin();
+});
+
+// Checkin Download handlers
+function renderCheckinDownloadOptions() {
+  // Render month options (last 24 months)
+  if (ui.checkinDownloadMonth) {
+    const now = new Date();
+    ui.checkinDownloadMonth.innerHTML = "";
+    for (let i = 0; i < 24; i += 1) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = getMonthKey(date);
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = getMonthLabel(key);
+      ui.checkinDownloadMonth.appendChild(option);
+    }
+  }
+  
+  // Render year options (current year and 2 previous)
+  if (ui.checkinDownloadYear) {
+    const currentYear = new Date().getFullYear();
+    ui.checkinDownloadYear.innerHTML = "";
+    for (let i = 0; i < 3; i += 1) {
+      const year = currentYear - i;
+      const option = document.createElement("option");
+      option.value = String(year);
+      option.textContent = String(year);
+      ui.checkinDownloadYear.appendChild(option);
+    }
+  }
+}
+
+on(ui.checkinDownloadBtn, "click", () => {
+  renderCheckinDownloadOptions();
+  ui.checkinDownloadModal?.classList.remove("hidden");
+});
+
+on(ui.checkinDownloadClose, "click", () => {
+  ui.checkinDownloadModal?.classList.add("hidden");
+});
+
+on(ui.checkinDownloadType, "change", (event) => {
+  const type = event.target.value;
+  if (type === "monthly") {
+    ui.checkinDownloadMonthly?.classList.remove("hidden");
+    ui.checkinDownloadYearly?.classList.add("hidden");
+  } else {
+    ui.checkinDownloadMonthly?.classList.add("hidden");
+    ui.checkinDownloadYearly?.classList.remove("hidden");
+  }
+});
+
+on(ui.checkinDownloadConfirm, "click", async () => {
+  const type = ui.checkinDownloadType?.value || "monthly";
+  const allCheckins = await getAllCheckins();
+  
+  let filteredCheckins;
+  let filename;
+  
+  if (type === "monthly") {
+    const selectedMonth = ui.checkinDownloadMonth?.value || "";
+    filteredCheckins = allCheckins.filter((checkin) => {
+      const checkInTime = checkin.checkInTime?.toDate?.();
+      if (!checkInTime) return false;
+      return getMonthKey(checkInTime) === selectedMonth;
+    });
+    filename = `fichajes-${selectedMonth}.csv`;
+  } else {
+    const selectedYear = ui.checkinDownloadYear?.value || "";
+    filteredCheckins = allCheckins.filter((checkin) => {
+      const checkInTime = checkin.checkInTime?.toDate?.();
+      if (!checkInTime) return false;
+      return String(checkInTime.getFullYear()) === selectedYear;
+    });
+    filename = `fichajes-${selectedYear}.csv`;
+  }
+  
+  // Sort by date
+  filteredCheckins.sort((a, b) => {
+    const aTime = a.checkInTime?.toMillis?.() || 0;
+    const bTime = b.checkInTime?.toMillis?.() || 0;
+    return aTime - bTime;
+  });
+  
+  // Generate CSV
+  const rows = [
+    ["Trabajador", "Fecha", "Entrada", "Salida", "Duración (horas)", "Duración (minutos)", "Estado"],
+  ];
+  
+  filteredCheckins.forEach((checkin) => {
+    const checkInTime = checkin.checkInTime?.toDate?.();
+    const checkOutTime = checkin.checkOutTime?.toDate?.();
+    const email = checkin.userEmail || checkin.userId || "Desconocido";
+    const status = checkin.status === "open" ? "Abierto" : "Cerrado";
+    
+    const dateStr = checkInTime ? checkInTime.toLocaleDateString("es-ES") : "";
+    const inTimeStr = checkInTime ? checkInTime.toLocaleTimeString("es-ES") : "";
+    const outTimeStr = checkOutTime ? checkOutTime.toLocaleTimeString("es-ES") : "";
+    
+    let durationHours = "";
+    let durationMinutes = "";
+    if (checkInTime && checkOutTime) {
+      const durationMs = checkOutTime.getTime() - checkInTime.getTime();
+      const totalMinutes = Math.floor(durationMs / 60000);
+      durationHours = (totalMinutes / 60).toFixed(2);
+      durationMinutes = String(totalMinutes);
+    }
+    
+    rows.push([email, dateStr, inTimeStr, outTimeStr, durationHours, durationMinutes, status]);
+  });
+  
+  // Add summary by worker
+  rows.push([]);
+  rows.push(["RESUMEN POR TRABAJADOR"]);
+  rows.push(["Trabajador", "Fichajes", "Horas totales", "Media por día"]);
+  
+  const workerStats = new Map();
+  filteredCheckins.forEach((checkin) => {
+    const email = checkin.userEmail || checkin.userId || "Desconocido";
+    const checkInTime = checkin.checkInTime?.toDate?.();
+    const checkOutTime = checkin.checkOutTime?.toDate?.();
+    
+    if (!workerStats.has(email)) {
+      workerStats.set(email, { count: 0, totalDuration: 0, days: new Set() });
+    }
+    
+    const stats = workerStats.get(email);
+    stats.count += 1;
+    
+    if (checkInTime && checkOutTime) {
+      const duration = checkOutTime.getTime() - checkInTime.getTime();
+      stats.totalDuration += duration;
+      stats.days.add(checkInTime.toDateString());
+    }
+  });
+  
+  workerStats.forEach((stats, email) => {
+    const totalHours = (stats.totalDuration / 3600000).toFixed(2);
+    const avgHours = stats.days.size > 0 
+      ? (stats.totalDuration / stats.days.size / 3600000).toFixed(2)
+      : "0.00";
+    rows.push([email, String(stats.count), totalHours, avgHours]);
+  });
+  
+  const csv = rows
+    .map((row) =>
+      row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")
+    )
+    .join("\n");
+  
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+  
+  ui.checkinDownloadModal?.classList.add("hidden");
 });
 
 on(ui.trainingForm, "submit", async (event) => {

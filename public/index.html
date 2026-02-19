@@ -341,6 +341,7 @@
               <h2>Fichajes de trabajadores</h2>
               <div class="filter-row">
                 <select id="checkinAdminMonthSelect"></select>
+                <button id="checkinDownloadBtn" class="btn ghost small" type="button" title="Descargar fichajes">⬇ Descargar</button>
               </div>
             </div>
             <div class="checkin-admin-summary">
@@ -381,6 +382,38 @@
                 </thead>
                 <tbody id="checkinAdminSummaryList"></tbody>
               </table>
+            </div>
+          </div>
+          
+          <!-- Download modal -->
+          <div id="checkinDownloadModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Descargar fichajes</h3>
+                <button id="checkinDownloadClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <div class="stack">
+                <label>
+                  Tipo de descarga
+                  <select id="checkinDownloadType">
+                    <option value="monthly">Mensual</option>
+                    <option value="yearly">Anual</option>
+                  </select>
+                </label>
+                <div id="checkinDownloadMonthly">
+                  <label>
+                    Mes
+                    <select id="checkinDownloadMonth"></select>
+                  </label>
+                </div>
+                <div id="checkinDownloadYearly" class="hidden">
+                  <label>
+                    Año
+                    <select id="checkinDownloadYear"></select>
+                  </label>
+                </div>
+                <button id="checkinDownloadConfirm" class="btn" type="button">Descargar CSV</button>
+              </div>
             </div>
           </div>
         </section>
@@ -809,6 +842,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20250219b"></script>
+    <script type="module" src="js/main.js?v=20250219c"></script>
   </body>
 </html>
