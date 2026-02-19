@@ -283,6 +283,88 @@ select {
   margin-top: 4px;
 }
 
+/* Checkin edit and history modals */
+.checkin-edit-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.checkin-edit-info span {
+  font-size: 14px;
+}
+
+#checkinEditReason {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.modal-large {
+  max-width: 700px;
+}
+
+.checkin-history-info {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.checkin-history-info div {
+  font-size: 14px;
+}
+
+.checkin-device-info {
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.checkin-device-info h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.checkin-device-info div {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.actions-cell {
+  white-space: nowrap;
+}
+
+.actions-cell .btn {
+  padding: 4px 8px;
+  margin: 0 2px;
+}
+
+.checkin-history-btn.has-history {
+  background-color: var(--primary);
+  color: white;
+  border-radius: 4px;
+}
+
+.empty-state {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.required {
+  color: var(--danger, #e53e3e);
+}
+
 .checkin-status,
 .checkin-closed-status {
   background: var(--card);

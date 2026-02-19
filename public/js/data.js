@@ -11,6 +11,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 const monthFormatter = new Intl.DateTimeFormat("es-ES", {
@@ -104,7 +105,7 @@ export async function getExpense(expenseId) {
   return null;
 }
 
-export async function openCheckin(userId, userEmail, userName = "") {
+export async function openCheckin(userId, userEmail, userName = "", deviceInfo = {}) {
   const docRef = await addDoc(collection(db, "checkins"), {
     userId,
     userEmail,
@@ -113,15 +114,130 @@ export async function openCheckin(userId, userEmail, userName = "") {
     checkOutTime: null,
     status: "open",
     createdAt: serverTimestamp(),
+    // Device/IP info
+    deviceInfo: {
+      userAgent: deviceInfo.userAgent || navigator.userAgent || "",
+      platform: deviceInfo.platform || navigator.platform || "",
+      language: deviceInfo.language || navigator.language || "",
+      screenWidth: deviceInfo.screenWidth || window.screen?.width || 0,
+      screenHeight: deviceInfo.screenHeight || window.screen?.height || 0,
+    },
+    // Audit trail - original values preserved
+    originalCheckInTime: null, // Will be set by trigger or stays null if never modified
+    modificationHistory: [], // Array of modification records
   });
   return docRef.id;
 }
 
-export async function closeCheckin(checkinId) {
+export async function closeCheckin(checkinId, deviceInfo = {}) {
   const ref = doc(db, "checkins", checkinId);
   await updateDoc(ref, {
     checkOutTime: serverTimestamp(),
     status: "closed",
+    closeDeviceInfo: {
+      userAgent: deviceInfo.userAgent || navigator.userAgent || "",
+      platform: deviceInfo.platform || navigator.platform || "",
+      language: deviceInfo.language || navigator.language || "",
+      screenWidth: deviceInfo.screenWidth || window.screen?.width || 0,
+      screenHeight: deviceInfo.screenHeight || window.screen?.height || 0,
+    },
+  });
+}
+
+// Modify a checkin with full audit trail
+export async function modifyCheckin(checkinId, updates, modifiedBy, reason) {
+  const ref = doc(db, "checkins", checkinId);
+  const docSnap = await getDoc(ref);
+  
+  if (!docSnap.exists()) {
+    throw new Error("Fichaje no encontrado");
+  }
+  
+  const currentData = docSnap.data();
+  const now = new Date();
+  
+  // Build modification record
+  const modificationRecord = {
+    modifiedAt: now.toISOString(),
+    modifiedBy: modifiedBy, // userId or email of modifier
+    reason: reason || "",
+    previousValues: {},
+  };
+  
+  // Store previous values for audit
+  if (updates.checkInTime !== undefined) {
+    modificationRecord.previousValues.checkInTime = currentData.checkInTime?.toDate?.()?.toISOString() || null;
+  }
+  if (updates.checkOutTime !== undefined) {
+    modificationRecord.previousValues.checkOutTime = currentData.checkOutTime?.toDate?.()?.toISOString() || null;
+  }
+  if (updates.status !== undefined) {
+    modificationRecord.previousValues.status = currentData.status;
+  }
+  
+  // Preserve original checkInTime if this is first modification
+  const originalCheckInTime = currentData.originalCheckInTime || 
+    (currentData.checkInTime?.toDate?.()?.toISOString() || null);
+  
+  // Get existing modification history
+  const existingHistory = currentData.modificationHistory || [];
+  
+  // Convert Date objects to Firestore Timestamps
+  const firestoreUpdates = { ...updates };
+  if (updates.checkInTime instanceof Date) {
+    firestoreUpdates.checkInTime = Timestamp.fromDate(updates.checkInTime);
+  }
+  if (updates.checkOutTime instanceof Date) {
+    firestoreUpdates.checkOutTime = Timestamp.fromDate(updates.checkOutTime);
+  }
+  
+  // Prepare update object
+  const updateData = {
+    ...firestoreUpdates,
+    originalCheckInTime,
+    modificationHistory: [...existingHistory, modificationRecord],
+    lastModifiedAt: serverTimestamp(),
+    lastModifiedBy: modifiedBy,
+  };
+  
+  await updateDoc(ref, updateData);
+  return { id: checkinId, ...currentData, ...updateData };
+}
+
+// Get checkin with full details including modification history
+export async function getCheckinWithHistory(checkinId) {
+  const docSnap = await getDoc(doc(db, "checkins", checkinId));
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() };
+  }
+  return null;
+}
+
+// Get checkins for a specific user in a date range (for export)
+export async function getCheckinsForUserInRange(userId, startDate, endDate) {
+  const q = query(
+    collection(db, "checkins"),
+    where("userId", "==", userId)
+  );
+  const snap = await getDocs(q);
+  const checkins = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  
+  return checkins.filter((c) => {
+    const checkInTime = c.checkInTime?.toDate?.();
+    if (!checkInTime) return false;
+    return checkInTime >= startDate && checkInTime <= endDate;
+  });
+}
+
+// Get all checkins in a date range (for admin export)
+export async function getAllCheckinsInRange(startDate, endDate) {
+  const snap = await getDocs(collection(db, "checkins"));
+  const checkins = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  
+  return checkins.filter((c) => {
+    const checkInTime = c.checkInTime?.toDate?.();
+    if (!checkInTime) return false;
+    return checkInTime >= startDate && checkInTime <= endDate;
   });
 }
 

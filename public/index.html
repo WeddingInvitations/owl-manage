@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#151824" />
     <title>OwlManage</title>
-    <link rel="stylesheet" href="css/styles.css?v=20250219c" />
+    <link rel="stylesheet" href="css/styles.css?v=20250219f" />
   </head>
   <body class="dark">
     <header class="app-header">
@@ -385,6 +385,7 @@
                     <th>Salida</th>
                     <th>Duración</th>
                     <th>Estado</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody id="checkinAdminList"></tbody>
@@ -433,7 +434,91 @@
                     <select id="checkinDownloadYear"></select>
                   </label>
                 </div>
-                <button id="checkinDownloadConfirm" class="btn" type="button">Descargar Excel</button>
+                <label>
+                  Trabajador (opcional)
+                  <select id="checkinDownloadWorker">
+                    <option value="">Todos los trabajadores</option>
+                  </select>
+                </label>
+                <label>
+                  Formato
+                  <select id="checkinDownloadFormat">
+                    <option value="excel">Excel (.xlsx)</option>
+                    <option value="csv">CSV (.csv)</option>
+                    <option value="pdf">PDF (.pdf)</option>
+                  </select>
+                </label>
+                <button id="checkinDownloadConfirm" class="btn" type="button">Descargar</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Edit checkin modal -->
+          <div id="checkinEditModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Editar fichaje</h3>
+                <button id="checkinEditClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="checkinEditForm" class="stack">
+                <input type="hidden" id="checkinEditId" />
+                <div class="checkin-edit-info">
+                  <span><strong>Trabajador:</strong> <span id="checkinEditWorker">-</span></span>
+                  <span><strong>Fecha original:</strong> <span id="checkinEditOriginalDate">-</span></span>
+                </div>
+                <label>
+                  Hora de entrada
+                  <input type="datetime-local" id="checkinEditIn" required />
+                </label>
+                <label>
+                  Hora de salida
+                  <input type="datetime-local" id="checkinEditOut" />
+                </label>
+                <label>
+                  Motivo del cambio <span class="required">*</span>
+                  <textarea id="checkinEditReason" required placeholder="Explica el motivo de la modificación..."></textarea>
+                </label>
+                <div class="btn-group">
+                  <button class="btn" type="submit">Guardar cambios</button>
+                  <button id="checkinEditCancelBtn" class="btn ghost" type="button">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          
+          <!-- Checkin history modal -->
+          <div id="checkinHistoryModal" class="modal hidden">
+            <div class="modal-content card modal-large">
+              <div class="detail-header">
+                <h3>Historial de modificaciones</h3>
+                <button id="checkinHistoryClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <div class="checkin-history-info">
+                <div><strong>Trabajador:</strong> <span id="checkinHistoryWorker">-</span></div>
+                <div><strong>Entrada original:</strong> <span id="checkinHistoryOriginal">-</span></div>
+                <div><strong>Entrada actual:</strong> <span id="checkinHistoryCurrent">-</span></div>
+                <div><strong>Salida actual:</strong> <span id="checkinHistoryOut">-</span></div>
+              </div>
+              <div class="checkin-device-info">
+                <h4>Información del dispositivo</h4>
+                <div id="checkinHistoryDevice">-</div>
+              </div>
+              <h4>Modificaciones</h4>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Modificado por</th>
+                      <th>Motivo</th>
+                      <th>Valores anteriores</th>
+                    </tr>
+                  </thead>
+                  <tbody id="checkinHistoryList"></tbody>
+                </table>
+              </div>
+              <div id="checkinHistoryEmpty" class="empty-state hidden">
+                <p>Este fichaje no ha sido modificado.</p>
               </div>
             </div>
           </div>
@@ -864,6 +949,7 @@
     </div>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <script type="module" src="js/main.js?v=20250219e"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script type="module" src="js/main.js?v=20250219f"></script>
   </body>
 </html>

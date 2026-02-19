@@ -8,13 +8,17 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js?v=20250219d";
-import { bindAuth, updateUserProfile } from "./auth.js?v=20250219a";
+} from "./ui.js?v=20250219f";
+import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import {
   addPayment,
   addExpense,
   openCheckin,
   closeCheckin,
+  modifyCheckin,
+  getCheckinWithHistory,
+  getCheckinsForUserInRange,
+  getAllCheckinsInRange,
   getOpenCheckinForUser,
   getLastCheckinForUser,
   getCheckinsForUser,
@@ -44,7 +48,7 @@ import {
   deletePayment,
   updateExpense,
   deleteExpense,
-} from "./data.js?v=20250219c";
+} from "./data.js?v=20250219f";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -1636,11 +1640,23 @@ async function refreshCheckinHistory() {
   });
 }
 
+// Helper to get device info
+function getDeviceInfo() {
+  return {
+    userAgent: navigator.userAgent || "",
+    platform: navigator.platform || "",
+    language: navigator.language || "",
+    screenWidth: window.screen?.width || 0,
+    screenHeight: window.screen?.height || 0,
+  };
+}
+
 on(ui.checkinOpenBtn, "click", async () => {
   if (!currentUser) return;
   try {
     const fullName = [currentProfile?.firstName, currentProfile?.lastName].filter(Boolean).join(" ");
-    await openCheckin(currentUser.uid, currentUser.email, fullName);
+    const deviceInfo = getDeviceInfo();
+    await openCheckin(currentUser.uid, currentUser.email, fullName, deviceInfo);
     await refreshCheckinStatus();
     await refreshCheckinAdmin();
   } catch (error) {
@@ -1652,7 +1668,8 @@ on(ui.checkinOpenBtn, "click", async () => {
 on(ui.checkinCloseBtn, "click", async () => {
   if (!currentUser || !currentOpenCheckin) return;
   try {
-    await closeCheckin(currentOpenCheckin.id);
+    const deviceInfo = getDeviceInfo();
+    await closeCheckin(currentOpenCheckin.id, deviceInfo);
     await refreshCheckinStatus();
     await refreshCheckinAdmin();
   } catch (error) {
@@ -1805,6 +1822,7 @@ async function refreshCheckinAdmin() {
       const checkOutTime = checkin.checkOutTime?.toDate?.();
       const displayName = checkin.userName || checkin.userEmail || checkin.userId || "Desconocido";
       const status = checkin.status === "open" ? "Abierto" : "Cerrado";
+      const hasModifications = (checkin.modificationHistory && checkin.modificationHistory.length > 0);
       
       let durationText = "-";
       if (checkInTime && checkOutTime) {
@@ -1824,8 +1842,20 @@ async function refreshCheckinAdmin() {
         <td>${outTimeStr}</td>
         <td>${durationText}</td>
         <td><span class="status-badge ${checkin.status}">${status}</span></td>
+        <td class="actions-cell">
+          <button class="btn ghost small checkin-edit-btn" data-id="${checkin.id}" title="Editar">✏️</button>
+          <button class="btn ghost small checkin-history-btn ${hasModifications ? 'has-history' : ''}" data-id="${checkin.id}" title="Ver historial">📋</button>
+        </td>
       `;
       ui.checkinAdminList.appendChild(row);
+    });
+    
+    // Add event listeners for edit and history buttons
+    ui.checkinAdminList.querySelectorAll(".checkin-edit-btn").forEach((btn) => {
+      btn.addEventListener("click", () => openCheckinEditModal(btn.dataset.id));
+    });
+    ui.checkinAdminList.querySelectorAll(".checkin-history-btn").forEach((btn) => {
+      btn.addEventListener("click", () => openCheckinHistoryModal(btn.dataset.id));
     });
   }
   
@@ -1853,6 +1883,203 @@ async function refreshCheckinAdmin() {
 on(ui.checkinAdminMonthSelect, "change", async (event) => {
   selectedCheckinAdminMonth = event.target.value;
   await refreshCheckinAdmin();
+});
+
+// ========== CHECKIN EDIT & HISTORY FUNCTIONS ==========
+
+let checkinEditData = null; // Stores data of checkin being edited
+
+async function openCheckinEditModal(checkinId) {
+  try {
+    const checkin = await getCheckinWithHistory(checkinId);
+    if (!checkin) {
+      alert("No se encontró el fichaje");
+      return;
+    }
+    
+    checkinEditData = checkin;
+    
+    // Populate modal
+    if (ui.checkinEditId) ui.checkinEditId.value = checkinId;
+    if (ui.checkinEditWorker) {
+      ui.checkinEditWorker.textContent = checkin.userName || checkin.userEmail || "Desconocido";
+    }
+    
+    const checkInTime = checkin.checkInTime?.toDate?.();
+    const checkOutTime = checkin.checkOutTime?.toDate?.();
+    
+    if (ui.checkinEditOriginalDate && checkInTime) {
+      ui.checkinEditOriginalDate.textContent = checkInTime.toLocaleString("es-ES");
+    }
+    
+    // Set datetime-local values
+    if (ui.checkinEditIn && checkInTime) {
+      ui.checkinEditIn.value = formatDateTimeLocal(checkInTime);
+    }
+    if (ui.checkinEditOut) {
+      ui.checkinEditOut.value = checkOutTime ? formatDateTimeLocal(checkOutTime) : "";
+    }
+    if (ui.checkinEditReason) ui.checkinEditReason.value = "";
+    
+    ui.checkinEditModal?.classList.remove("hidden");
+  } catch (error) {
+    console.error("Error loading checkin:", error);
+    alert("Error al cargar fichaje: " + (error.message || error));
+  }
+}
+
+function formatDateTimeLocal(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+async function openCheckinHistoryModal(checkinId) {
+  try {
+    const checkin = await getCheckinWithHistory(checkinId);
+    if (!checkin) {
+      alert("No se encontró el fichaje");
+      return;
+    }
+    
+    // Populate header info
+    if (ui.checkinHistoryWorker) {
+      ui.checkinHistoryWorker.textContent = checkin.userName || checkin.userEmail || "Desconocido";
+    }
+    
+    const checkInTime = checkin.checkInTime?.toDate?.();
+    const checkOutTime = checkin.checkOutTime?.toDate?.();
+    const originalTime = checkin.originalCheckInTime 
+      ? new Date(checkin.originalCheckInTime) 
+      : checkInTime;
+    
+    if (ui.checkinHistoryOriginal) {
+      ui.checkinHistoryOriginal.textContent = originalTime ? originalTime.toLocaleString("es-ES") : "-";
+    }
+    if (ui.checkinHistoryCurrent) {
+      ui.checkinHistoryCurrent.textContent = checkInTime ? checkInTime.toLocaleString("es-ES") : "-";
+    }
+    if (ui.checkinHistoryOut) {
+      ui.checkinHistoryOut.textContent = checkOutTime ? checkOutTime.toLocaleString("es-ES") : "-";
+    }
+    
+    // Device info
+    if (ui.checkinHistoryDevice) {
+      const deviceInfo = checkin.deviceInfo;
+      if (deviceInfo && deviceInfo.userAgent) {
+        const platform = deviceInfo.platform || "Desconocido";
+        const browser = deviceInfo.userAgent.split(" ").slice(-1)[0] || "Desconocido";
+        const screen = deviceInfo.screenWidth && deviceInfo.screenHeight 
+          ? `${deviceInfo.screenWidth}x${deviceInfo.screenHeight}` 
+          : "Desconocido";
+        ui.checkinHistoryDevice.innerHTML = `
+          <div><strong>Plataforma:</strong> ${platform}</div>
+          <div><strong>Navegador:</strong> ${browser}</div>
+          <div><strong>Pantalla:</strong> ${screen}</div>
+          <div><strong>Idioma:</strong> ${deviceInfo.language || "-"}</div>
+        `;
+      } else {
+        ui.checkinHistoryDevice.textContent = "No disponible";
+      }
+    }
+    
+    // Modification history
+    const history = checkin.modificationHistory || [];
+    if (ui.checkinHistoryList) {
+      ui.checkinHistoryList.innerHTML = "";
+      
+      if (history.length === 0) {
+        ui.checkinHistoryEmpty?.classList.remove("hidden");
+        ui.checkinHistoryList.closest(".table-responsive")?.classList.add("hidden");
+      } else {
+        ui.checkinHistoryEmpty?.classList.add("hidden");
+        ui.checkinHistoryList.closest(".table-responsive")?.classList.remove("hidden");
+        
+        history.forEach((mod) => {
+          const modDate = new Date(mod.modifiedAt);
+          const prevValues = mod.previousValues || {};
+          let prevText = [];
+          if (prevValues.checkInTime) {
+            prevText.push(`Entrada: ${new Date(prevValues.checkInTime).toLocaleString("es-ES")}`);
+          }
+          if (prevValues.checkOutTime) {
+            prevText.push(`Salida: ${new Date(prevValues.checkOutTime).toLocaleString("es-ES")}`);
+          }
+          if (prevValues.status) {
+            prevText.push(`Estado: ${prevValues.status}`);
+          }
+          
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${modDate.toLocaleString("es-ES")}</td>
+            <td>${mod.modifiedBy || "-"}</td>
+            <td>${mod.reason || "-"}</td>
+            <td>${prevText.join("<br>") || "-"}</td>
+          `;
+          ui.checkinHistoryList.appendChild(row);
+        });
+      }
+    }
+    
+    ui.checkinHistoryModal?.classList.remove("hidden");
+  } catch (error) {
+    console.error("Error loading checkin history:", error);
+    alert("Error al cargar historial: " + (error.message || error));
+  }
+}
+
+// Edit modal handlers
+on(ui.checkinEditClose, "click", () => {
+  ui.checkinEditModal?.classList.add("hidden");
+  checkinEditData = null;
+});
+
+on(ui.checkinEditCancelBtn, "click", () => {
+  ui.checkinEditModal?.classList.add("hidden");
+  checkinEditData = null;
+});
+
+on(ui.checkinEditForm, "submit", async (event) => {
+  event.preventDefault();
+  
+  if (!checkinEditData || !currentUser) return;
+  
+  const checkinId = ui.checkinEditId?.value;
+  const newCheckInTime = ui.checkinEditIn?.value ? new Date(ui.checkinEditIn.value) : null;
+  const newCheckOutTime = ui.checkinEditOut?.value ? new Date(ui.checkinEditOut.value) : null;
+  const reason = ui.checkinEditReason?.value?.trim();
+  
+  if (!reason) {
+    alert("Debes indicar el motivo del cambio");
+    return;
+  }
+  
+  try {
+    const updates = {};
+    if (newCheckInTime) {
+      updates.checkInTime = newCheckInTime;
+    }
+    if (newCheckOutTime) {
+      updates.checkOutTime = newCheckOutTime;
+      updates.status = "closed";
+    }
+    
+    const modifierInfo = currentUser.email || currentUser.uid;
+    await modifyCheckin(checkinId, updates, modifierInfo, reason);
+    
+    ui.checkinEditModal?.classList.add("hidden");
+    checkinEditData = null;
+    
+    await refreshCheckinAdmin();
+    alert("Fichaje modificado correctamente");
+  } catch (error) {
+    console.error("Error updating checkin:", error);
+    alert("Error al modificar fichaje: " + (error.message || error));
+  }
+});
+
+// History modal handler
+on(ui.checkinHistoryClose, "click", () => {
+  ui.checkinHistoryModal?.classList.add("hidden");
 });
 
 // Checkin Download handlers
@@ -1885,8 +2112,27 @@ function renderCheckinDownloadOptions() {
   }
 }
 
-on(ui.checkinDownloadBtn, "click", () => {
+on(ui.checkinDownloadBtn, "click", async () => {
   renderCheckinDownloadOptions();
+  // Populate worker filter
+  if (ui.checkinDownloadWorker) {
+    const allCheckins = await getAllCheckins();
+    const workers = new Map();
+    allCheckins.forEach((c) => {
+      const name = c.userName || c.userEmail || c.userId || "Desconocido";
+      const key = c.userId || c.userEmail;
+      if (!workers.has(key)) {
+        workers.set(key, { id: key, name });
+      }
+    });
+    ui.checkinDownloadWorker.innerHTML = '<option value="">Todos los trabajadores</option>';
+    workers.forEach((w) => {
+      const option = document.createElement("option");
+      option.value = w.id;
+      option.textContent = w.name;
+      ui.checkinDownloadWorker.appendChild(option);
+    });
+  }
   ui.checkinDownloadModal?.classList.remove("hidden");
 });
 
@@ -1907,10 +2153,12 @@ on(ui.checkinDownloadType, "change", (event) => {
 
 on(ui.checkinDownloadConfirm, "click", async () => {
   const type = ui.checkinDownloadType?.value || "monthly";
+  const format = ui.checkinDownloadFormat?.value || "excel";
+  const selectedWorker = ui.checkinDownloadWorker?.value || "";
   const allCheckins = await getAllCheckins();
   
   let filteredCheckins;
-  let filename;
+  let periodLabel;
   
   if (type === "monthly") {
     const selectedMonth = ui.checkinDownloadMonth?.value || "";
@@ -1919,7 +2167,7 @@ on(ui.checkinDownloadConfirm, "click", async () => {
       if (!checkInTime) return false;
       return getMonthKey(checkInTime) === selectedMonth;
     });
-    filename = `fichajes-${selectedMonth}.xlsx`;
+    periodLabel = selectedMonth;
   } else {
     const selectedYear = ui.checkinDownloadYear?.value || "";
     filteredCheckins = allCheckins.filter((checkin) => {
@@ -1927,7 +2175,14 @@ on(ui.checkinDownloadConfirm, "click", async () => {
       if (!checkInTime) return false;
       return String(checkInTime.getFullYear()) === selectedYear;
     });
-    filename = `fichajes-${selectedYear}.xlsx`;
+    periodLabel = selectedYear;
+  }
+  
+  // Filter by worker if selected
+  if (selectedWorker) {
+    filteredCheckins = filteredCheckins.filter((c) => 
+      c.userId === selectedWorker || c.userEmail === selectedWorker
+    );
   }
   
   // Sort by date
@@ -1937,7 +2192,7 @@ on(ui.checkinDownloadConfirm, "click", async () => {
     return aTime - bTime;
   });
   
-  // Sheet 1: Fichajes (detailed checkins)
+  // Prepare data
   const checkinRows = [
     ["Trabajador", "Fecha", "Entrada", "Salida", "Duración (horas)", "Duración (minutos)", "Estado"],
   ];
@@ -1964,7 +2219,7 @@ on(ui.checkinDownloadConfirm, "click", async () => {
     checkinRows.push([displayName, dateStr, inTimeStr, outTimeStr, durationHours, durationMinutes, status]);
   });
   
-  // Sheet 2: Resumen por trabajador
+  // Worker summary
   const workerStats = new Map();
   filteredCheckins.forEach((checkin) => {
     const displayName = checkin.userName || checkin.userEmail || checkin.userId || "Desconocido";
@@ -1997,18 +2252,91 @@ on(ui.checkinDownloadConfirm, "click", async () => {
     summaryRows.push([name, stats.count, totalHours, avgHours]);
   });
   
-  // Create Excel workbook with two sheets using SheetJS
-  const XLSX = window.XLSX;
-  const wb = XLSX.utils.book_new();
+  const workerSuffix = selectedWorker ? `-${selectedWorker.substring(0, 8)}` : "";
   
-  const ws1 = XLSX.utils.aoa_to_sheet(checkinRows);
-  XLSX.utils.book_append_sheet(wb, ws1, "Fichajes");
-  
-  const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
-  XLSX.utils.book_append_sheet(wb, ws2, "Resumen por trabajador");
-  
-  // Download file
-  XLSX.writeFile(wb, filename);
+  // Export based on format
+  if (format === "csv") {
+    // CSV export
+    const csvContent = checkinRows
+      .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+      .join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `fichajes-${periodLabel}${workerSuffix}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  } else if (format === "pdf") {
+    // PDF export using jsPDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(16);
+    doc.text("Informe de Fichajes", 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Período: ${periodLabel}`, 14, 28);
+    if (selectedWorker) {
+      const workerName = filteredCheckins[0]?.userName || filteredCheckins[0]?.userEmail || selectedWorker;
+      doc.text(`Trabajador: ${workerName}`, 14, 34);
+    }
+    
+    // Summary table
+    let yPos = selectedWorker ? 44 : 38;
+    doc.setFontSize(12);
+    doc.text("Resumen", 14, yPos);
+    yPos += 6;
+    
+    doc.setFontSize(9);
+    summaryRows.forEach((row, idx) => {
+      if (idx === 0) {
+        doc.setFont(undefined, "bold");
+      } else {
+        doc.setFont(undefined, "normal");
+      }
+      const text = row.join(" | ");
+      doc.text(text, 14, yPos);
+      yPos += 5;
+    });
+    
+    // Detailed table
+    yPos += 8;
+    doc.setFontSize(12);
+    doc.text("Detalle de fichajes", 14, yPos);
+    yPos += 6;
+    
+    doc.setFontSize(8);
+    checkinRows.forEach((row, idx) => {
+      if (yPos > 280) {
+        doc.addPage();
+        yPos = 20;
+      }
+      if (idx === 0) {
+        doc.setFont(undefined, "bold");
+      } else {
+        doc.setFont(undefined, "normal");
+      }
+      const text = `${row[0]} | ${row[1]} | ${row[2]} - ${row[3]} | ${row[4]}h | ${row[6]}`;
+      doc.text(text, 14, yPos);
+      yPos += 4;
+    });
+    
+    doc.save(`fichajes-${periodLabel}${workerSuffix}.pdf`);
+  } else {
+    // Excel export (default)
+    const XLSX = window.XLSX;
+    const wb = XLSX.utils.book_new();
+    
+    const ws1 = XLSX.utils.aoa_to_sheet(checkinRows);
+    XLSX.utils.book_append_sheet(wb, ws1, "Fichajes");
+    
+    const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
+    XLSX.utils.book_append_sheet(wb, ws2, "Resumen por trabajador");
+    
+    XLSX.writeFile(wb, `fichajes-${periodLabel}${workerSuffix}.xlsx`);
+  }
   
   ui.checkinDownloadModal?.classList.add("hidden");
 });
