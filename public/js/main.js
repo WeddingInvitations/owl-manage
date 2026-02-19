@@ -1864,7 +1864,7 @@ on(ui.checkinDownloadConfirm, "click", async () => {
       if (!checkInTime) return false;
       return getMonthKey(checkInTime) === selectedMonth;
     });
-    filename = `fichajes-${selectedMonth}.csv`;
+    filename = `fichajes-${selectedMonth}.xlsx`;
   } else {
     const selectedYear = ui.checkinDownloadYear?.value || "";
     filteredCheckins = allCheckins.filter((checkin) => {
@@ -1872,7 +1872,7 @@ on(ui.checkinDownloadConfirm, "click", async () => {
       if (!checkInTime) return false;
       return String(checkInTime.getFullYear()) === selectedYear;
     });
-    filename = `fichajes-${selectedYear}.csv`;
+    filename = `fichajes-${selectedYear}.xlsx`;
   }
   
   // Sort by date
@@ -1882,8 +1882,8 @@ on(ui.checkinDownloadConfirm, "click", async () => {
     return aTime - bTime;
   });
   
-  // Generate CSV
-  const rows = [
+  // Sheet 1: Fichajes (detailed checkins)
+  const checkinRows = [
     ["Trabajador", "Fecha", "Entrada", "Salida", "Duración (horas)", "Duración (minutos)", "Estado"],
   ];
   
@@ -1906,14 +1906,10 @@ on(ui.checkinDownloadConfirm, "click", async () => {
       durationMinutes = String(totalMinutes);
     }
     
-    rows.push([email, dateStr, inTimeStr, outTimeStr, durationHours, durationMinutes, status]);
+    checkinRows.push([email, dateStr, inTimeStr, outTimeStr, durationHours, durationMinutes, status]);
   });
   
-  // Add summary by worker
-  rows.push([]);
-  rows.push(["RESUMEN POR TRABAJADOR"]);
-  rows.push(["Trabajador", "Fichajes", "Horas totales", "Media por día"]);
-  
+  // Sheet 2: Resumen por trabajador
   const workerStats = new Map();
   filteredCheckins.forEach((checkin) => {
     const email = checkin.userEmail || checkin.userId || "Desconocido";
@@ -1934,27 +1930,30 @@ on(ui.checkinDownloadConfirm, "click", async () => {
     }
   });
   
+  const summaryRows = [
+    ["Trabajador", "Fichajes", "Horas totales", "Media por día"],
+  ];
+  
   workerStats.forEach((stats, email) => {
     const totalHours = (stats.totalDuration / 3600000).toFixed(2);
     const avgHours = stats.days.size > 0 
       ? (stats.totalDuration / stats.days.size / 3600000).toFixed(2)
       : "0.00";
-    rows.push([email, String(stats.count), totalHours, avgHours]);
+    summaryRows.push([email, stats.count, totalHours, avgHours]);
   });
   
-  const csv = rows
-    .map((row) =>
-      row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")
-    )
-    .join("\n");
+  // Create Excel workbook with two sheets using SheetJS
+  const XLSX = window.XLSX;
+  const wb = XLSX.utils.book_new();
   
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  const ws1 = XLSX.utils.aoa_to_sheet(checkinRows);
+  XLSX.utils.book_append_sheet(wb, ws1, "Fichajes");
+  
+  const ws2 = XLSX.utils.aoa_to_sheet(summaryRows);
+  XLSX.utils.book_append_sheet(wb, ws2, "Resumen por trabajador");
+  
+  // Download file
+  XLSX.writeFile(wb, filename);
   
   ui.checkinDownloadModal?.classList.add("hidden");
 });
