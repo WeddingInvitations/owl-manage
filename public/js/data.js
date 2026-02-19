@@ -104,13 +104,62 @@ export async function getExpense(expenseId) {
   return null;
 }
 
-export async function addCheckin(name, type, userId) {
-  await addDoc(collection(db, "checkins"), {
-    name,
-    type,
+export async function openCheckin(userId, userEmail) {
+  const docRef = await addDoc(collection(db, "checkins"), {
+    userId,
+    userEmail,
+    checkInTime: serverTimestamp(),
+    checkOutTime: null,
+    status: "open",
     createdAt: serverTimestamp(),
-    createdBy: userId || null,
   });
+  return docRef.id;
+}
+
+export async function closeCheckin(checkinId) {
+  const ref = doc(db, "checkins", checkinId);
+  await updateDoc(ref, {
+    checkOutTime: serverTimestamp(),
+    status: "closed",
+  });
+}
+
+export async function getOpenCheckinForUser(userId) {
+  const q = query(
+    collection(db, "checkins"),
+    where("userId", "==", userId),
+    where("status", "==", "open")
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const docSnap = snap.docs[0];
+  return { id: docSnap.id, ...docSnap.data() };
+}
+
+export async function getLastCheckinForUser(userId) {
+  const q = query(
+    collection(db, "checkins"),
+    where("userId", "==", userId)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  
+  const checkins = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  checkins.sort((a, b) => {
+    const aTime = a.createdAt?.toMillis?.() || 0;
+    const bTime = b.createdAt?.toMillis?.() || 0;
+    return bTime - aTime;
+  });
+  return checkins[0] || null;
+}
+
+export async function getCheckinsForUser(userId) {
+  const q = query(
+    collection(db, "checkins"),
+    where("userId", "==", userId)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export async function addTraining(title, date, coach, userId) {

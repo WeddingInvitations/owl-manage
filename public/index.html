@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#151824" />
     <title>OwlManage</title>
-    <link rel="stylesheet" href="css/styles.css?v=20250218d" />
+    <link rel="stylesheet" href="css/styles.css?v=20250219a" />
   </head>
   <body class="dark">
     <header class="app-header">
@@ -283,20 +283,55 @@
         <section id="checkinsView" class="view hidden">
           <div class="card">
             <h2>Fichajes</h2>
-            <form id="checkinForm" class="stack">
-              <label>
-                Nombre
-                <input id="checkinName" type="text" required />
-              </label>
-              <label>
-                Tipo
-                <select id="checkinType">
-                  <option value="IN">Check-in</option>
-                  <option value="OUT">Check-out</option>
-                </select>
-              </label>
-              <button class="btn" type="submit">Registrar fichaje</button>
-            </form>
+            <div class="checkin-info stack">
+              <div class="checkin-user">
+                <label>Usuario</label>
+                <span id="checkinUserName" class="value">-</span>
+              </div>
+              <div class="checkin-datetime">
+                <label>Fecha y hora</label>
+                <span id="checkinDateTime" class="value">-</span>
+              </div>
+            </div>
+            <div id="checkinStatus" class="checkin-status hidden">
+              <div class="checkin-active">
+                <span class="status-badge open">Fichaje abierto</span>
+                <div class="checkin-timer">
+                  <label>Tiempo trabajado</label>
+                  <span id="checkinTimer" class="timer-value">00:00:00</span>
+                </div>
+                <div class="checkin-times">
+                  <div>
+                    <label>Entrada</label>
+                    <span id="checkinInTime" class="value">-</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="checkinClosedStatus" class="checkin-closed-status hidden">
+              <div class="checkin-closed">
+                <span class="status-badge closed">Fichaje cerrado</span>
+                <div class="checkin-times-closed">
+                  <div>
+                    <label>Entrada</label>
+                    <span id="checkinClosedInTime" class="value">-</span>
+                  </div>
+                  <div>
+                    <label>Salida</label>
+                    <span id="checkinClosedOutTime" class="value">-</span>
+                  </div>
+                  <div>
+                    <label>Tiempo trabajado</label>
+                    <span id="checkinClosedDuration" class="value">-</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="checkin-actions">
+              <button id="checkinOpenBtn" class="btn" type="button">Abrir fichaje</button>
+              <button id="checkinCloseBtn" class="btn ghost" type="button" disabled>Cerrar fichaje</button>
+            </div>
+            <h3>Historial de fichajes</h3>
             <ul id="checkinList" class="list"></ul>
           </div>
         </section>
@@ -725,6 +760,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20250218d"></script>
+    <script type="module" src="js/main.js?v=20250219a"></script>
   </body>
 </html>

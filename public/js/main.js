@@ -8,12 +8,16 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js?v=20250218d";
+} from "./ui.js?v=20250219a";
 import { bindAuth } from "./auth.js";
 import {
   addPayment,
   addExpense,
-  addCheckin,
+  openCheckin,
+  closeCheckin,
+  getOpenCheckinForUser,
+  getLastCheckinForUser,
+  getCheckinsForUser,
   addTraining,
   createAthlete,
   getAthletes,
@@ -39,7 +43,7 @@ import {
   deletePayment,
   updateExpense,
   deleteExpense,
-} from "./data.js?v=20250218d";
+} from "./data.js?v=20250219a";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -66,6 +70,10 @@ let selectedAcroPaymentMonth = "";
 let acroPaidFilter = "ALL";
 let acroSearchTerm = "";
 let selectedAcroCsvMonth = "";
+
+// Checkin state
+let currentOpenCheckin = null;
+let checkinTimerInterval = null;
 
 const on = (element, eventName, handler) => {
   if (!element) return;
@@ -1141,6 +1149,9 @@ bindAuth(
       await refreshAll();
       await refreshAthleteMonthly();
       await refreshAcroMonthly();
+      await refreshCheckinStatus();
+    } else {
+      stopCheckinTimer();
     }
     setAuthUI(ui, user, currentRole, false);
     updateMenuVisibility(ui, currentRole);
@@ -1467,16 +1478,175 @@ on(ui.expenseTemplateDownload, "click", () => {
   downloadCsvTemplate("plantilla-gastos.csv", "expense");
 });
 
-on(ui.checkinForm, "submit", async (event) => {
-  event.preventDefault();
-  await addCheckin(
-    ui.checkinName.value,
-    ui.checkinType.value,
-    currentUser?.uid
-  );
-  ui.checkinForm.reset();
-  await refreshAll();
+// ========== CHECKIN SYSTEM ==========
+
+function formatTime(date) {
+  if (!date) return "-";
+  return date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function formatDuration(milliseconds) {
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function updateCheckinDateTime() {
+  if (ui.checkinDateTime) {
+    const now = new Date();
+    ui.checkinDateTime.textContent = now.toLocaleString("es-ES", {
+      dateStyle: "full",
+      timeStyle: "medium",
+    });
+  }
+}
+
+function startCheckinTimer(startTime) {
+  if (checkinTimerInterval) {
+    clearInterval(checkinTimerInterval);
+  }
+  
+  const updateTimer = () => {
+    const now = new Date();
+    const elapsed = now.getTime() - startTime.getTime();
+    if (ui.checkinTimer) {
+      ui.checkinTimer.textContent = formatDuration(elapsed);
+    }
+  };
+  
+  updateTimer();
+  checkinTimerInterval = setInterval(updateTimer, 1000);
+}
+
+function stopCheckinTimer() {
+  if (checkinTimerInterval) {
+    clearInterval(checkinTimerInterval);
+    checkinTimerInterval = null;
+  }
+}
+
+async function refreshCheckinStatus() {
+  if (!currentUser) return;
+  
+  // Update user name and datetime
+  if (ui.checkinUserName) {
+    ui.checkinUserName.textContent = currentUser.email || "-";
+  }
+  updateCheckinDateTime();
+  
+  // Check for open checkin
+  currentOpenCheckin = await getOpenCheckinForUser(currentUser.uid);
+  
+  if (currentOpenCheckin) {
+    // Has open checkin
+    ui.checkinStatus?.classList.remove("hidden");
+    ui.checkinClosedStatus?.classList.add("hidden");
+    
+    const checkInTime = currentOpenCheckin.checkInTime?.toDate?.() || null;
+    if (ui.checkinInTime) {
+      ui.checkinInTime.textContent = formatTime(checkInTime);
+    }
+    
+    if (checkInTime) {
+      startCheckinTimer(checkInTime);
+    }
+    
+    if (ui.checkinOpenBtn) ui.checkinOpenBtn.disabled = true;
+    if (ui.checkinCloseBtn) ui.checkinCloseBtn.disabled = false;
+  } else {
+    // No open checkin - check for last closed one
+    ui.checkinStatus?.classList.add("hidden");
+    stopCheckinTimer();
+    
+    const lastCheckin = await getLastCheckinForUser(currentUser.uid);
+    
+    if (lastCheckin && lastCheckin.status === "closed") {
+      ui.checkinClosedStatus?.classList.remove("hidden");
+      
+      const checkInTime = lastCheckin.checkInTime?.toDate?.() || null;
+      const checkOutTime = lastCheckin.checkOutTime?.toDate?.() || null;
+      
+      if (ui.checkinClosedInTime) {
+        ui.checkinClosedInTime.textContent = formatTime(checkInTime);
+      }
+      if (ui.checkinClosedOutTime) {
+        ui.checkinClosedOutTime.textContent = formatTime(checkOutTime);
+      }
+      if (ui.checkinClosedDuration && checkInTime && checkOutTime) {
+        const duration = checkOutTime.getTime() - checkInTime.getTime();
+        ui.checkinClosedDuration.textContent = formatDuration(duration);
+      }
+    } else {
+      ui.checkinClosedStatus?.classList.add("hidden");
+    }
+    
+    if (ui.checkinOpenBtn) ui.checkinOpenBtn.disabled = false;
+    if (ui.checkinCloseBtn) ui.checkinCloseBtn.disabled = true;
+  }
+  
+  // Refresh checkin history
+  await refreshCheckinHistory();
+}
+
+async function refreshCheckinHistory() {
+  if (!currentUser || !ui.checkinList) return;
+  
+  const checkins = await getCheckinsForUser(currentUser.uid);
+  checkins.sort((a, b) => {
+    const aTime = a.createdAt?.toMillis?.() || 0;
+    const bTime = b.createdAt?.toMillis?.() || 0;
+    return bTime - aTime;
+  });
+  
+  ui.checkinList.innerHTML = "";
+  
+  checkins.slice(0, 20).forEach((checkin) => {
+    const checkInTime = checkin.checkInTime?.toDate?.() || null;
+    const checkOutTime = checkin.checkOutTime?.toDate?.() || null;
+    const status = checkin.status === "open" ? "Abierto" : "Cerrado";
+    
+    let durationText = "-";
+    if (checkInTime && checkOutTime) {
+      const duration = checkOutTime.getTime() - checkInTime.getTime();
+      durationText = formatDuration(duration);
+    }
+    
+    const dateStr = checkInTime ? checkInTime.toLocaleDateString("es-ES") : "-";
+    const inTimeStr = formatTime(checkInTime);
+    const outTimeStr = checkOutTime ? formatTime(checkOutTime) : "-";
+    
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${dateStr} · ${inTimeStr} - ${outTimeStr} · ${durationText}</span><span class="status-${checkin.status}">${status}</span>`;
+    ui.checkinList.appendChild(li);
+  });
+}
+
+on(ui.checkinOpenBtn, "click", async () => {
+  if (!currentUser) return;
+  try {
+    await openCheckin(currentUser.uid, currentUser.email);
+    await refreshCheckinStatus();
+  } catch (error) {
+    console.error("Error opening checkin:", error);
+    alert("Error al abrir fichaje: " + (error.message || error));
+  }
 });
+
+on(ui.checkinCloseBtn, "click", async () => {
+  if (!currentUser || !currentOpenCheckin) return;
+  try {
+    await closeCheckin(currentOpenCheckin.id);
+    await refreshCheckinStatus();
+  } catch (error) {
+    console.error("Error closing checkin:", error);
+    alert("Error al cerrar fichaje: " + (error.message || error));
+  }
+});
+
+// Update datetime every second
+setInterval(updateCheckinDateTime, 1000);
 
 on(ui.trainingForm, "submit", async (event) => {
   event.preventDefault();

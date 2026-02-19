@@ -203,6 +203,125 @@ select {
   flex: 1;
 }
 
+/* Checkin styles */
+.checkin-info {
+  margin-bottom: 16px;
+}
+
+.checkin-user,
+.checkin-datetime {
+  margin-bottom: 8px;
+}
+
+.checkin-user label,
+.checkin-datetime label {
+  font-size: 12px;
+  color: var(--muted);
+  display: block;
+}
+
+.checkin-user .value,
+.checkin-datetime .value {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.checkin-status,
+.checkin-closed-status {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+
+.checkin-active,
+.checkin-closed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.open {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.closed {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.checkin-timer {
+  text-align: center;
+}
+
+.checkin-timer label {
+  font-size: 12px;
+  color: var(--muted);
+  display: block;
+}
+
+.timer-value {
+  font-size: 48px;
+  font-weight: 700;
+  font-family: monospace;
+  color: var(--primary);
+}
+
+.checkin-times,
+.checkin-times-closed {
+  display: flex;
+  gap: 24px;
+}
+
+.checkin-times > div,
+.checkin-times-closed > div {
+  flex: 1;
+}
+
+.checkin-times label,
+.checkin-times-closed label {
+  font-size: 12px;
+  color: var(--muted);
+  display: block;
+}
+
+.checkin-times .value,
+.checkin-times-closed .value {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.checkin-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.checkin-actions .btn {
+  flex: 1;
+}
+
+.status-open {
+  color: #155724;
+  font-weight: 600;
+}
+
+.status-closed {
+  color: #721c24;
+  font-weight: 600;
+}
+
 .summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
