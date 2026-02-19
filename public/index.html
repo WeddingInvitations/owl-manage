@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#151824" />
     <title>OwlManage</title>
-    <link rel="stylesheet" href="css/styles.css?v=20250219a" />
+    <link rel="stylesheet" href="css/styles.css?v=20250219b" />
   </head>
   <body class="dark">
     <header class="app-header">
@@ -333,6 +333,55 @@
             </div>
             <h3>Historial de fichajes</h3>
             <ul id="checkinList" class="list"></ul>
+          </div>
+          
+          <!-- Admin section for OWNER role -->
+          <div id="checkinAdminSection" class="card hidden">
+            <div class="detail-header">
+              <h2>Fichajes de trabajadores</h2>
+              <div class="filter-row">
+                <select id="checkinAdminMonthSelect"></select>
+              </div>
+            </div>
+            <div class="checkin-admin-summary">
+              <div class="summary-item">
+                <span class="label">Total horas mes</span>
+                <span id="checkinAdminTotalHours" class="value">0h 0m</span>
+              </div>
+              <div class="summary-item">
+                <span class="label">Fichajes</span>
+                <span id="checkinAdminTotalCount" class="value">0</span>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Trabajador</th>
+                    <th>Fecha</th>
+                    <th>Entrada</th>
+                    <th>Salida</th>
+                    <th>Duración</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="checkinAdminList"></tbody>
+              </table>
+            </div>
+            <h3>Resumen por trabajador</h3>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Trabajador</th>
+                    <th>Fichajes</th>
+                    <th>Horas totales</th>
+                    <th>Media por día</th>
+                  </tr>
+                </thead>
+                <tbody id="checkinAdminSummaryList"></tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -760,6 +809,6 @@
       </div>
     </div>
 
-    <script type="module" src="js/main.js?v=20250219a"></script>
+    <script type="module" src="js/main.js?v=20250219b"></script>
   </body>
 </html>

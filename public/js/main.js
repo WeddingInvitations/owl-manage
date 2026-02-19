@@ -8,7 +8,7 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js?v=20250219a";
+} from "./ui.js?v=20250219b";
 import { bindAuth } from "./auth.js";
 import {
   addPayment,
@@ -18,6 +18,7 @@ import {
   getOpenCheckinForUser,
   getLastCheckinForUser,
   getCheckinsForUser,
+  getAllCheckins,
   addTraining,
   createAthlete,
   getAthletes,
@@ -43,7 +44,7 @@ import {
   deletePayment,
   updateExpense,
   deleteExpense,
-} from "./data.js?v=20250219a";
+} from "./data.js?v=20250219b";
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
@@ -74,6 +75,7 @@ let selectedAcroCsvMonth = "";
 // Checkin state
 let currentOpenCheckin = null;
 let checkinTimerInterval = null;
+let selectedCheckinAdminMonth = "";
 
 const on = (element, eventName, handler) => {
   if (!element) return;
@@ -1150,6 +1152,7 @@ bindAuth(
       await refreshAthleteMonthly();
       await refreshAcroMonthly();
       await refreshCheckinStatus();
+      await refreshCheckinAdmin();
     } else {
       stopCheckinTimer();
     }
@@ -1628,6 +1631,7 @@ on(ui.checkinOpenBtn, "click", async () => {
   try {
     await openCheckin(currentUser.uid, currentUser.email);
     await refreshCheckinStatus();
+    await refreshCheckinAdmin();
   } catch (error) {
     console.error("Error opening checkin:", error);
     alert("Error al abrir fichaje: " + (error.message || error));
@@ -1639,6 +1643,7 @@ on(ui.checkinCloseBtn, "click", async () => {
   try {
     await closeCheckin(currentOpenCheckin.id);
     await refreshCheckinStatus();
+    await refreshCheckinAdmin();
   } catch (error) {
     console.error("Error closing checkin:", error);
     alert("Error al cerrar fichaje: " + (error.message || error));
@@ -1647,6 +1652,153 @@ on(ui.checkinCloseBtn, "click", async () => {
 
 // Update datetime every second
 setInterval(updateCheckinDateTime, 1000);
+
+// ========== ADMIN CHECKIN SYSTEM (OWNER ONLY) ==========
+
+function renderCheckinAdminMonthOptions() {
+  if (!ui.checkinAdminMonthSelect) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.checkinAdminMonthSelect.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.checkinAdminMonthSelect.appendChild(option);
+  });
+  if (!selectedCheckinAdminMonth) {
+    selectedCheckinAdminMonth = options[0];
+  }
+  ui.checkinAdminMonthSelect.value = selectedCheckinAdminMonth;
+}
+
+function formatHoursMinutes(milliseconds) {
+  const totalMinutes = Math.floor(milliseconds / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+}
+
+async function refreshCheckinAdmin() {
+  if (currentRole !== "OWNER") {
+    ui.checkinAdminSection?.classList.add("hidden");
+    return;
+  }
+  
+  ui.checkinAdminSection?.classList.remove("hidden");
+  renderCheckinAdminMonthOptions();
+  
+  const allCheckins = await getAllCheckins();
+  
+  // Filter by selected month
+  const filteredCheckins = allCheckins.filter((checkin) => {
+    const checkInTime = checkin.checkInTime?.toDate?.();
+    if (!checkInTime) return false;
+    const monthKey = getMonthKey(checkInTime);
+    return monthKey === selectedCheckinAdminMonth;
+  });
+  
+  // Sort by date descending
+  filteredCheckins.sort((a, b) => {
+    const aTime = a.checkInTime?.toMillis?.() || 0;
+    const bTime = b.checkInTime?.toMillis?.() || 0;
+    return bTime - aTime;
+  });
+  
+  // Calculate totals
+  let totalDuration = 0;
+  const workerStats = new Map();
+  
+  filteredCheckins.forEach((checkin) => {
+    const checkInTime = checkin.checkInTime?.toDate?.();
+    const checkOutTime = checkin.checkOutTime?.toDate?.();
+    const email = checkin.userEmail || checkin.userId || "Desconocido";
+    
+    if (!workerStats.has(email)) {
+      workerStats.set(email, { count: 0, totalDuration: 0, days: new Set() });
+    }
+    
+    const stats = workerStats.get(email);
+    stats.count += 1;
+    
+    if (checkInTime && checkOutTime) {
+      const duration = checkOutTime.getTime() - checkInTime.getTime();
+      totalDuration += duration;
+      stats.totalDuration += duration;
+      stats.days.add(checkInTime.toDateString());
+    }
+  });
+  
+  // Update summary
+  if (ui.checkinAdminTotalHours) {
+    ui.checkinAdminTotalHours.textContent = formatHoursMinutes(totalDuration);
+  }
+  if (ui.checkinAdminTotalCount) {
+    ui.checkinAdminTotalCount.textContent = String(filteredCheckins.length);
+  }
+  
+  // Render checkin list
+  if (ui.checkinAdminList) {
+    ui.checkinAdminList.innerHTML = "";
+    
+    filteredCheckins.forEach((checkin) => {
+      const checkInTime = checkin.checkInTime?.toDate?.();
+      const checkOutTime = checkin.checkOutTime?.toDate?.();
+      const email = checkin.userEmail || checkin.userId || "Desconocido";
+      const status = checkin.status === "open" ? "Abierto" : "Cerrado";
+      
+      let durationText = "-";
+      if (checkInTime && checkOutTime) {
+        const duration = checkOutTime.getTime() - checkInTime.getTime();
+        durationText = formatDuration(duration);
+      }
+      
+      const dateStr = checkInTime ? checkInTime.toLocaleDateString("es-ES") : "-";
+      const inTimeStr = formatTime(checkInTime);
+      const outTimeStr = checkOutTime ? formatTime(checkOutTime) : "-";
+      
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${email}</td>
+        <td>${dateStr}</td>
+        <td>${inTimeStr}</td>
+        <td>${outTimeStr}</td>
+        <td>${durationText}</td>
+        <td><span class="status-badge ${checkin.status}">${status}</span></td>
+      `;
+      ui.checkinAdminList.appendChild(row);
+    });
+  }
+  
+  // Render worker summary
+  if (ui.checkinAdminSummaryList) {
+    ui.checkinAdminSummaryList.innerHTML = "";
+    
+    workerStats.forEach((stats, email) => {
+      const avgPerDay = stats.days.size > 0 
+        ? stats.totalDuration / stats.days.size 
+        : 0;
+      
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${email}</td>
+        <td>${stats.count}</td>
+        <td>${formatHoursMinutes(stats.totalDuration)}</td>
+        <td>${formatHoursMinutes(avgPerDay)}</td>
+      `;
+      ui.checkinAdminSummaryList.appendChild(row);
+    });
+  }
+}
+
+on(ui.checkinAdminMonthSelect, "change", async (event) => {
+  selectedCheckinAdminMonth = event.target.value;
+  await refreshCheckinAdmin();
+});
 
 on(ui.trainingForm, "submit", async (event) => {
   event.preventDefault();

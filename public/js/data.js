@@ -162,6 +162,11 @@ export async function getCheckinsForUser(userId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+export async function getAllCheckins() {
+  const snap = await getDocs(collection(db, "checkins"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 export async function addTraining(title, date, coach, userId) {
   await addDoc(collection(db, "trainings"), {
     title,
