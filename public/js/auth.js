@@ -12,6 +12,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
@@ -22,6 +23,9 @@ export async function ensureUserProfile(user) {
   if (!snap.exists()) {
     await setDoc(userRef, {
       email: user.email,
+      displayName: user.displayName || "",
+      firstName: "",
+      lastName: "",
       role: "RECEPTION",
       mustChangePassword: false,
       createdAt: serverTimestamp(),
@@ -33,7 +37,27 @@ export async function ensureUserProfile(user) {
   return {
     role: data.role || "RECEPTION",
     mustChangePassword: Boolean(data.mustChangePassword),
+    firstName: data.firstName || "",
+    lastName: data.lastName || "",
+    displayName: data.displayName || "",
+    email: data.email || user.email,
   };
+}
+
+export async function updateUserProfile(userId, firstName, lastName) {
+  const userRef = doc(db, "users", userId);
+  await updateDoc(userRef, {
+    firstName,
+    lastName,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function getUserProfile(userId) {
+  const userRef = doc(db, "users", userId);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) return null;
+  return snap.data();
 }
 
 export async function logout() {

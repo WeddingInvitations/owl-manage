@@ -104,10 +104,11 @@ export async function getExpense(expenseId) {
   return null;
 }
 
-export async function openCheckin(userId, userEmail) {
+export async function openCheckin(userId, userEmail, userName = "") {
   const docRef = await addDoc(collection(db, "checkins"), {
     userId,
     userEmail,
+    userName,
     checkInTime: serverTimestamp(),
     checkOutTime: null,
     status: "open",

@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#151824" />
     <title>OwlManage</title>
-    <link rel="stylesheet" href="css/styles.css?v=20250219b" />
+    <link rel="stylesheet" href="css/styles.css?v=20250219c" />
   </head>
   <body class="dark">
     <header class="app-header">
@@ -287,12 +287,33 @@
               <div class="checkin-user">
                 <label>Usuario</label>
                 <span id="checkinUserName" class="value">-</span>
+                <button id="checkinEditProfileBtn" class="btn ghost small" type="button" title="Editar perfil">✏️</button>
               </div>
               <div class="checkin-datetime">
                 <label>Fecha y hora</label>
                 <span id="checkinDateTime" class="value">-</span>
               </div>
             </div>
+            
+            <!-- Profile edit section -->
+            <div id="checkinProfileEdit" class="checkin-profile-edit hidden">
+              <h3>Editar mi perfil</h3>
+              <form id="checkinProfileForm" class="stack">
+                <label>
+                  Nombre
+                  <input id="checkinProfileFirstName" type="text" required placeholder="Tu nombre" />
+                </label>
+                <label>
+                  Apellidos
+                  <input id="checkinProfileLastName" type="text" required placeholder="Tus apellidos" />
+                </label>
+                <div class="btn-group">
+                  <button class="btn" type="submit">Guardar</button>
+                  <button id="checkinProfileCancel" class="btn ghost" type="button">Cancelar</button>
+                </div>
+              </form>
+            </div>
+            
             <div id="checkinStatus" class="checkin-status hidden">
               <div class="checkin-active">
                 <span class="status-badge open">Fichaje abierto</span>
@@ -843,6 +864,6 @@
     </div>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <script type="module" src="js/main.js?v=20250219d"></script>
+    <script type="module" src="js/main.js?v=20250219e"></script>
   </body>
 </html>

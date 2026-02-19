@@ -213,6 +213,13 @@ select {
   margin-bottom: 8px;
 }
 
+.checkin-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .checkin-user label,
 .checkin-datetime label {
   font-size: 12px;
@@ -224,6 +231,56 @@ select {
 .checkin-datetime .value {
   font-size: 16px;
   font-weight: 600;
+}
+
+.checkin-user .btn.ghost.small {
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Profile edit section */
+.checkin-profile-edit {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.checkin-profile-edit h3 {
+  font-size: 16px;
+  margin: 0 0 12px 0;
+  color: var(--fg);
+}
+
+.checkin-profile-edit form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checkin-profile-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.checkin-profile-edit input {
+  padding: 8px 12px;
+  font-size: 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.checkin-profile-edit .btn-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .checkin-status,

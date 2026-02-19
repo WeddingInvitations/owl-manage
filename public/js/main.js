@@ -8,8 +8,8 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js?v=20250219c";
-import { bindAuth } from "./auth.js";
+} from "./ui.js?v=20250219d";
+import { bindAuth, updateUserProfile } from "./auth.js?v=20250219a";
 import {
   addPayment,
   addExpense,
@@ -48,6 +48,7 @@ import {
 import { createUserWithRole } from "./admin.js";
 
 let currentUser = null;
+let currentProfile = null;
 let currentRole = "RECEPTION";
 let monthlyDetails = new Map();
 let monthlyTotals = { income: 0, expenses: 0 };
@@ -1146,8 +1147,16 @@ bindAuth(
   ui,
   async (user, profile) => {
     currentUser = user;
+    currentProfile = profile;
     currentRole = profile.role;
     if (user) {
+      // Populate profile form fields
+      if (ui.checkinProfileFirstName) {
+        ui.checkinProfileFirstName.value = profile.firstName || "";
+      }
+      if (ui.checkinProfileLastName) {
+        ui.checkinProfileLastName.value = profile.lastName || "";
+      }
       await refreshAll();
       await refreshAthleteMonthly();
       await refreshAcroMonthly();
@@ -1533,9 +1542,10 @@ function stopCheckinTimer() {
 async function refreshCheckinStatus() {
   if (!currentUser) return;
   
-  // Update user name and datetime
+  // Update user name and datetime - show full name if available, otherwise email
   if (ui.checkinUserName) {
-    ui.checkinUserName.textContent = currentUser.email || "-";
+    const fullName = [currentProfile?.firstName, currentProfile?.lastName].filter(Boolean).join(" ");
+    ui.checkinUserName.textContent = fullName || currentUser.email || "-";
   }
   updateCheckinDateTime();
   
@@ -1629,7 +1639,8 @@ async function refreshCheckinHistory() {
 on(ui.checkinOpenBtn, "click", async () => {
   if (!currentUser) return;
   try {
-    await openCheckin(currentUser.uid, currentUser.email);
+    const fullName = [currentProfile?.firstName, currentProfile?.lastName].filter(Boolean).join(" ");
+    await openCheckin(currentUser.uid, currentUser.email, fullName);
     await refreshCheckinStatus();
     await refreshCheckinAdmin();
   } catch (error) {
@@ -1647,6 +1658,50 @@ on(ui.checkinCloseBtn, "click", async () => {
   } catch (error) {
     console.error("Error closing checkin:", error);
     alert("Error al cerrar fichaje: " + (error.message || error));
+  }
+});
+
+// Profile edit handlers
+on(ui.checkinEditProfileBtn, "click", () => {
+  if (ui.checkinProfileEdit) {
+    ui.checkinProfileEdit.classList.remove("hidden");
+  }
+});
+
+on(ui.checkinProfileCancel, "click", () => {
+  if (ui.checkinProfileEdit) {
+    ui.checkinProfileEdit.classList.add("hidden");
+  }
+  // Reset to saved values
+  if (ui.checkinProfileFirstName) {
+    ui.checkinProfileFirstName.value = currentProfile?.firstName || "";
+  }
+  if (ui.checkinProfileLastName) {
+    ui.checkinProfileLastName.value = currentProfile?.lastName || "";
+  }
+});
+
+on(ui.checkinProfileForm, "submit", async (e) => {
+  e.preventDefault();
+  if (!currentUser) return;
+  
+  const firstName = ui.checkinProfileFirstName?.value?.trim() || "";
+  const lastName = ui.checkinProfileLastName?.value?.trim() || "";
+  
+  try {
+    await updateUserProfile(currentUser.uid, firstName, lastName);
+    // Update local profile
+    currentProfile = { ...currentProfile, firstName, lastName };
+    // Hide form
+    if (ui.checkinProfileEdit) {
+      ui.checkinProfileEdit.classList.add("hidden");
+    }
+    // Update displayed name
+    await refreshCheckinStatus();
+    alert("Perfil actualizado correctamente");
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    alert("Error al actualizar perfil: " + (error.message || error));
   }
 });
 
@@ -1716,13 +1771,13 @@ async function refreshCheckinAdmin() {
   filteredCheckins.forEach((checkin) => {
     const checkInTime = checkin.checkInTime?.toDate?.();
     const checkOutTime = checkin.checkOutTime?.toDate?.();
-    const email = checkin.userEmail || checkin.userId || "Desconocido";
+    const displayName = checkin.userName || checkin.userEmail || checkin.userId || "Desconocido";
     
-    if (!workerStats.has(email)) {
-      workerStats.set(email, { count: 0, totalDuration: 0, days: new Set() });
+    if (!workerStats.has(displayName)) {
+      workerStats.set(displayName, { count: 0, totalDuration: 0, days: new Set() });
     }
     
-    const stats = workerStats.get(email);
+    const stats = workerStats.get(displayName);
     stats.count += 1;
     
     if (checkInTime && checkOutTime) {
@@ -1748,7 +1803,7 @@ async function refreshCheckinAdmin() {
     filteredCheckins.forEach((checkin) => {
       const checkInTime = checkin.checkInTime?.toDate?.();
       const checkOutTime = checkin.checkOutTime?.toDate?.();
-      const email = checkin.userEmail || checkin.userId || "Desconocido";
+      const displayName = checkin.userName || checkin.userEmail || checkin.userId || "Desconocido";
       const status = checkin.status === "open" ? "Abierto" : "Cerrado";
       
       let durationText = "-";
@@ -1763,7 +1818,7 @@ async function refreshCheckinAdmin() {
       
       const row = document.createElement("tr");
       row.innerHTML = `
-        <td>${email}</td>
+        <td>${displayName}</td>
         <td>${dateStr}</td>
         <td>${inTimeStr}</td>
         <td>${outTimeStr}</td>
@@ -1890,7 +1945,7 @@ on(ui.checkinDownloadConfirm, "click", async () => {
   filteredCheckins.forEach((checkin) => {
     const checkInTime = checkin.checkInTime?.toDate?.();
     const checkOutTime = checkin.checkOutTime?.toDate?.();
-    const email = checkin.userEmail || checkin.userId || "Desconocido";
+    const displayName = checkin.userName || checkin.userEmail || checkin.userId || "Desconocido";
     const status = checkin.status === "open" ? "Abierto" : "Cerrado";
     
     const dateStr = checkInTime ? checkInTime.toLocaleDateString("es-ES") : "";
@@ -1906,21 +1961,21 @@ on(ui.checkinDownloadConfirm, "click", async () => {
       durationMinutes = String(totalMinutes);
     }
     
-    checkinRows.push([email, dateStr, inTimeStr, outTimeStr, durationHours, durationMinutes, status]);
+    checkinRows.push([displayName, dateStr, inTimeStr, outTimeStr, durationHours, durationMinutes, status]);
   });
   
   // Sheet 2: Resumen por trabajador
   const workerStats = new Map();
   filteredCheckins.forEach((checkin) => {
-    const email = checkin.userEmail || checkin.userId || "Desconocido";
+    const displayName = checkin.userName || checkin.userEmail || checkin.userId || "Desconocido";
     const checkInTime = checkin.checkInTime?.toDate?.();
     const checkOutTime = checkin.checkOutTime?.toDate?.();
     
-    if (!workerStats.has(email)) {
-      workerStats.set(email, { count: 0, totalDuration: 0, days: new Set() });
+    if (!workerStats.has(displayName)) {
+      workerStats.set(displayName, { count: 0, totalDuration: 0, days: new Set() });
     }
     
-    const stats = workerStats.get(email);
+    const stats = workerStats.get(displayName);
     stats.count += 1;
     
     if (checkInTime && checkOutTime) {
@@ -1934,12 +1989,12 @@ on(ui.checkinDownloadConfirm, "click", async () => {
     ["Trabajador", "Fichajes", "Horas totales", "Media por día"],
   ];
   
-  workerStats.forEach((stats, email) => {
+  workerStats.forEach((stats, name) => {
     const totalHours = (stats.totalDuration / 3600000).toFixed(2);
     const avgHours = stats.days.size > 0 
       ? (stats.totalDuration / stats.days.size / 3600000).toFixed(2)
       : "0.00";
-    summaryRows.push([email, stats.count, totalHours, avgHours]);
+    summaryRows.push([name, stats.count, totalHours, avgHours]);
   });
   
   // Create Excel workbook with two sheets using SheetJS
