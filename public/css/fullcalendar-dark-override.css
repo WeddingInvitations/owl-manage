@@ -1,3 +1,15 @@
+/* Cabecera de los días de la semana (lun, mar, ...) */
+.fc .fc-col-header-cell {
+  background: var(--primary, #6c7dff) !important;
+  color: #fff !important;
+  font-weight: 600;
+  border: none;
+}
+.fc .fc-col-header-cell-cushion {
+  color: #fff !important;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
 /* Mejora la cabecera de FullCalendar para modo oscuro y contraste */
 .fc .fc-toolbar {
   background: var(--card, #151824);
