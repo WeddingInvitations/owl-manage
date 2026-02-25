@@ -899,6 +899,21 @@ select {
     min-width: auto;
   }
 
+/* Vacations calendar */
+.vacation-month-grid { display: block; }
+.vacation-grid-header { font-weight:700; margin-bottom:8px; }
+.vacation-weeknames { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px; }
+.vacation-weekname { text-align:center; font-size:12px; color:var(--muted); }
+.vacation-cells { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.vacation-cell { min-height:64px; background:transparent; border-radius:8px; padding:6px; border:1px dashed transparent; position:relative; }
+.vacation-cell.empty { background:transparent; }
+.vacation-daylabel { font-size:12px; font-weight:700; }
+.vacation-holiday { font-size:11px; color:#ffd166; margin-top:4px; }
+.vacation-cell.holiday { background: rgba(255, 193, 7, 0.05); border-color: rgba(255,193,7,0.08); }
+.vacation-day { background: rgba(108,125,255,0.03); border-color: rgba(108,125,255,0.06); }
+.vacation-pill { display:block; background:var(--primary); color:#fff; padding:4px 6px; border-radius:6px; font-size:12px; margin-top:6px; }
+
+
   .table th,
   .table td {
     padding: 8px 4px;

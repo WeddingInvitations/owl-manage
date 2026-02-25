@@ -1116,12 +1116,12 @@ function updateMobileNavActive(viewId) {
   ui.mobileNavButtons.forEach((btn) => {
     const isMore = btn.dataset.view === "moreView";
     const isActive = btn.dataset.view === viewId || 
-      (isMore && ["checkinsView", "trainingsView", "rolesView"].includes(viewId));
+      (isMore && ["checkinsView", "trainingsView", "rolesView", "vacationsView"].includes(viewId));
     btn.classList.toggle("active", isActive);
   });
 }
 
-// ---------- Vacations UI logic ----------
+
 async function populateVacationWorkers() {
   if (!ui.vacationWorkerSelect) return;
   ui.vacationWorkerSelect.innerHTML = '<option value="">Yo</option>';
