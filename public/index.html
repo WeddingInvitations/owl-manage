@@ -524,6 +524,56 @@
           </div>
         </section>
 
+        <section id="vacationsView" class="view hidden">
+          <div class="card">
+            <h2>Vacaciones</h2>
+            <div class="vacations-actions detail-header">
+              <div class="filter-row">
+                <button id="vacationAddBtn" class="btn" type="button">Solicitar vacaciones</button>
+                <label>
+                  Mes
+                  <input id="vacationMonth" type="month" />
+                </label>
+                <label>
+                  Ver trabajador
+                  <select id="vacationWorkerSelect"><option value="">Yo</option></select>
+                </label>
+              </div>
+            </div>
+            <div id="vacationCalendar" class="calendar" style="min-height:200px;margin-top:12px;"></div>
+            <h3>Vacaciones registradas</h3>
+            <ul id="vacationList" class="list"></ul>
+          </div>
+
+          <!-- Vacation modal -->
+          <div id="vacationModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Solicitar vacaciones</h3>
+                <button id="vacationModalClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="vacationForm" class="stack">
+                <label>
+                  Fecha inicio
+                  <input id="vacationStart" type="date" required />
+                </label>
+                <label>
+                  Fecha fin
+                  <input id="vacationEnd" type="date" required />
+                </label>
+                <label>
+                  Motivo
+                  <textarea id="vacationReason" placeholder="Motivo de las vacaciones..."></textarea>
+                </label>
+                <div class="btn-group">
+                  <button class="btn" type="submit">Guardar</button>
+                  <button id="vacationCancelBtn" class="btn ghost" type="button">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
         <section id="trainingsView" class="view hidden">
           <div class="card">
             <h2>Entrenamientos planificados</h2>

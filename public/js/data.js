@@ -284,6 +284,56 @@ export async function getAllCheckins() {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// ---------- Vacaciones (vacations) ----------
+export async function addVacation(userId, userName, startDateISO, endDateISO, reason, createdBy) {
+  const docRef = await addDoc(collection(db, "vacations"), {
+    userId,
+    userName,
+    startDate: startDateISO,
+    endDate: endDateISO,
+    reason: reason || "",
+    createdAt: serverTimestamp(),
+    createdBy: createdBy || null,
+  });
+  return docRef.id;
+}
+
+export async function getVacationsForUser(userId) {
+  const q = query(collection(db, "vacations"), where("userId", "==", userId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function getVacationsForAll() {
+  const snap = await getDocs(collection(db, "vacations"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function deleteVacation(vacationId) {
+  await deleteDoc(doc(db, "vacations", vacationId));
+}
+
+// Return a list of national + Comunidad de Madrid fixed holidays for a given year
+export function getHolidaysForYear(year) {
+  const y = Number(year) || new Date().getFullYear();
+  // Basic fixed-date Spanish national holidays + Comunidad de Madrid extras
+  const list = [
+    { date: `${y}-01-01`, name: "Año Nuevo" },
+    { date: `${y}-01-06`, name: "Reyes Magos" },
+    { date: `${y}-05-01`, name: "Día del Trabajo" },
+    { date: `${y}-08-15`, name: "Asunción" },
+    { date: `${y}-10-12`, name: "Fiesta Nacional de España" },
+    { date: `${y}-11-01`, name: "Todos los Santos" },
+    { date: `${y}-12-06`, name: "Día de la Constitución" },
+    { date: `${y}-12-08`, name: "Inmaculada Concepción" },
+    { date: `${y}-12-25`, name: "Navidad" },
+    // Comunidad de Madrid specific
+    { date: `${y}-05-02`, name: "Día de la Comunidad de Madrid" },
+    { date: `${y}-05-15`, name: "San Isidro (Madrid)" },
+  ];
+  return list;
+}
+
 export async function addTraining(title, date, coach, userId) {
   await addDoc(collection(db, "trainings"), {
     title,
@@ -824,6 +874,11 @@ export async function loadUsers(ui, role) {
     li.textContent = `${docSnap.id} · ${data.email || ""} · ${data.role || ""}`;
     ui.userList.appendChild(li);
   });
+}
+
+export async function getUsersList() {
+  const snap = await getDocs(collection(db, "users"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export async function updateUserRole(userId, role) {

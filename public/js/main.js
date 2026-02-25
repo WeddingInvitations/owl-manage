@@ -38,6 +38,13 @@ import {
   loadSummary,
   getMonthLabel,
   loadUsers,
+  getUsersList,
+  // Vacaciones
+  addVacation,
+  getVacationsForUser,
+  getVacationsForAll,
+  deleteVacation,
+  getHolidaysForYear,
   updateUserRole,
   createAcroAthlete,
   getAcroAthletes,
@@ -1114,10 +1121,107 @@ function updateMobileNavActive(viewId) {
   });
 }
 
+// ---------- Vacations UI logic ----------
+async function populateVacationWorkers() {
+  if (!ui.vacationWorkerSelect) return;
+  ui.vacationWorkerSelect.innerHTML = '<option value="">Yo</option>';
+  try {
+    const users = await getUsersList();
+    users.forEach((u) => {
+      if (!u.role) return;
+      if (["OWNER", "RECEPTION", "COACH"].includes(u.role)) {
+        const opt = document.createElement("option");
+        const label = u.firstName ? `${u.firstName} ${u.lastName || ""}` : (u.email || u.id);
+        opt.value = u.id;
+        opt.textContent = `${label} ${u.role ? `(${u.role})` : ""}`;
+        ui.vacationWorkerSelect.appendChild(opt);
+      }
+    });
+  } catch (err) {
+    console.error("Error loading users for vacations:", err);
+  }
+}
+
+async function renderVacations() {
+  if (!ui.vacationList) return;
+  // Determine filter
+  const selectedWorker = ui.vacationWorkerSelect?.value || "";
+  let vacations = [];
+  try {
+    if (selectedWorker) {
+      vacations = await getVacationsForUser(selectedWorker);
+    } else if (currentRole === "OWNER") {
+      vacations = await getVacationsForAll();
+    } else {
+      vacations = await getVacationsForUser(currentUser?.uid);
+    }
+  } catch (err) {
+    console.error("Error fetching vacations:", err);
+  }
+
+  ui.vacationList.innerHTML = "";
+  vacations.forEach((v) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<strong>${v.userName || v.userId || "Desconocido"}</strong> · ${v.startDate} → ${v.endDate} <div class="muted">${v.reason || ""}</div>`;
+    const actions = document.createElement("div");
+    actions.className = "btn-group";
+    // Allow delete for OWNER or creator
+    if (currentRole === "OWNER" || v.createdBy === currentUser?.uid) {
+      const del = document.createElement("button");
+      del.className = "btn ghost small";
+      del.textContent = "Eliminar";
+      del.addEventListener("click", async () => {
+        if (!confirm("Eliminar este período de vacaciones?")) return;
+        await deleteVacation(v.id);
+        await renderVacations();
+      });
+      actions.appendChild(del);
+    }
+    li.appendChild(actions);
+    ui.vacationList.appendChild(li);
+  });
+}
+
+// Vacation modal open/close and submit
+on(ui.vacationAddBtn, "click", () => {
+  if (!ui.vacationModal) return;
+  ui.vacationStart.value = "";
+  ui.vacationEnd.value = "";
+  ui.vacationReason.value = "";
+  ui.vacationModal.classList.remove("hidden");
+});
+on(ui.vacationModalClose, "click", () => ui.vacationModal?.classList.add("hidden"));
+on(ui.vacationCancelBtn, "click", () => ui.vacationModal?.classList.add("hidden"));
+
+on(ui.vacationForm, "submit", async (event) => {
+  event.preventDefault();
+  if (!currentUser) return;
+  const start = ui.vacationStart.value;
+  const end = ui.vacationEnd.value;
+  const reason = ui.vacationReason.value;
+  const forUser = ui.vacationWorkerSelect?.value || currentUser.uid;
+  const userName = (currentProfile?.firstName ? `${currentProfile.firstName} ${currentProfile.lastName || ""}` : currentUser.email) || "";
+  try {
+    await addVacation(forUser, userName, start, end, reason, currentUser.uid);
+    ui.vacationModal?.classList.add("hidden");
+    await renderVacations();
+  } catch (err) {
+    console.error("Error saving vacation:", err);
+    alert("Error al guardar vacaciones: " + (err.message || err));
+  }
+});
+
+on(ui.vacationWorkerSelect, "change", async () => renderVacations());
+on(ui.vacationMonth, "change", async () => renderVacations());
+
+
 ui.menuButtons.forEach((button) => {
   button.addEventListener("click", () => {
     setActiveView(button.dataset.view, ui);
     updateMobileNavActive(button.dataset.view);
+    if (button.dataset.view === "vacationsView") {
+      populateVacationWorkers().then(() => renderVacations());
+    }
   });
 });
 
@@ -1166,6 +1270,9 @@ bindAuth(
       await refreshAcroMonthly();
       await refreshCheckinStatus();
       await refreshCheckinAdmin();
+      // Populate vacations UI data
+      await populateVacationWorkers();
+      await renderVacations();
     } else {
       stopCheckinTimer();
     }
