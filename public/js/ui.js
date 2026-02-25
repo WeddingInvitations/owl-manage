@@ -130,8 +130,11 @@ export const ui = {
   // Vacaciones
   vacationAddBtn: $("vacationAddBtn"),
   vacationMonth: $("vacationMonth"),
+  vacationMonthPrev: $("vacationMonthPrev"),
+  vacationMonthNext: $("vacationMonthNext"),
   vacationWorkerSelect: $("vacationWorkerSelect"),
   vacationCalendar: $("vacationCalendar"),
+  vacationLegend: $("vacationLegend"),
   vacationList: $("vacationList"),
   vacationModal: $("vacationModal"),
   vacationModalClose: $("vacationModalClose"),

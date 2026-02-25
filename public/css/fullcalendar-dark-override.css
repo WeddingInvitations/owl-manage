@@ -1,0 +1,33 @@
+/* Mejora la cabecera de FullCalendar para modo oscuro y contraste */
+.fc .fc-toolbar {
+  background: var(--card, #151824);
+  color: var(--text, #f2f4ff);
+  border-radius: 8px 8px 0 0;
+  padding: 8px 12px 4px 12px;
+}
+.fc .fc-toolbar-title {
+  color: var(--text, #f2f4ff);
+  font-weight: 700;
+  font-size: 1.1em;
+}
+.fc .fc-button {
+  background: var(--primary, #6c7dff);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  margin: 0 2px;
+  transition: background 0.2s;
+}
+.fc .fc-button:hover, .fc .fc-button:focus {
+  background: #4c5cff;
+  color: #fff;
+}
+.fc .fc-button.fc-button-active {
+  background: #3840a8;
+  color: #fff;
+}
+.fc .fc-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

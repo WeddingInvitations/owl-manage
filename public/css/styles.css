@@ -250,7 +250,193 @@ select {
 
 .checkin-profile-edit h3 {
   font-size: 16px;
-  margin: 0 0 12px 0;
+
+  /* ========== UNIFIED COMPACT STYLE FOR DESKTOP & MOBILE ========== */
+
+  .card {
+    padding: 12px;
+    border-radius: 10px;
+  }
+
+  .card h2,
+  .card h3 {
+    font-size: 16px;
+  }
+
+  .stack {
+    gap: 10px;
+  }
+
+  input,
+  select {
+    padding: 12px;
+    font-size: 16px;
+  }
+
+  .btn {
+    padding: 12px 16px;
+    font-size: 14px;
+    width: 100%;
+  }
+
+  .btn.small {
+    padding: 8px 12px;
+    font-size: 12px;
+    width: auto;
+  }
+
+  .detail-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .detail-header h2,
+  .detail-header h3 {
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
+  .detail-header select {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .detail-header label {
+    flex: 1;
+    min-width: 100%;
+  }
+
+  .table-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .summary > div {
+    background: var(--accent);
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .value {
+    font-size: 18px;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -12px;
+    padding: 0 12px;
+  }
+
+  .table {
+    font-size: 12px;
+    width: 100%;
+    min-width: auto;
+  }
+
+  /* Vacations calendar unified style */
+  .vacation-month-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 520px;
+    margin: 0 auto 12px auto;
+    background: var(--accent);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 12px 8px 16px 8px;
+  }
+  .vacation-grid-header {
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-align: center;
+    font-size: 18px;
+    letter-spacing: 1px;
+  }
+  .vacation-weeknames {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 4px;
+  }
+  .vacation-weekname {
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 2px 0;
+  }
+  .vacation-cells {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .vacation-cell {
+    min-height: 54px;
+    height: 54px;
+    background: transparent;
+    border-radius: 7px;
+    padding: 3px 2px 2px 2px;
+    border: 1px dashed transparent;
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+  .vacation-cell.empty {
+    background: transparent;
+    border: none;
+  }
+  .vacation-daylabel {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .vacation-holiday {
+    font-size: 11px;
+    color: #ffd166;
+    margin-top: 2px;
+    font-weight: 600;
+  }
+  .vacation-cell.holiday {
+    background: rgba(255, 193, 7, 0.09);
+    border-color: rgba(255,193,7,0.18);
+  }
+  .vacation-day {
+    background: rgba(108,125,255,0.06);
+    border-color: rgba(108,125,255,0.13);
+  }
+  .vacation-pill {
+    display: block;
+    background: var(--primary);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-top: 2px;
+    margin-bottom: 1px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+  }
+  .vacation-legend { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
+  .vacation-legend-item { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); background: rgba(0,0,0,0.04); padding:6px 8px; border-radius:8px; }
+  .vacation-swatch { width:14px; height:14px; border-radius:4px; box-shadow: 0 1px 0 rgba(0,0,0,0.2) inset; }
+  .vacation-legend-item .name { color:var(--text); font-weight:600; }
   color: var(--fg);
 }
 
@@ -705,6 +891,76 @@ select {
   display: none;
 }
 
+/* Forzar layout tipo tarjeta para tablas mobile en todos los tamaños */
+.athlete-table-mobile {
+  display: block !important;
+  width: 100%;
+}
+.athlete-table-mobile thead {
+  display: none !important;
+}
+.athlete-table-mobile tbody {
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+}
+.athlete-table-mobile tr {
+  display: flex !important;
+  flex-wrap: wrap;
+  background: var(--accent);
+  border-radius: 8px;
+  padding: 10px;
+  gap: 8px;
+  align-items: center;
+}
+.athlete-table-mobile td {
+  border: none;
+  padding: 0;
+}
+.athlete-table-mobile td:nth-child(1) {
+  flex: 0 0 100%;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.athlete-table-mobile td:nth-child(2) {
+  flex: 1;
+}
+.athlete-table-mobile td:nth-child(2) select {
+  width: 100%;
+  max-width: none;
+}
+.athlete-table-mobile td:nth-child(3) {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+.athlete-table-mobile td:nth-child(4) {
+  flex: 0 0 auto;
+}
+.athlete-table-mobile td:nth-child(4) select {
+  min-width: 50px;
+  max-width: 60px;
+}
+.athlete-table-mobile td:nth-child(5) {
+  display: none;
+}
+.athlete-table-mobile td:nth-child(6) {
+  flex: 0 0 auto;
+}
+.summary-table-mobile th:nth-child(5),
+.summary-table-mobile td:nth-child(5) {
+  display: none !important;
+}
+.summary-table-mobile .table-actions {
+  flex-direction: column;
+  gap: 4px;
+}
+.summary-table-mobile .btn.small {
+  width: 100%;
+  text-align: center;
+}
+/* Fin forzado layout tipo tarjeta */
+
 @media (max-width: 768px) {
   /* Header mobile */
   .app-header {
@@ -900,18 +1156,106 @@ select {
   }
 
 /* Vacations calendar */
-.vacation-month-grid { display: block; }
-.vacation-grid-header { font-weight:700; margin-bottom:8px; }
-.vacation-weeknames { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px; }
-.vacation-weekname { text-align:center; font-size:12px; color:var(--muted); }
-.vacation-cells { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
-.vacation-cell { min-height:64px; background:transparent; border-radius:8px; padding:6px; border:1px dashed transparent; position:relative; }
-.vacation-cell.empty { background:transparent; }
-.vacation-daylabel { font-size:12px; font-weight:700; }
-.vacation-holiday { font-size:11px; color:#ffd166; margin-top:4px; }
-.vacation-cell.holiday { background: rgba(255, 193, 7, 0.05); border-color: rgba(255,193,7,0.08); }
-.vacation-day { background: rgba(108,125,255,0.03); border-color: rgba(108,125,255,0.06); }
-.vacation-pill { display:block; background:var(--primary); color:#fff; padding:4px 6px; border-radius:6px; font-size:12px; margin-top:6px; }
+
+/* Calendario de vacaciones mejorado */
+.vacation-month-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 520px;
+  margin: 0 auto 12px auto;
+  background: var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 12px 8px 16px 8px;
+}
+.vacation-grid-header {
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-align: center;
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+.vacation-weeknames {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.vacation-weekname {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 2px 0;
+}
+.vacation-cells {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.vacation-cell {
+  min-height: 54px;
+  height: 54px;
+  background: transparent;
+  border-radius: 7px;
+  padding: 3px 2px 2px 2px;
+  border: 1px dashed transparent;
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+.vacation-cell.empty {
+  background: transparent;
+  border: none;
+}
+.vacation-daylabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.vacation-holiday {
+  font-size: 11px;
+  color: #ffd166;
+  margin-top: 2px;
+  font-weight: 600;
+}
+.vacation-cell.holiday {
+  background: rgba(255, 193, 7, 0.09);
+  border-color: rgba(255,193,7,0.18);
+}
+.vacation-day {
+  background: rgba(108,125,255,0.06);
+  border-color: rgba(108,125,255,0.13);
+}
+.vacation-pill {
+  display: block;
+  background: var(--primary);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 2px;
+  margin-bottom: 1px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+}
+
+/* Vacation legend */
+.vacation-legend { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
+.vacation-legend-item { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); background: rgba(0,0,0,0.04); padding:6px 8px; border-radius:8px; }
+.vacation-swatch { width:14px; height:14px; border-radius:4px; box-shadow: 0 1px 0 rgba(0,0,0,0.2) inset; }
+.vacation-legend-item .name { color:var(--text); font-weight:600; }
 
 
   .table th,

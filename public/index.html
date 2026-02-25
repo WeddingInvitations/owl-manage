@@ -8,6 +8,10 @@
     <meta name="theme-color" content="#151824" />
     <title>OwlManage</title>
     <link rel="stylesheet" href="css/styles.css?v=20250219f" />
+    <link rel="stylesheet" href="css/fullcalendar-dark-override.css?v=20250225" />
+
+    <!-- FullCalendar CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
   </head>
   <body class="dark">
     <header class="app-header">
@@ -531,10 +535,7 @@
             <div class="vacations-actions detail-header">
               <div class="filter-row">
                 <button id="vacationAddBtn" class="btn" type="button">Solicitar vacaciones</button>
-                <label>
-                  Mes
-                  <input id="vacationMonth" type="month" />
-                </label>
+                <!-- FullCalendar native navigation will be used -->
                 <label>
                   Ver trabajador
                   <select id="vacationWorkerSelect"><option value="">Yo</option></select>
@@ -542,6 +543,7 @@
               </div>
             </div>
             <div id="vacationCalendar" class="calendar" style="min-height:200px;margin-top:12px;"></div>
+            <div id="vacationLegend" class="vacation-legend" style="margin-top:8px;"></div>
             <h3>Vacaciones registradas</h3>
             <ul id="vacationList" class="list"></ul>
           </div>
@@ -1005,6 +1007,8 @@
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- FullCalendar CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
     <script type="module" src="js/main.js?v=20250219f"></script>
   </body>
 </html>
