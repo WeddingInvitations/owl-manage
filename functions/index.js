@@ -26,20 +26,51 @@ exports.createUserWithRole = functions.https.onCall(async (data, context) => {
   if (!email || tempPassword.length < 6) {
     throw new functions.https.HttpsError("invalid-argument", "Datos inválidos");
   }
+  try {
+    const userRecord = await admin.auth().createUser({
+      email,
+      password: tempPassword,
+      emailVerified: false,
+    });
 
-  const userRecord = await admin.auth().createUser({
-    email,
-    password: tempPassword,
-    emailVerified: false,
-  });
+    await admin.firestore().collection("users").doc(userRecord.uid).set({
+      email,
+      role,
+      mustChangePassword: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: context.auth.uid,
+    });
 
-  await admin.firestore().collection("users").doc(userRecord.uid).set({
-    email,
-    role,
-    mustChangePassword: true,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    createdBy: context.auth.uid,
-  });
+    return { uid: userRecord.uid };
+  } catch (error) {
+    console.error("createUserWithRole error", error);
 
-  return { uid: userRecord.uid };
+    // Errores típicos de Firebase Auth
+    if (error.code === "auth/email-already-exists") {
+      throw new functions.https.HttpsError(
+        "already-exists",
+        "Ya existe un usuario con ese email."
+      );
+    }
+
+    if (error.code === "auth/invalid-password") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "La contraseña temporal no es válida."
+      );
+    }
+
+    if (error.code === "auth/invalid-email") {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "El email no tiene un formato válido."
+      );
+    }
+
+    // Cualquier otro error
+    throw new functions.https.HttpsError(
+      "internal",
+      "Error interno al crear el usuario."
+    );
+  }
 });

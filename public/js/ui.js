@@ -223,6 +223,12 @@ export const ui = {
   acroPaidFilter: $("acroPaidFilter"),
   acroList: $("acroList"),
   acroListCount: $("acroListCount"),
+  // Cambio de contraseña inicial
+  passwordChangeView: $("passwordChangeView"),
+  passwordChangeForm: $("passwordChangeForm"),
+  passwordChangeNew: $("passwordChangeNew"),
+  passwordChangeConfirm: $("passwordChangeConfirm"),
+  passwordChangeStatus: $("passwordChangeStatus"),
   // Mobile navigation
   mobileNav: $("mobileNav"),
   mobileNavButtons: Array.from(document.querySelectorAll(".mobile-nav-btn")),
@@ -244,6 +250,10 @@ export function setAuthUI(currentUi, user, role, mustChangePassword) {
     if (currentUi.loginView) {
       currentUi.loginView.classList.add("hidden");
     }
+    // Si debe cambiar la contraseña, mostramos sólo la vista de cambio y ocultamos la app
+    if (currentUi.passwordChangeView) {
+      currentUi.passwordChangeView.classList.toggle("hidden", !mustChangePassword);
+    }
     if (currentUi.mainShell) {
       currentUi.mainShell.classList.toggle("hidden", Boolean(mustChangePassword));
     }
@@ -256,6 +266,9 @@ export function setAuthUI(currentUi, user, role, mustChangePassword) {
     }
     if (currentUi.rolesPanel) {
       currentUi.rolesPanel.classList.add("hidden");
+    }
+    if (currentUi.passwordChangeView) {
+      currentUi.passwordChangeView.classList.add("hidden");
     }
     if (currentUi.mainShell) {
       currentUi.mainShell.classList.add("hidden");

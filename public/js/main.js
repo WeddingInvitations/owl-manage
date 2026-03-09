@@ -11,6 +11,7 @@ import {
 } from "./ui.js?v=20250219f";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js";
+import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import {
   addPayment,
   addExpense,
@@ -47,6 +48,7 @@ import {
   deleteVacation,
   getHolidaysForYear,
   updateUserRole,
+  setMustChangePassword,
   createAcroAthlete,
   getAcroAthletes,
   getAllAcroAthleteMonths,
@@ -244,6 +246,74 @@ const on = (element, eventName, handler) => {
   if (!element) return;
   element.addEventListener(eventName, handler);
 };
+
+// --- Cambio de contraseña inicial ---
+on(ui.passwordChangeForm, "submit", async (event) => {
+  event.preventDefault();
+  if (!auth.currentUser) {
+    if (ui.passwordChangeStatus) {
+      ui.passwordChangeStatus.textContent = "No hay usuario autenticado.";
+    }
+    return;
+  }
+
+  const newPassword = ui.passwordChangeNew?.value || "";
+  const confirmPassword = ui.passwordChangeConfirm?.value || "";
+
+  if (newPassword.length < 6) {
+    if (ui.passwordChangeStatus) {
+      ui.passwordChangeStatus.textContent = "La contraseña debe tener al menos 6 caracteres.";
+    }
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    if (ui.passwordChangeStatus) {
+      ui.passwordChangeStatus.textContent = "Las contraseñas no coinciden.";
+    }
+    return;
+  }
+
+  if (ui.passwordChangeStatus) {
+    ui.passwordChangeStatus.textContent = "Actualizando contraseña...";
+  }
+
+  try {
+    await updatePassword(auth.currentUser, newPassword);
+    await setMustChangePassword(auth.currentUser.uid, false);
+
+    // Actualizar estado local y UI para entrar en la app
+    if (currentProfile) {
+      currentProfile.mustChangePassword = false;
+    }
+
+    if (ui.passwordChangeStatus) {
+      ui.passwordChangeStatus.textContent = "Contraseña actualizada. Cargando aplicación...";
+    }
+
+    // Ocultar vista de cambio de contraseña y mostrar la app
+    setAuthUI(ui, auth.currentUser, currentRole, false);
+    updateMenuVisibility(ui, currentRole);
+    if (ui.mobileNav) {
+      ui.mobileNav.classList.toggle("hidden", !auth.currentUser);
+    }
+
+    // Cargar datos principales ahora que ya no requiere cambio de contraseña
+    await refreshAll();
+    await refreshAthleteMonthly();
+    await refreshAcroMonthly();
+    await refreshCheckinStatus();
+    await refreshCheckinAdmin();
+    await populateVacationWorkers();
+    await renderVacations();
+  } catch (error) {
+    console.error("Error al cambiar contraseña:", error);
+    if (ui.passwordChangeStatus) {
+      ui.passwordChangeStatus.textContent =
+        "Error al cambiar la contraseña: " + (error.message || String(error));
+    }
+  }
+});
 
 const tariffPlans = [
   { key: "8/mes", durationMonths: 1, priceTotal: 70 },
@@ -1561,34 +1631,47 @@ bindAuth(
     currentUser = user;
     currentProfile = profile;
     currentRole = profile.role;
+
     if (user) {
-      // Populate profile form fields
-      if (ui.checkinProfileFirstName) {
-        ui.checkinProfileFirstName.value = profile.firstName || "";
+      // Si el usuario debe cambiar la contraseña, no cargamos todavía los datos pesados
+      if (profile.mustChangePassword) {
+        if (ui.passwordChangeStatus) ui.passwordChangeStatus.textContent = "";
+        if (ui.passwordChangeNew) ui.passwordChangeNew.value = "";
+        if (ui.passwordChangeConfirm) ui.passwordChangeConfirm.value = "";
+        // Ocultar navegación móvil mientras está obligado a cambiar contraseña
+        if (ui.mobileNav) {
+          ui.mobileNav.classList.add("hidden");
+        }
+      } else {
+        // Flujo normal: cargar datos de la app
+        if (ui.checkinProfileFirstName) {
+          ui.checkinProfileFirstName.value = profile.firstName || "";
+        }
+        if (ui.checkinProfileLastName) {
+          ui.checkinProfileLastName.value = profile.lastName || "";
+        }
+        await refreshAll();
+        await refreshAthleteMonthly();
+        await refreshAcroMonthly();
+        await refreshCheckinStatus();
+        await refreshCheckinAdmin();
+        await populateVacationWorkers();
+        await renderVacations();
+
+        updateMenuVisibility(ui, currentRole);
+        if (ui.mobileNav) {
+          ui.mobileNav.classList.toggle("hidden", !user);
+        }
+        if (currentRole !== "OWNER") {
+          setActiveView("checkinsView", ui);
+          updateMobileNavActive("checkinsView");
+        }
       }
-      if (ui.checkinProfileLastName) {
-        ui.checkinProfileLastName.value = profile.lastName || "";
-      }
-      await refreshAll();
-      await refreshAthleteMonthly();
-      await refreshAcroMonthly();
-      await refreshCheckinStatus();
-      await refreshCheckinAdmin();
-      // Populate vacations UI data
-      await populateVacationWorkers();
-      await renderVacations();
     } else {
       stopCheckinTimer();
-    }
-    setAuthUI(ui, user, currentRole, false);
-    updateMenuVisibility(ui, currentRole);
-    // Mobile nav visibility
-    if (ui.mobileNav) {
-      ui.mobileNav.classList.toggle("hidden", !user);
-    }
-    if (currentRole !== "OWNER") {
-      setActiveView("checkinsView", ui);
-      updateMobileNavActive("checkinsView");
+      if (ui.mobileNav) {
+        ui.mobileNav.classList.add("hidden");
+      }
     }
   },
   setAuthUI

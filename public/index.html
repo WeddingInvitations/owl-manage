@@ -981,6 +981,25 @@
           <p class="muted">* Usuarios se gestionan en Firebase Auth.</p>
         </form>
       </section>
+
+      <section class="card hidden" id="passwordChangeView">
+        <h2>Cambiar contraseña</h2>
+        <p class="muted">
+          Es tu primer acceso, por seguridad debes elegir una nueva contraseña.
+        </p>
+        <form id="passwordChangeForm" class="stack">
+          <label>
+            Nueva contraseña
+            <input id="passwordChangeNew" type="password" minlength="6" required />
+          </label>
+          <label>
+            Repite la contraseña
+            <input id="passwordChangeConfirm" type="password" minlength="6" required />
+          </label>
+          <button class="btn" type="submit">Guardar nueva contraseña</button>
+          <p id="passwordChangeStatus" class="muted"></p>
+        </form>
+      </section>
     </main>
 
     <footer class="app-footer">
