@@ -8,9 +8,12 @@ exports.createUserWithRole = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "Auth requerida");
   }
 
+  // Determinar el rol del que llama igual que en las reglas de Firestore:
+  // si no hay documento o no tiene rol, se considera OWNER por defecto.
   const callerRef = admin.firestore().collection("users").doc(context.auth.uid);
   const callerSnap = await callerRef.get();
-  const callerRole = callerSnap.data()?.role;
+  const callerData = callerSnap.exists ? callerSnap.data() || {} : {};
+  const callerRole = callerData.role || "OWNER";
 
   if (callerRole !== "OWNER") {
     throw new functions.https.HttpsError("permission-denied", "Solo OWNER");
