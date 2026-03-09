@@ -159,6 +159,11 @@
               </div>
               <form id="paymentCsvForm" class="stack">
                 <p class="muted">El CSV debe tener 3 columnas: Concepto, Fecha (YYYY-MM-DD), Importe. La primera fila (cabecera) se ignorará.</p>
+                <div class="flex gap-2 mb-3">
+                  <button id="downloadPaymentTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
+                    📥 Descargar plantilla
+                  </button>
+                </div>
                 <label>
                   Archivo CSV
                   <input id="paymentCsvFile" type="file" accept=".csv,text/csv" required />
@@ -243,6 +248,11 @@
               </div>
               <form id="expenseCsvForm" class="stack">
                 <p class="muted">El CSV debe tener 3 columnas: Concepto, Fecha (YYYY-MM-DD), Importe. La primera fila (cabecera) se ignorará.</p>
+                <div class="flex gap-2 mb-3">
+                  <button id="downloadExpenseTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
+                    📥 Descargar plantilla
+                  </button>
+                </div>
                 <label>
                   Archivo CSV
                   <input id="expenseCsvFile" type="file" accept=".csv,text/csv" required />
@@ -679,6 +689,12 @@
                 </button>
               </div>
               <form id="athleteCsvForm" class="stack">
+                <p class="muted">El CSV debe tener las columnas: nombre, tarifa, pagado, precio (opcional). Formatos aceptados: nombre/name, tarifa/plan, pagado/paid.</p>
+                <div class="flex gap-2 mb-3">
+                  <button id="downloadAthleteTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
+                    📥 Descargar plantilla
+                  </button>
+                </div>
                 <label>
                   Archivo CSV
                   <input id="athleteCsvFile" type="file" accept=".csv,text/csv" required />
@@ -819,6 +835,12 @@
                 </button>
               </div>
               <form id="acroCsvForm" class="stack">
+                <p class="muted">El CSV debe tener las columnas: nombre, tarifa, pagado, precio (opcional). Formatos aceptados: nombre/name, tarifa/plan, pagado/paid.</p>
+                <div class="flex gap-2 mb-3">
+                  <button id="downloadAcroTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
+                    📥 Descargar plantilla
+                  </button>
+                </div>
                 <label>
                   Archivo CSV
                   <input id="acroCsvFile" type="file" accept=".csv,text/csv" required />

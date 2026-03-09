@@ -991,7 +991,9 @@ async function refreshAcroMonthly() {
     const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
+    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
     const paid = Boolean(current?.paid);
+    const active = paid;
 
     if (paid) {
       activeNow.add(athlete.id);
@@ -2873,124 +2875,6 @@ on(ui.athleteCsvForm, "submit", async (event) => {
   }
 });
 
-on(ui.athleteMonthSelect, "change", async (event) => {
-  selectedAthleteMonth = event.target.value;
-  await refreshAthleteMonthly();
-});
-
-on(ui.athleteListMonthSelect, "change", async (event) => {
-  selectedAthleteListMonth = event.target.value;
-  await refreshAthleteMonthly();
-});
-
-on(ui.athletePaymentMonth, "change", (event) => {
-  selectedAthletePaymentMonth = event.target.value;
-});
-
-on(ui.paymentMonthSelect, "change", async (event) => {
-  selectedPaymentMonth = event.target.value;
-  await refreshPaymentList();
-});
-
-on(ui.expenseMonthSelect, "change", async (event) => {
-  selectedExpenseMonth = event.target.value;
-  await refreshExpenseList();
-});
-
-on(ui.athleteSearch, "input", async (event) => {
-  athleteSearchTerm = event.target.value || "";
-  await refreshAthleteMonthly();
-});
-
-on(ui.athletePaidFilter, "change", async (event) => {
-  athletePaidFilter = event.target.value || "ALL";
-  await refreshAthleteMonthly();
-});
-
-on(ui.athleteList, "change", (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLSelectElement)) return;
-  if (target.dataset.role !== "tariff") return;
-  const athleteId = target.dataset.id;
-  const priceSpan = ui.athleteList.querySelector(
-    `[data-role="price"][data-id="${athleteId}"]`
-  );
-  if (priceSpan) {
-    const plan = tariffPlanMap.get(target.value);
-    const newPrice = plan ? plan.priceTotal : 0;
-    priceSpan.textContent = newPrice.toFixed(2);
-  }
-});
-
-on(ui.athleteList, "click", async (event) => {
-  const button = event.target.closest("button[data-role='save']");
-  if (!button) return;
-  const athleteId = button.dataset.id;
-  const athleteName = button.dataset.name || "";
-  const tariffSelect = ui.athleteList.querySelector(
-    `select[data-role="tariff"][data-id="${athleteId}"]`
-  );
-  const paidSelect = ui.athleteList.querySelector(
-    `select[data-role="paid"][data-id="${athleteId}"]`
-  );
-  if (!tariffSelect || !paidSelect) return;
-  const tariff = tariffSelect.value;
-  const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
-  const price = plan.priceTotal;
-  const paid = paidSelect.value === "SI";
-  const duration = paid ? (plan.durationMonths || 1) : 1;
-  
-  // Si se marca como pagado y la tarifa es multi-mes, crear registros para meses siguientes
-  for (let i = 0; i < duration; i += 1) {
-    const monthKey = addMonthsToKey(selectedAthleteListMonth, i);
-    await upsertAthleteMonth(
-      athleteId,
-      monthKey,
-      {
-        athleteName,
-        tariff,
-        price,
-        paid,
-        active: paid,
-        durationMonths: plan.durationMonths,
-        priceMonthly: plan.priceMonthly,
-        isPaymentMonth: i === 0,
-      },
-      currentUser?.uid
-    );
-  }
-  await refreshAthleteMonthly();
-  await refreshAll();
-});
-
-on(ui.refreshSummary, "click", async () => {
-  await refreshAll();
-});
-
-on(ui.monthlyYearSelect, "change", (event) => {
-  selectedYear = event.target.value;
-  renderMonthlySummary();
-  ui.monthlyDetailCard.classList.add("hidden");
-});
-
-on(ui.monthlySummaryBody, "click", (event) => {
-  const button = event.target.closest("button[data-action]");
-  if (!button) return;
-  const key = button.dataset.key;
-  if (button.dataset.action === "detail") {
-    renderMonthlyDetail(key);
-  }
-  if (button.dataset.action === "csv") {
-    downloadMonthlyCSV(key);
-  }
-});
-
-on(ui.monthlyDetailClose, "click", () => {
-  ui.monthlyDetailCard.classList.add("hidden");
-});
-
-// ========== ACROBACIAS EVENT HANDLERS ==========
-
 on(ui.acroForm, "submit", async (event) => {
   event.preventDefault();
   const rawName = ui.acroName.value.trim();
@@ -3081,120 +2965,13 @@ on(ui.acroCsvForm, "submit", async (event) => {
   }
 });
 
-on(ui.acroMonthSelect, "change", async (event) => {
-  selectedAcroMonth = event.target.value;
-  await refreshAcroMonthly();
+on(ui.downloadPaymentTemplate, "click", () => {
+  downloadCsvTemplate('plantilla_ingresos.csv', 'payment');
 });
 
-on(ui.acroListMonthSelect, "change", async (event) => {
-  selectedAcroListMonth = event.target.value;
-  await refreshAcroMonthly();
+on(ui.downloadExpenseTemplate, "click", () => {
+  downloadCsvTemplate('plantilla_gastos.csv', 'expense');
 });
 
-on(ui.acroPaymentMonth, "change", (event) => {
-  selectedAcroPaymentMonth = event.target.value;
-});
-
-on(ui.acroSearch, "input", async (event) => {
-  acroSearchTerm = event.target.value || "";
-  await refreshAcroMonthly();
-});
-
-on(ui.acroPaidFilter, "change", async (event) => {
-  acroPaidFilter = event.target.value || "ALL";
-  await refreshAcroMonthly();
-});
-
-on(ui.acroList, "change", (event) => {
-  const target = event.target;
-  if (!(target instanceof HTMLSelectElement)) return;
-  if (target.dataset.role !== "acro-tariff") return;
-  const athleteId = target.dataset.id;
-  const priceSpan = ui.acroList.querySelector(
-    `[data-role="acro-price"][data-id="${athleteId}"]`
-  );
-  if (priceSpan) {
-    const plan = acroTariffPlanMap.get(target.value);
-    const newPrice = plan ? plan.priceTotal : 0;
-    priceSpan.textContent = newPrice.toFixed(2);
-  }
-});
-
-on(ui.acroList, "click", async (event) => {
-  const button = event.target.closest("button[data-role='acro-save']");
-  if (!button) return;
-  const athleteId = button.dataset.id;
-  const athleteName = button.dataset.name || "";
-  const tariffSelect = ui.acroList.querySelector(
-    `select[data-role="acro-tariff"][data-id="${athleteId}"]`
-  );
-  const paidSelect = ui.acroList.querySelector(
-    `select[data-role="acro-paid"][data-id="${athleteId}"]`
-  );
-  if (!tariffSelect || !paidSelect) return;
-  const tariff = tariffSelect.value;
-  const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
-  const price = plan.priceTotal;
-  const paid = paidSelect.value === "SI";
-  const duration = paid ? (plan.durationMonths || 1) : 1;
-  
-  // Si se marca como pagado y la tarifa es multi-mes, crear registros para meses siguientes
-  for (let i = 0; i < duration; i += 1) {
-    const monthKey = addMonthsToKey(selectedAcroListMonth, i);
-    await upsertAcroAthleteMonth(
-      athleteId,
-      monthKey,
-      {
-        athleteName,
-        tariff,
-        price,
-        paid,
-        active: paid,
-        durationMonths: plan.durationMonths,
-        priceMonthly: plan.priceMonthly,
-        isPaymentMonth: i === 0,
-      },
-      currentUser?.uid
-    );
-  }
-  await refreshAcroMonthly();
-});
-
-// ========== MOBILE NAVIGATION ==========
-
-// Mobile nav button clicks
-ui.mobileNavButtons?.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const viewId = btn.dataset.view;
-    if (viewId === "moreView") {
-      ui.moreMenu?.classList.remove("hidden");
-    } else {
-      setActiveView(viewId, ui);
-      updateMobileNavActive(viewId);
-    }
-  });
-});
-
-// More menu close
-on(ui.moreMenuClose, "click", () => {
-  ui.moreMenu?.classList.add("hidden");
-});
-
-// More menu options
-document.querySelectorAll("[data-close-more]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const viewId = btn.dataset.view;
-    if (viewId) {
-      setActiveView(viewId, ui);
-      updateMobileNavActive(viewId);
-    }
-    ui.moreMenu?.classList.add("hidden");
-  });
-});
-
-// Close more menu on backdrop click
-on(ui.moreMenu, "click", (event) => {
-  if (event.target === ui.moreMenu) {
-    ui.moreMenu.classList.add("hidden");
-  }
-});
+on(ui.downloadAthleteTemplate, "click", downloadAthleteTemplate);
+on(ui.downloadAcroTemplate, "click", downloadAcroTemplate);
