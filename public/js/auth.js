@@ -21,13 +21,19 @@ export async function ensureUserProfile(user) {
   const snap = await getDoc(userRef);
 
   if (!snap.exists()) {
+    const isPasswordUser = Array.isArray(user.providerData)
+      ? user.providerData.some((p) => p && p.providerId === "password")
+      : false;
+
     await setDoc(userRef, {
       email: user.email,
       displayName: user.displayName || "",
       firstName: "",
       lastName: "",
       role: "RECEPTION",
-      mustChangePassword: false,
+      // Si es un usuario de email/contraseña creado fuera del flujo de Roles,
+      // obligamos a cambiar la contraseña en el primer acceso.
+      mustChangePassword: isPasswordUser,
       createdAt: serverTimestamp(),
     });
   }
