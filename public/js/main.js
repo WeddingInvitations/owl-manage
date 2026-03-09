@@ -10,6 +10,7 @@ import {
   updateMenuVisibility,
 } from "./ui.js?v=20250219f";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
+import { auth, db } from "./firebase.js";
 import {
   addPayment,
   addExpense,
@@ -58,6 +59,95 @@ import {
 } from "./data.js?v=20250219f";
 import { createUserWithRole } from "./admin.js";
 
+// Exponer Firebase globalmente para debugging
+window.firebase = {
+  auth: () => auth,
+  firestore: () => db
+};
+
+window.debugAuth = async function() {
+  console.log('🔍 DEBUG: Estado de autenticación avanzado');
+  
+  try {
+    const currentUser = auth.currentUser;
+    console.log('👤 Usuario Firebase:', currentUser);
+    
+    if (currentUser) {
+      console.log('📧 Email:', currentUser.email);
+      console.log('🆔 UID:', currentUser.uid);
+      
+      // Verificar documento de usuario en Firestore
+      const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
+      
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          console.log('👑 Datos del usuario:', userData);
+          console.log('🎭 Role:', userData.role);
+          console.log('📅 Creado:', userData.createdAt);
+        } else {
+          console.log('❌ No se encontró documento de usuario en Firestore');
+          console.log('🔧 Creando documento de usuario...');
+          
+          // Crear documento de usuario
+          const { setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
+          
+          await setDoc(userDocRef, {
+            email: currentUser.email,
+            displayName: currentUser.displayName || '',
+            role: 'OWNER', // Asignar rol OWNER por defecto
+            createdAt: serverTimestamp(),
+            mustChangePassword: false
+          });
+          
+          console.log('✅ Documento de usuario creado con rol OWNER');
+        }
+      } catch (error) {
+        console.log('❌ Error con documento de usuario:', error);
+      }
+      
+      // Test de acceso a colecciones
+      try {
+        console.log('🧪 Probando acceso a datos...');
+        
+        const { collection, getDocs, limit, query } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
+        
+        const paymentsQuery = query(collection(db, 'payments'), limit(5));
+        const paymentsSnapshot = await getDocs(paymentsQuery);
+        console.log('💰 Payments encontrados:', paymentsSnapshot.size);
+        paymentsSnapshot.forEach(doc => {
+          console.log('💰 Payment:', doc.id, doc.data());
+        });
+        
+        const expensesQuery = query(collection(db, 'expenses'), limit(5));
+        const expensesSnapshot = await getDocs(expensesQuery);
+        console.log('💸 Expenses encontrados:', expensesSnapshot.size);
+        expensesSnapshot.forEach(doc => {
+          console.log('💸 Expense:', doc.id, doc.data());
+        });
+        
+        const athletesQuery = query(collection(db, 'athletes'), limit(5));
+        const athletesSnapshot = await getDocs(athletesQuery);
+        console.log('🏃 Athletes encontrados:', athletesSnapshot.size);
+        athletesSnapshot.forEach(doc => {
+          console.log('🏃 Athlete:', doc.id, doc.data());
+        });
+        
+      } catch (error) {
+        console.log('❌ Error accediendo a datos:', error);
+        console.log('📝 Detalles del error:', error.code, error.message);
+      }
+    } else {
+      console.log('❌ No hay usuario autenticado');
+    }
+  } catch (error) {
+    console.log('❌ Error general en debug:', error);
+  }
+};
+
 let currentUser = null;
 let currentProfile = null;
 let currentRole = "RECEPTION";
@@ -88,6 +178,67 @@ let selectedAcroCsvMonth = "";
 let currentOpenCheckin = null;
 let checkinTimerInterval = null;
 let selectedCheckinAdminMonth = "";
+
+// ========== SISTEMA DE TEMA CLARO/OSCURO ==========
+
+// Función para aplicar tema
+function applyTheme(theme) {
+  console.log('🎨 Aplicando tema:', theme);
+  const body = document.body;
+  const themeIcon = document.querySelector('.theme-icon');
+  
+  if (theme === 'light') {
+    body.classList.add('light');
+    if (themeIcon) {
+      themeIcon.textContent = '☀️';
+      console.log('☀️ Cambiado a tema claro');
+    }
+  } else {
+    body.classList.remove('light');
+    if (themeIcon) {
+      themeIcon.textContent = '🌙';
+      console.log('🌙 Cambiado a tema oscuro');
+    }
+  }
+  
+  // Guardar preferencia en localStorage
+  localStorage.setItem('owlmanage-theme', theme);
+  console.log('💾 Tema guardado en localStorage:', theme);
+}
+
+// Función para obtener tema guardado o detectar preferencia del sistema
+function getSavedTheme() {
+  const saved = localStorage.getItem('owlmanage-theme');
+  if (saved) return saved;
+  
+  // Si no hay tema guardado, usar preferencia del sistema
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+    return 'light';
+  }
+  return 'dark';
+}
+
+// Función para alternar tema
+function toggleTheme() {
+  console.log('🔄 Toggle tema solicitado');
+  const currentTheme = document.body.classList.contains('light') ? 'light' : 'dark';
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+  console.log('📝 Tema actual:', currentTheme, '-> Nuevo tema:', newTheme);
+  applyTheme(newTheme);
+}
+
+// Aplicar tema inmediatamente
+const initialTheme = getSavedTheme();
+applyTheme(initialTheme);
+
+// Escuchar cambios en la preferencia del sistema
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('owlmanage-theme')) {
+      applyTheme(e.matches ? 'light' : 'dark');
+    }
+  });
+}
 
 const on = (element, eventName, handler) => {
   if (!element) return;
@@ -1360,6 +1511,21 @@ ui.menuButtons.forEach((button) => {
     }
   });
 });
+
+// Event listener para el botón de cambio de tema
+setTimeout(() => {
+  const themeButton = document.getElementById('themeToggle');
+  console.log('🔍 Buscando botón themeToggle:', themeButton);
+  if (themeButton) {
+    themeButton.onclick = () => {
+      console.log('🎯 Click directo en botón de tema');
+      toggleTheme();
+    };
+    console.log('✅ Evento onclick asignado al botón de tema');
+  } else {
+    console.log('❌ No se encontró el botón themeToggle después del timeout');
+  }
+}, 1000);
 
 setActiveView("summaryView", ui);
 renderAthleteMonthOptions();

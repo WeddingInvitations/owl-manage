@@ -13,15 +13,22 @@
     <!-- FullCalendar CDN -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
   </head>
-  <body class="dark">
+  <body>
     <header class="app-header">
-      <div>
+      <div class="header-left">
         <h1>OwlManage</h1>
         <p class="muted">MVP interno · Contabilidad · Fichajes · Entrenamientos · Pagos</p>
       </div>
-      <div class="auth-status">
-        <span id="userBadge" class="badge">Invitado</span>
-        <button id="logoutBtn" class="btn ghost" disabled>Cerrar sesión</button>
+      <div class="header-right">
+        <div class="header-controls">
+          <button id="themeToggle" class="btn ghost theme-btn" title="Cambiar tema">
+            <span class="theme-icon">🌙</span>
+          </button>
+        </div>
+        <div class="auth-status">
+          <span id="userBadge" class="badge">Invitado</span>
+          <button id="logoutBtn" class="btn ghost" disabled>Cerrar sesión</button>
+        </div>
       </div>
     </header>
 
@@ -1010,5 +1017,27 @@
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
     <script type="module" src="js/main.js?v=20250219f"></script>
+    
+    <!-- Script de debugging simplificado -->
+    <script>
+      // Auto-ejecutar debugging después de que cargue main.js
+      setTimeout(() => {
+        if (window.debugAuth) {
+          console.log('🚀 Ejecutando debug automático...');
+          window.debugAuth();
+        } else {
+          console.log('❌ debugAuth no está disponible, main.js no se cargó correctamente');
+        }
+      }, 3000);
+      
+      // También crear un acceso directo para debugging manual
+      window.runDebug = () => {
+        if (window.debugAuth) {
+          window.debugAuth();
+        } else {
+          console.log('❌ debugAuth no disponible');
+        }
+      };
+    </script>
   </body>
 </html>

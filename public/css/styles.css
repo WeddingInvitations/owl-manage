@@ -1,12 +1,39 @@
 :root {
-  color-scheme: dark;
-  --bg: #0e0f14;
-  --card: #151824;
-  --primary: #6c7dff;
-  --text: #f2f4ff;
-  --muted: #a4abc2;
-  --border: #24283a;
-  --accent: #1d2030;
+  /* Tema Oscuro (por defecto) - Colores mejorados */
+  --bg: #0a0b0f;
+  --card: #1a1d29;
+  --primary: #818cf8;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --border: #334155;
+  --accent: #1e293b;
+  --shadow: rgba(0, 0, 0, 0.4);
+  --input-bg: #1e293b;
+  --hover-bg: #334155;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --warning: #fbbf24;
+  --success: #22c55e;
+  --error: #ef4444;
+}
+
+/* Tema Claro - Colores mejorados */
+.light {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --primary: #4f46e5;
+  --text: #0f172a;
+  --muted: #475569;
+  --border: #cbd5e1;
+  --accent: #f1f5f9;
+  --shadow: rgba(0, 0, 0, 0.1);
+  --input-bg: #ffffff;
+  --hover-bg: #f8fafc;
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --warning: #d97706;
+  --success: #059669;
+  --error: #dc2626;
 }
 
 * {
@@ -14,9 +41,29 @@
   font-family: "Segoe UI", system-ui, sans-serif;
 }
 
+/* Transición suave para el cambio de tema */
+*, *::before, *::after {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
 body {
   margin: 0;
   background: var(--bg);
+  color: var(--text);
+}
+
+/* Asegurar que todos los elementos hereden el color correctamente */
+div, span, p, li, td, th, label, button, input, select, textarea {
+  color: inherit;
+}
+
+/* Forzar visibilidad de texto en contenedores principales */
+.card, .list, .table, .summary, .view {
+  color: var(--text);
+}
+
+/* Elementos con contenido dinámico */
+#paymentList, #expenseList, #checkinList, #trainingList, #athleteList {
   color: var(--text);
 }
 
@@ -27,6 +74,28 @@ body {
   padding: 24px 32px;
   border-bottom: 1px solid var(--border);
   background: var(--card);
+}
+
+.header-left {
+  flex: 1;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .app-header h1 {
@@ -107,9 +176,52 @@ body {
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px var(--shadow), 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px var(--shadow), 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Botón de cambio de tema */
+.theme-btn {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s ease;
+  position: relative;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.theme-btn:hover {
+  background: var(--hover-bg);
+  border-color: var(--border);
+  transform: scale(1.1);
+}
+
+.theme-btn:active {
+  transform: scale(0.95);
+}
+
+.theme-icon {
+  font-size: 20px;
+  transition: transform 0.3s ease;
+  display: block;
+  line-height: 1;
+}
+
+.theme-btn:hover .theme-icon {
+  transform: rotate(180deg);
 }
 
 .stack {
@@ -119,43 +231,128 @@ body {
 
 label {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Mejorar títulos */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+/* Mejorar valores y métricas */
+.value {
+  font-weight: 700;
+  font-size: 28px;
+  color: var(--text);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.label {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 input,
 select {
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  padding: 8px 10px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  padding: 12px 16px;
   font-size: 14px;
-  background: #11131b;
+  background: var(--input-bg);
   color: var(--text);
+  transition: all 0.3s ease;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.15), 0 2px 12px rgba(0, 0, 0, 0.1);
+  background: var(--card);
 }
 
 .btn {
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), #6366f1);
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 10px 14px;
-  cursor: pointer;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 14px;
   font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .btn.ghost {
   background: transparent;
+  color: var(--text);
+  border: 2px solid var(--border);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn.ghost:hover {
+  background: var(--hover-bg);
+  border-color: var(--primary);
   color: var(--primary);
-  border: 1px solid var(--primary);
+  transform: translateY(-1px);
 }
 
 .btn.danger {
-  background: #dc3545;
+  background: linear-gradient(135deg, var(--danger), #dc2626);
   color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 .btn.danger:hover {
-  background: #c82333;
+  background: linear-gradient(135deg, var(--danger-hover), var(--danger));
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
 }
 
 .btn:disabled {
@@ -404,7 +601,7 @@ select {
   }
   .vacation-holiday {
     font-size: 11px;
-    color: #ffd166;
+    color: var(--warning);
     margin-top: 2px;
     font-weight: 600;
   }
@@ -419,7 +616,7 @@ select {
   .vacation-pill {
     display: block;
     background: var(--primary);
-    color: #fff;
+    color: white;
     padding: 2px 6px;
     border-radius: 6px;
     font-size: 12px;
@@ -568,22 +765,42 @@ select {
 }
 
 .status-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.3px;
+  min-width: 50px;
+  text-align: center;
+  transition: all 0.2s ease;
 }
 
-.status-badge.open {
-  background: #d4edda;
-  color: #155724;
+[data-theme="light"] .status-badge.open {
+  background: rgba(34, 197, 94, 0.1);
+  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
-.status-badge.closed {
-  background: #f8d7da;
-  color: #721c24;
+[data-theme="dark"] .status-badge.open {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+[data-theme="light"] .status-badge.closed {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+[data-theme="dark"] .status-badge.closed {
+  background: rgba(248, 113, 113, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.3);
 }
 
 .checkin-timer {
@@ -638,12 +855,12 @@ select {
 }
 
 .status-open {
-  color: #155724;
+  color: var(--success);
   font-weight: 600;
 }
 
 .status-closed {
-  color: #721c24;
+  color: var(--error);
   font-weight: 600;
 }
 
@@ -706,10 +923,38 @@ select {
 }
 
 .list li {
-  background: #f1f3fb;
-  border-radius: 8px;
-  padding: 8px 10px;
+  background: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
   font-size: 14px;
+  color: var(--text);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.list li:hover {
+  background: var(--hover-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Asegurar visibilidad del texto en todas las listas */
+.list li,
+.list li *,
+#paymentList li,
+#expenseList li,
+#checkinList li,
+#trainingList li {
+  color: var(--text) !important;
+}
+
+/* Elementos específicos de las listas que necesitan mejor contraste */
+.list li .muted,
+.list li small,
+.list li .status {
+  color: var(--muted) !important;
 }
 
 .list .list-header {
@@ -720,38 +965,121 @@ select {
   padding: 6px 4px;
 }
 
-.dark .list li {
-  background: #1b1f2c;
-}
-
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  background: var(--card);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
 .table th,
 .table td {
   text-align: left;
-  padding: 10px 8px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
+  color: var(--text);
 }
 
 .table th {
-  color: var(--muted);
+  background: var(--accent);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table tbody tr:hover {
+  background: var(--hover-bg);
+  transition: background 0.2s ease;
+}
+
+/* Asegurar que todo el texto en tablas sea visible */
+.table td,
+.table th,
+.table td *,
+.table th * {
+  color: var(--text) !important;
+}
+
+/* Elementos muted en tablas */
+.table .muted {
+  color: var(--muted) !important;
+}
+
+/* Estilos específicos para tablas de atletas */
+#athleteList td:nth-child(2),
+#acroList td:nth-child(2) {
+  width: 30%;
+  min-width: 200px;
+}
+
+#athleteList td:nth-child(2) select,
+#acroList td:nth-child(2) select {
+  width: 100%;
+  max-width: 180px;
+  font-size: 12px;
+  padding: 6px 8px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 500;
+}
+
+#athleteList td:nth-child(3),
+#acroList td:nth-child(3) {
+  width: 15%;
+  text-align: right;
   font-weight: 600;
 }
 
+#athleteList td:nth-child(4),
+#acroList td:nth-child(4) {
+  width: 12%;
+}
+
+#athleteList td:nth-child(4) select,
+#acroList td:nth-child(4) select {
+  width: 100%;
+  max-width: 70px;
+  font-size: 12px;
+  padding: 6px 8px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 500;
+  text-align: center;
+}
+
+#athleteList td:nth-child(5),
+#acroList td:nth-child(5) {
+  width: 15%;
+  text-align: center;
+}
+
+#athleteList td:nth-child(6),
+#acroList td:nth-child(6) {
+  width: 15%;
+  text-align: center;
+}
+
 .row-income td {
-  background: rgba(76, 175, 80, 0.12);
+  background: rgba(34, 197, 94, 0.15);
+  border-left: 4px solid var(--success);
 }
 
 .row-expense td {
-  background: rgba(244, 67, 54, 0.12);
+  background: rgba(239, 68, 68, 0.15);
+  border-left: 4px solid var(--error);
 }
 
 .table-total td {
   font-weight: 700;
+  background: var(--accent);
+  font-size: 15px;
 }
 
 .detail-header {
@@ -774,42 +1102,81 @@ select {
 }
 
 .btn.small {
-  padding: 6px 10px;
+  padding: 8px 16px;
   font-size: 12px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.btn.small:hover {
+  transform: translateY(-1px);
 }
 
 .plan-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 8px;
-  border-radius: 999px;
+  padding: 3px 8px;
+  border-radius: 12px;
   font-size: 11px;
-  font-weight: 700;
-  margin-right: 8px;
-  background: #1d2030;
-  color: #c8d0f0;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-right: 6px;
+  background: var(--surface);
+  color: var(--text-secondary);
   border: 1px solid var(--border);
+  min-width: 55px;
+  text-align: center;
+  transition: all 0.2s ease;
 }
 
-.plan-mensual {
-  background: rgba(108, 125, 255, 0.15);
-  color: #9fb0ff;
+[data-theme="light"] .plan-mensual {
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.2);
 }
 
-.plan-trimestral {
-  background: rgba(76, 175, 80, 0.18);
-  color: #9be4a3;
+[data-theme="dark"] .plan-mensual {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
-.plan-semestral {
-  background: rgba(255, 193, 7, 0.2);
-  color: #ffd166;
+[data-theme="light"] .plan-trimestral {
+  background: rgba(22, 163, 74, 0.1);
+  color: #15803d;
+  border-color: rgba(22, 163, 74, 0.2);
 }
 
-.plan-anual {
-  background: rgba(244, 67, 54, 0.2);
-  color: #ff9a8f;
+[data-theme="dark"] .plan-trimestral {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+[data-theme="light"] .plan-semestral {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+[data-theme="dark"] .plan-semestral {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+[data-theme="light"] .plan-anual {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+[data-theme="dark"] .plan-anual {
+  background: rgba(248, 113, 113, 0.15);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.3);
 }
 
 .hidden {
@@ -836,17 +1203,14 @@ select {
 }
 
 .badge {
-  background: #eaf0ff;
-  color: #2b5cff;
+  background: var(--primary);
+  color: white;
   border-radius: 999px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   font-size: 12px;
   font-weight: 600;
-}
-
-.dark .badge {
-  background: #1b2140;
-  color: #8fa2ff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .app-footer {
@@ -965,8 +1329,26 @@ select {
   /* Header mobile */
   .app-header {
     padding: 12px 16px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
+  }
+
+  .header-right {
+    flex-shrink: 0;
+    gap: 12px;
+  }
+
+  .header-controls {
+    gap: 4px;
+  }
+
+  .theme-btn {
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .theme-icon {
+    font-size: 16px;
   }
 
   .app-header h1 {
@@ -980,7 +1362,7 @@ select {
   .auth-status {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
 
   .auth-status .badge {
@@ -1266,10 +1648,15 @@ select {
   }
 
   .table select {
-    font-size: 11px;
-    padding: 6px 2px;
-    min-width: 70px;
-    max-width: 90px;
+    font-size: 12px;
+    padding: 8px 6px;
+    min-width: 80px;
+    max-width: 120px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-weight: 500;
   }
 
   .table .btn.small {
@@ -1330,7 +1717,13 @@ select {
 
   .athlete-table-mobile td:nth-child(2) select {
     width: 100%;
-    max-width: none;
+    max-width: 140px;
+    font-size: 12px;
+    padding: 8px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 500;
   }
 
   /* Price */
@@ -1345,8 +1738,15 @@ select {
   }
 
   .athlete-table-mobile td:nth-child(4) select {
-    min-width: 50px;
-    max-width: 60px;
+    min-width: 60px;
+    max-width: 70px;
+    font-size: 12px;
+    padding: 8px 6px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 500;
+    text-align: center;
   }
 
   /* Active status - hide on mobile */
