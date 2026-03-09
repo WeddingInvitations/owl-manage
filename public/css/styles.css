@@ -113,8 +113,9 @@ div, span, p, li, td, th, label, button, input, select, textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
   font-weight: 600;
+  font-size: 16px;
+  flex-shrink: 0;
 }
 
 .app-header h1 {
@@ -796,6 +797,17 @@ select:focus {
 
 .profile-form #profileStatus {
   font-size: 13px;
+}
+
+.profile-divider {
+  margin: 24px 0 16px;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.profile-password-section h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
 }
 
 .empty-state {

@@ -11,7 +11,11 @@ import {
 } from "./ui.js?v=20250219f";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js?v=20250309a";
-import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import {
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import {
   addPayment,
   addExpense,
@@ -1743,6 +1747,14 @@ function renderProfileView() {
 
   // Mantener el encabezado sincronizado con las iniciales actuales
   updateUserBadge();
+
+   // Mostrar/ocultar cambio de contraseña según tipo de login
+   if (ui.profilePasswordSection) {
+     const hasPasswordProvider = Array.isArray(auth.currentUser?.providerData)
+       ? auth.currentUser.providerData.some((p) => p && p.providerId === "password")
+       : !!auth.currentUser?.email;
+     ui.profilePasswordSection.classList.toggle("hidden", !hasPasswordProvider);
+   }
 }
 
 // ---------- Funciones de importación CSV para pagos/gastos ----------
@@ -2311,6 +2323,77 @@ on(ui.profileForm, "submit", async (e) => {
     if (ui.profileStatus) {
       ui.profileStatus.textContent =
         "Error al actualizar perfil: " + (error.message || String(error));
+    }
+  }
+});
+
+on(ui.profilePasswordForm, "submit", async (e) => {
+  e.preventDefault();
+  if (!auth.currentUser) return;
+
+  const currentPassword = ui.profileCurrentPassword?.value || "";
+  const newPassword = ui.profileNewPassword?.value || "";
+  const confirmPassword = ui.profileConfirmPassword?.value || "";
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    if (ui.profilePasswordStatus) {
+      ui.profilePasswordStatus.textContent = "Rellena todos los campos de contraseña.";
+    }
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    if (ui.profilePasswordStatus) {
+      ui.profilePasswordStatus.textContent = "La nueva contraseña debe tener al menos 6 caracteres.";
+    }
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    if (ui.profilePasswordStatus) {
+      ui.profilePasswordStatus.textContent = "Las nuevas contraseñas no coinciden.";
+    }
+    return;
+  }
+
+  if (ui.profilePasswordStatus) {
+    ui.profilePasswordStatus.textContent = "Actualizando contraseña...";
+  }
+
+  try {
+    const user = auth.currentUser;
+    if (!user || !user.email) {
+      if (ui.profilePasswordStatus) {
+        ui.profilePasswordStatus.textContent = "Solo disponible para usuarios con login por email y contraseña.";
+      }
+      return;
+    }
+
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+    await updatePassword(user, newPassword);
+
+    if (ui.profileCurrentPassword) ui.profileCurrentPassword.value = "";
+    if (ui.profileNewPassword) ui.profileNewPassword.value = "";
+    if (ui.profileConfirmPassword) ui.profileConfirmPassword.value = "";
+
+    if (ui.profilePasswordStatus) {
+      ui.profilePasswordStatus.textContent = "Contraseña actualizada correctamente.";
+    }
+  } catch (error) {
+    console.error("Error al cambiar contraseña desde perfil:", error);
+    let message = "Error al cambiar la contraseña.";
+    if (error.code === "auth/wrong-password") {
+      message = "La contraseña actual no es correcta.";
+    } else if (error.code === "auth/too-many-requests") {
+      message = "Demasiados intentos fallidos. Inténtalo de nuevo más tarde.";
+    } else if (error.code === "auth/requires-recent-login") {
+      message = "Vuelve a iniciar sesión y prueba de nuevo.";
+    } else if (error.message) {
+      message = error.message;
+    }
+    if (ui.profilePasswordStatus) {
+      ui.profilePasswordStatus.textContent = message;
     }
   }
 });

@@ -152,6 +152,26 @@
               <button id="profileSave" class="btn" type="submit">Guardar cambios</button>
               <p id="profileStatus" class="muted"></p>
             </form>
+            <hr class="profile-divider" />
+            <section id="profilePasswordSection" class="profile-password-section">
+              <h3>Cambiar contraseña</h3>
+              <form id="profilePasswordForm" class="stack profile-form">
+                <label>
+                  Contraseña actual
+                  <input id="profileCurrentPassword" type="password" autocomplete="current-password" />
+                </label>
+                <label>
+                  Nueva contraseña
+                  <input id="profileNewPassword" type="password" autocomplete="new-password" />
+                </label>
+                <label>
+                  Repetir nueva contraseña
+                  <input id="profileConfirmPassword" type="password" autocomplete="new-password" />
+                </label>
+                <button class="btn" type="submit">Actualizar contraseña</button>
+                <p id="profilePasswordStatus" class="muted"></p>
+              </form>
+            </section>
           </div>
         </section>
 
