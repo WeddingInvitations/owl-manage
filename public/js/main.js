@@ -1705,12 +1705,18 @@ function updateUserBadge() {
 
   if (!currentUser) {
     ui.userBadge.textContent = "Invitado";
+    if (ui.userAvatar) {
+      ui.userAvatar.textContent = "?";
+    }
     return;
   }
 
   const initials = getUserInitials();
   const roleLabel = currentRole || currentProfile?.role || "";
-  ui.userBadge.textContent = roleLabel ? `${initials} · ${roleLabel}` : initials;
+  if (ui.userAvatar) {
+    ui.userAvatar.textContent = initials;
+  }
+  ui.userBadge.textContent = roleLabel || "";
 }
 
 function renderProfileView() {

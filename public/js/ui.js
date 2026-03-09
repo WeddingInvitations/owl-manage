@@ -4,6 +4,7 @@ export const formatCurrency = (value) => `${value.toFixed(2)} €`;
 
 export const ui = {
   userBadge: $("userBadge"),
+  userAvatar: $("userAvatar"),
   logoutBtn: $("logoutBtn"),
   loginForm: $("loginForm"),
   loginEmail: $("loginEmail"),
