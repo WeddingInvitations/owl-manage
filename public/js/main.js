@@ -597,7 +597,11 @@ async function importAthletesFromCsv(file, monthKey) {
     const paid = paidValue === "SI" || paidValue === "TRUE" || paidValue === "1" || paidValue === "YES";
     const tariff = normalizeTariff(row.tarifa || row.plan || "", tariffPlans, "8/mes");
     const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
-    const price = row.precio ? Number(row.precio) : plan.priceTotal;
+    const basePrice = row.precio ? Number(row.precio) : plan.priceTotal;
+    const discount = row.descuento || row.discount || 0;
+    const discountReason = row.motivo_descuento || row.discount_reason || "";
+    const finalPrice = basePrice * (1 - discount / 100);
+    const price = finalPrice; // Use final price with discount applied
     const duration = plan.durationMonths || 1;
 
     let athlete = athleteMap.get(name.toLowerCase());
@@ -616,6 +620,9 @@ async function importAthletesFromCsv(file, monthKey) {
           athleteName: athlete.name,
           tariff,
           price,
+          basePrice,
+          discount: Number(discount),
+          discountReason,
           paid,
           active: paid,
           durationMonths: plan.durationMonths,
@@ -635,7 +642,18 @@ async function importAthletesFromCsv(file, monthKey) {
 function setAthletePriceFromTariff() {
   const tariff = ui.athleteTariff.value;
   const plan = tariffPlanMap.get(tariff);
-  ui.athletePrice.value = plan ? plan.priceTotal : 0;
+  const basePrice = plan ? plan.priceTotal : 0;
+  ui.athletePrice.value = basePrice;
+  
+  // Calculate final price with discount
+  calculateAthleteFinalPrice();
+}
+
+function calculateAthleteFinalPrice() {
+  const basePrice = parseFloat(ui.athletePrice.value) || 0;
+  const discount = parseFloat(ui.athleteDiscount.value) || 0;
+  const finalPrice = basePrice * (1 - discount / 100);
+  ui.athleteFinalPrice.value = finalPrice.toFixed(2);
 }
 
 async function refreshAthleteMonthly() {
@@ -759,6 +777,8 @@ async function refreshAthleteMonthly() {
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || fallbackPlan;
     const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
+    const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
+    const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
     const paid = Boolean(current?.paid);
     const active = paid;
     if (athletePaidFilter === "SI" && !paid) {
@@ -792,6 +812,8 @@ async function refreshAthleteMonthly() {
         </select>
       </td>
       <td><span data-role="price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
+      <td>${discount > 0 ? `${discount}%` : "-"}</td>
+      <td><span title="${discountReason}">${discountReason || "-"}</span></td>
       <td>
         <select data-role="paid" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
           <option value="SI" ${paid ? "selected" : ""}>SI</option>
@@ -913,7 +935,18 @@ function setAcroPriceFromTariff() {
   if (!ui.acroTariff || !ui.acroPrice) return;
   const tariff = ui.acroTariff.value;
   const plan = acroTariffPlanMap.get(tariff);
-  ui.acroPrice.value = plan ? plan.priceTotal : 0;
+  const basePrice = plan ? plan.priceTotal : 0;
+  ui.acroPrice.value = basePrice;
+  
+  // Calculate final price with discount
+  calculateAcroFinalPrice();
+}
+
+function calculateAcroFinalPrice() {
+  const basePrice = parseFloat(ui.acroPrice.value) || 0;
+  const discount = parseFloat(ui.acroDiscount.value) || 0;
+  const finalPrice = basePrice * (1 - discount / 100);
+  ui.acroFinalPrice.value = finalPrice.toFixed(2);
 }
 
 async function importAcroAthletesFromCsv(file, monthKey) {
@@ -935,7 +968,11 @@ async function importAcroAthletesFromCsv(file, monthKey) {
     const paid = paidValue === "SI" || paidValue === "TRUE" || paidValue === "1" || paidValue === "YES";
     const tariff = normalizeTariff(row.tarifa || row.plan || "", acroTariffPlans, "4/mes");
     const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
-    const price = row.precio ? Number(row.precio) : plan.priceTotal;
+    const basePrice = row.precio ? Number(row.precio) : plan.priceTotal;
+    const discount = row.descuento || row.discount || 0;
+    const discountReason = row.motivo_descuento || row.discount_reason || "";
+    const finalPrice = basePrice * (1 - discount / 100);
+    const price = finalPrice; // Use final price with discount applied
     const duration = plan.durationMonths || 1;
 
     let athlete = athleteMap.get(name.toLowerCase());
@@ -954,6 +991,9 @@ async function importAcroAthletesFromCsv(file, monthKey) {
           athleteName: athlete.name,
           tariff,
           price,
+          basePrice,
+          discount: Number(discount),
+          discountReason,
           paid,
           active: paid,
           durationMonths: plan.durationMonths,
@@ -1092,6 +1132,8 @@ async function refreshAcroMonthly() {
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
     const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
+    const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
+    const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
     const paid = Boolean(current?.paid);
     const active = paid;
 
@@ -1127,6 +1169,8 @@ async function refreshAcroMonthly() {
         </select>
       </td>
       <td><span data-role="acro-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
+      <td>${discount > 0 ? `${discount}%` : "-"}</td>
+      <td><span title="${discountReason}">${discountReason || "-"}</span></td>
       <td>
         <select data-role="acro-paid" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
           <option value="SI" ${paid ? "selected" : ""}>SI</option>
@@ -1657,6 +1701,67 @@ if (ui.athleteCsvModal) {
   ui.athleteCsvModal.classList.add("hidden");
 }
 
+// Event delegation for athlete table buttons
+if (ui.athleteList) {
+  ui.athleteList.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-role='save']");
+    if (button) {
+      event.preventDefault();
+      const athleteId = button.dataset.id;
+      const athleteName = button.dataset.name;
+      
+      // Get current values from the row
+      const row = button.closest("tr");
+      const tariffSelect = row.querySelector("[data-role='tariff']");
+      const paidSelect = row.querySelector("[data-role='paid']");
+      
+      if (!tariffSelect || !paidSelect) return;
+      
+      const newTariff = tariffSelect.value;
+      const newPaid = paidSelect.value === "SI";
+      
+      // Calculate new price based on tariff
+      const plan = tariffPlanMap.get(newTariff) || tariffPlanMap.get("8/mes");
+      const newPrice = plan.priceTotal;
+      
+      try {
+        button.textContent = "Guardando...";
+        button.disabled = true;
+        
+        // Update athlete month data
+        const monthKey = selectedAthleteListMonth || selectedAthleteMonth;
+        await upsertAthleteMonth(
+          athleteId,
+          monthKey,
+          {
+            athleteName,
+            tariff: newTariff,
+            price: newPrice,
+            basePrice: newPrice,
+            discount: 0,
+            discountReason: "",
+            paid: newPaid,
+            active: newPaid,
+            durationMonths: plan.durationMonths,
+            priceMonthly: plan.priceMonthly,
+            isPaymentMonth: true,
+          },
+          currentUser?.uid
+        );
+        
+        // Refresh the list
+        await refreshAthleteMonthly();
+        
+      } catch (error) {
+        console.error("Error updating athlete:", error);
+        alert("Error al guardar: " + (error.message || error));
+        button.textContent = "Guardar";
+        button.disabled = false;
+      }
+    }
+  });
+}
+
 // Acrobacias init
 renderAcroMonthOptions();
 setAcroPriceFromTariff();
@@ -1668,6 +1773,67 @@ if (ui.acroModal) {
 }
 if (ui.acroCsvModal) {
   ui.acroCsvModal.classList.add("hidden");
+}
+
+// Event delegation for acrobatics table buttons
+if (ui.acroList) {
+  ui.acroList.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-role='acro-save']");
+    if (button) {
+      event.preventDefault();
+      const athleteId = button.dataset.id;
+      const athleteName = button.dataset.name;
+      
+      // Get current values from the row
+      const row = button.closest("tr");
+      const tariffSelect = row.querySelector("[data-role='acro-tariff']");
+      const paidSelect = row.querySelector("[data-role='acro-paid']");
+      
+      if (!tariffSelect || !paidSelect) return;
+      
+      const newTariff = tariffSelect.value;
+      const newPaid = paidSelect.value === "SI";
+      
+      // Calculate new price based on tariff
+      const plan = acroTariffPlanMap.get(newTariff) || acroTariffPlanMap.get("4/mes");
+      const newPrice = plan.priceTotal;
+      
+      try {
+        button.textContent = "Guardando...";
+        button.disabled = true;
+        
+        // Update acro athlete month data
+        const monthKey = selectedAcroListMonth || selectedAcroMonth;
+        await upsertAcroAthleteMonth(
+          athleteId,
+          monthKey,
+          {
+            athleteName,
+            tariff: newTariff,
+            price: newPrice,
+            basePrice: newPrice,
+            discount: 0,
+            discountReason: "",
+            paid: newPaid,
+            active: newPaid,
+            durationMonths: plan.durationMonths,
+            priceMonthly: plan.priceMonthly,
+            isPaymentMonth: true,
+          },
+          currentUser?.uid
+        );
+        
+        // Refresh the list
+        await refreshAcroMonthly();
+        
+      } catch (error) {
+        console.error("Error updating acro athlete:", error);
+        alert("Error al guardar: " + (error.message || error));
+        button.textContent = "Guardar";
+        button.disabled = false;
+      }
+    }
+  });
 }
 
 bindAuth(
@@ -1813,6 +1979,40 @@ function downloadCsvTemplate(filename, type) {
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadAthleteTemplate() {
+  const headers = ["nombre", "tarifa", "pagado", "precio", "descuento", "motivo_descuento"];
+  const exampleRow = ["Juan Pérez", "8/mes", "SI", "80", "10", "Estudiante"];
+  
+  const csv = [headers, exampleRow]
+    .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+  
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "plantilla-atletas.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadAcroTemplate() {
+  const headers = ["nombre", "tarifa", "pagado", "precio", "descuento", "motivo_descuento"];
+  const exampleRow = ["María García", "4/mes", "NO", "45", "15", "Hermano/a"];
+  
+  const csv = [headers, exampleRow]
+    .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+  
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "plantilla-acrobacias.csv";
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -3098,7 +3298,11 @@ on(ui.athleteForm, "submit", async (event) => {
   const athleteName = existing?.name || rawName;
   const tariff = ui.athleteTariff.value;
   const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
-  const price = plan.priceTotal;
+  const basePrice = plan.priceTotal;
+  const discount = parseFloat(ui.athleteDiscount.value) || 0;
+  const discountReason = ui.athleteDiscountReason.value.trim();
+  const finalPrice = basePrice * (1 - discount / 100);
+  const price = finalPrice; // Use final price with discount applied
   const paid = ui.athletePaid.value === "SI";
   const startMonth = ui.athletePaymentMonth?.value || selectedAthletePaymentMonth || selectedAthleteMonth;
   const duration = plan.durationMonths || 1;
@@ -3111,6 +3315,9 @@ on(ui.athleteForm, "submit", async (event) => {
         athleteName,
         tariff,
         price,
+        basePrice,
+        discount,
+        discountReason,
         paid,
         active: paid,
         durationMonths: plan.durationMonths,
@@ -3121,6 +3328,8 @@ on(ui.athleteForm, "submit", async (event) => {
     );
   }
   ui.athleteForm.reset();
+  ui.athleteDiscount.value = 0;
+  ui.athleteDiscountReason.value = "";
   setAthletePriceFromTariff();
   renderAthletePaymentMonthOptions();
   if (ui.athleteModal) {
@@ -3155,6 +3364,10 @@ on(ui.createUserForm, "submit", async (event) => {
 
 on(ui.athleteTariff, "change", () => {
   setAthletePriceFromTariff();
+});
+
+on(ui.athleteDiscount, "input", () => {
+  calculateAthleteFinalPrice();
 });
 
 on(ui.athleteModalOpen, "click", () => {
@@ -3211,7 +3424,11 @@ on(ui.acroForm, "submit", async (event) => {
   const athleteName = existing?.name || rawName;
   const tariff = ui.acroTariff.value;
   const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
-  const price = plan.priceTotal;
+  const basePrice = plan.priceTotal;
+  const discount = parseFloat(ui.acroDiscount.value) || 0;
+  const discountReason = ui.acroDiscountReason.value.trim();
+  const finalPrice = basePrice * (1 - discount / 100);
+  const price = finalPrice; // Use final price with discount applied
   const paid = ui.acroPaid.value === "SI";
   const startMonth = ui.acroPaymentMonth?.value || selectedAcroPaymentMonth || selectedAcroMonth;
   const duration = plan.durationMonths || 1;
@@ -3225,6 +3442,9 @@ on(ui.acroForm, "submit", async (event) => {
         athleteName,
         tariff,
         price,
+        basePrice,
+        discount,
+        discountReason,
         paid,
         active: paid,
         durationMonths: plan.durationMonths,
@@ -3236,6 +3456,8 @@ on(ui.acroForm, "submit", async (event) => {
   }
   
   ui.acroForm.reset();
+  ui.acroDiscount.value = 0;
+  ui.acroDiscountReason.value = "";
   setAcroPriceFromTariff();
   renderAcroPaymentMonthOptions();
   if (ui.acroModal) {
@@ -3246,6 +3468,10 @@ on(ui.acroForm, "submit", async (event) => {
 
 on(ui.acroTariff, "change", () => {
   setAcroPriceFromTariff();
+});
+
+on(ui.acroDiscount, "input", () => {
+  calculateAcroFinalPrice();
 });
 
 on(ui.acroModalOpen, "click", () => {
@@ -3286,6 +3512,63 @@ on(ui.acroCsvForm, "submit", async (event) => {
   }
 });
 
+// ========== MONTH FILTER EVENT LISTENERS ==========
+
+// Athletes - Month filters
+on(ui.athleteMonthSelect, "change", async (event) => {
+  selectedAthleteMonth = event.target.value;
+  await refreshAthleteMonthly();
+});
+
+on(ui.athleteListMonthSelect, "change", async (event) => {
+  selectedAthleteListMonth = event.target.value;
+  await refreshAthleteMonthly();
+});
+
+// Athletes - Search and paid filter
+on(ui.athleteSearch, "input", async (event) => {
+  athleteSearchTerm = event.target.value;
+  await refreshAthleteMonthly();
+});
+
+on(ui.athletePaidFilter, "change", async (event) => {
+  athletePaidFilter = event.target.value;
+  await refreshAthleteMonthly();
+});
+
+// Acrobacias - Month filters  
+on(ui.acroMonthSelect, "change", async (event) => {
+  selectedAcroMonth = event.target.value;
+  await refreshAcroMonthly();
+});
+
+on(ui.acroListMonthSelect, "change", async (event) => {
+  selectedAcroListMonth = event.target.value;
+  await refreshAcroMonthly();
+});
+
+// Acrobacias - Search and paid filter
+on(ui.acroSearch, "input", async (event) => {
+  acroSearchTerm = event.target.value;
+  await refreshAcroMonthly();
+});
+
+on(ui.acroPaidFilter, "change", async (event) => {
+  acroPaidFilter = event.target.value;
+  await refreshAcroMonthly();
+});
+
+// Payment and expense month filters
+on(ui.paymentMonthSelect, "change", async (event) => {
+  selectedPaymentMonth = event.target.value;
+  await refreshPaymentList();
+});
+
+on(ui.expenseMonthSelect, "change", async (event) => {
+  selectedExpenseMonth = event.target.value;
+  await refreshExpenseList();
+});
+
 on(ui.downloadPaymentTemplate, "click", () => {
   downloadCsvTemplate('plantilla_ingresos.csv', 'payment');
 });
@@ -3294,5 +3577,10 @@ on(ui.downloadExpenseTemplate, "click", () => {
   downloadCsvTemplate('plantilla_gastos.csv', 'expense');
 });
 
-on(ui.downloadAthleteTemplate, "click", downloadAthleteTemplate);
-on(ui.downloadAcroTemplate, "click", downloadAcroTemplate);
+on(ui.downloadAthleteTemplate, "click", () => {
+  downloadAthleteTemplate();
+});
+
+on(ui.downloadAcroTemplate, "click", () => {
+  downloadAcroTemplate();
+});

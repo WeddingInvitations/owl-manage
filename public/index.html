@@ -704,6 +704,18 @@
                   <input id="athletePrice" type="number" min="0" step="0.01" readonly />
                 </label>
                 <label>
+                  Descuento (%)
+                  <input id="athleteDiscount" type="number" min="0" max="100" step="0.1" value="0" />
+                </label>
+                <label>
+                  Motivo del descuento
+                  <input id="athleteDiscountReason" type="text" placeholder="Ej: Estudiante, hermano/a, etc." />
+                </label>
+                <label>
+                  Precio final (€)
+                  <input id="athleteFinalPrice" type="number" min="0" step="0.01" readonly />
+                </label>
+                <label>
                   Pagado
                   <select id="athletePaid">
                     <option value="SI">SI</option>
@@ -723,7 +735,7 @@
                 </button>
               </div>
               <form id="athleteCsvForm" class="stack">
-                <p class="muted">El CSV debe tener las columnas: nombre, tarifa, pagado, precio (opcional). Formatos aceptados: nombre/name, tarifa/plan, pagado/paid.</p>
+                <p class="muted">El CSV debe tener las columnas: nombre, tarifa, pagado, precio (opcional), descuento (opcional), motivo_descuento (opcional). Formatos aceptados: nombre/name, tarifa/plan, pagado/paid, precio/price, descuento/discount, motivo_descuento/discount_reason.</p>
                 <div class="flex gap-2 mb-3">
                   <button id="downloadAthleteTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
                     📥 Descargar plantilla
@@ -792,6 +804,8 @@
                     <th>Nombre</th>
                     <th>Tarifa</th>
                     <th>Precio</th>
+                    <th>Descuento</th>
+                    <th>Motivo</th>
                     <th>Pagado</th>
                     <th>Activo</th>
                     <th>Acción</th>
@@ -850,6 +864,18 @@
                   <input id="acroPrice" type="number" min="0" step="0.01" readonly />
                 </label>
                 <label>
+                  Descuento (%)
+                  <input id="acroDiscount" type="number" min="0" max="100" step="0.1" value="0" />
+                </label>
+                <label>
+                  Motivo del descuento
+                  <input id="acroDiscountReason" type="text" placeholder="Ej: Estudiante, hermano/a, etc." />
+                </label>
+                <label>
+                  Precio final (€)
+                  <input id="acroFinalPrice" type="number" min="0" step="0.01" readonly />
+                </label>
+                <label>
                   Pagado
                   <select id="acroPaid">
                     <option value="SI">SI</option>
@@ -869,7 +895,7 @@
                 </button>
               </div>
               <form id="acroCsvForm" class="stack">
-                <p class="muted">El CSV debe tener las columnas: nombre, tarifa, pagado, precio (opcional). Formatos aceptados: nombre/name, tarifa/plan, pagado/paid.</p>
+                <p class="muted">El CSV debe tener las columnas: nombre, tarifa, pagado, precio (opcional), descuento (opcional), motivo_descuento (opcional). Formatos aceptados: nombre/name, tarifa/plan, pagado/paid, precio/price, descuento/discount, motivo_descuento/discount_reason.</p>
                 <div class="flex gap-2 mb-3">
                   <button id="downloadAcroTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
                     📥 Descargar plantilla
@@ -938,6 +964,8 @@
                     <th>Nombre</th>
                     <th>Tarifa</th>
                     <th>Precio</th>
+                    <th>Descuento</th>
+                    <th>Motivo</th>
                     <th>Pagado</th>
                     <th>Activo</th>
                     <th>Acción</th>

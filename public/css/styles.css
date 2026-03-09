@@ -1340,9 +1340,10 @@ select:focus {
   flex-wrap: wrap;
   background: var(--accent);
   border-radius: 8px;
-  padding: 10px;
-  gap: 8px;
+  padding: 12px;
+  gap: 6px;
   align-items: center;
+  min-height: 60px;
 }
 .athlete-table-mobile td {
   border: none;
@@ -1364,19 +1365,42 @@ select:focus {
 .athlete-table-mobile td:nth-child(3) {
   flex: 0 0 auto;
   font-weight: 600;
+  min-width: 60px;
 }
 .athlete-table-mobile td:nth-child(4) {
   flex: 0 0 auto;
-}
-.athlete-table-mobile td:nth-child(4) select {
-  min-width: 50px;
-  max-width: 60px;
+  font-size: 12px;
+  color: var(--primary);
+  min-width: 45px;
+  text-align: center;
 }
 .athlete-table-mobile td:nth-child(5) {
-  display: none;
+  flex: 1;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 80px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .athlete-table-mobile td:nth-child(6) {
   flex: 0 0 auto;
+  min-width: 70px;
+}
+.athlete-table-mobile td:nth-child(6) select {
+  width: 100%;
+  min-width: 70px;
+  max-width: 80px;
+  padding: 4px;
+  font-size: 12px;
+}
+.athlete-table-mobile td:nth-child(7) {
+  display: none;
+}
+.athlete-table-mobile td:nth-child(8) {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 .summary-table-mobile th:nth-child(5),
 .summary-table-mobile td:nth-child(5) {
@@ -1771,9 +1795,10 @@ select:focus {
     flex-wrap: wrap;
     background: var(--accent);
     border-radius: 8px;
-    padding: 10px;
-    gap: 8px;
+    padding: 12px;
+    gap: 6px;
     align-items: center;
+    min-height: 60px;
   }
 
   .athlete-table-mobile td {
@@ -1809,16 +1834,41 @@ select:focus {
   .athlete-table-mobile td:nth-child(3) {
     flex: 0 0 auto;
     font-weight: 600;
+    min-width: 60px;
+  }
+
+  /* Discount */
+  .athlete-table-mobile td:nth-child(4) {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: var(--primary);
+    font-weight: 600;
+    min-width: 45px;
+    text-align: center;
+  }
+
+  /* Discount Reason */
+  .athlete-table-mobile td:nth-child(5) {
+    flex: 1;
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 80px;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* Paid select */
-  .athlete-table-mobile td:nth-child(4) {
+  .athlete-table-mobile td:nth-child(6) {
     flex: 0 0 auto;
+    min-width: 75px;
   }
 
-  .athlete-table-mobile td:nth-child(4) select {
-    min-width: 60px;
-    max-width: 70px;
+  .athlete-table-mobile td:nth-child(6) select {
+    width: 100%;
+    min-width: 75px;
+    max-width: 85px;
     font-size: 12px;
     padding: 8px 6px;
     background: var(--input-bg);
@@ -1829,13 +1879,14 @@ select:focus {
   }
 
   /* Active status - hide on mobile */
-  .athlete-table-mobile td:nth-child(5) {
+  .athlete-table-mobile td:nth-child(7) {
     display: none;
   }
 
   /* Save button */
-  .athlete-table-mobile td:nth-child(6) {
+  .athlete-table-mobile td:nth-child(8) {
     flex: 0 0 auto;
+    margin-left: auto;
   }
 
   /* Summary table - more compact */
