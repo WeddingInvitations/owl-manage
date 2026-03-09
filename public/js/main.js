@@ -10,13 +10,8 @@ import {
   updateMenuVisibility,
 } from "./ui.js?v=20250219f";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
-import { auth, db, storage } from "./firebase.js?v=20250309a";
+import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 import {
   addPayment,
   addExpense,
@@ -1680,28 +1675,42 @@ bindAuth(
         ui.mobileNav.classList.add("hidden");
       }
     }
+    updateUserBadge();
   },
   setAuthUI
 );
 
-function getProfileInitials() {
-  const firstName = currentProfile?.firstName || "";
-  const lastName = currentProfile?.lastName || "";
-  const nameInitials = [firstName, lastName]
+function getUserInitials() {
+  const firstName = currentProfile?.firstName?.trim() || "";
+  const lastName = currentProfile?.lastName?.trim() || "";
+  const initialsFromName = [firstName, lastName]
     .filter(Boolean)
     .map((n) => n[0]?.toUpperCase() || "")
     .join("");
 
-  if (nameInitials) {
-    return nameInitials.slice(0, 2);
+  if (initialsFromName) {
+    return initialsFromName.slice(0, 2);
   }
 
-  const email = currentUser?.email || "";
+  const email = currentProfile?.email || currentUser?.email || "";
   if (email) {
     return email[0].toUpperCase();
   }
 
   return "?";
+}
+
+function updateUserBadge() {
+  if (!ui.userBadge) return;
+
+  if (!currentUser) {
+    ui.userBadge.textContent = "Invitado";
+    return;
+  }
+
+  const initials = getUserInitials();
+  const roleLabel = currentRole || currentProfile?.role || "";
+  ui.userBadge.textContent = roleLabel ? `${initials} · ${roleLabel}` : initials;
 }
 
 function renderProfileView() {
@@ -1722,15 +1731,12 @@ function renderProfileView() {
   }
 
   if (ui.profileAvatar) {
-    const photoUrl = currentProfile?.photoUrl || "";
-    if (photoUrl) {
-      ui.profileAvatar.style.backgroundImage = `url("${photoUrl}")`;
-      ui.profileAvatar.textContent = "";
-    } else {
-      ui.profileAvatar.style.backgroundImage = "";
-      ui.profileAvatar.textContent = getProfileInitials();
-    }
+    ui.profileAvatar.style.backgroundImage = "";
+    ui.profileAvatar.textContent = getUserInitials();
   }
+
+  // Mantener el encabezado sincronizado con las iniciales actuales
+  updateUserBadge();
 }
 
 // ---------- Funciones de importación CSV para pagos/gastos ----------
@@ -2279,34 +2285,17 @@ on(ui.profileForm, "submit", async (e) => {
 
   const firstName = ui.profileFirstName?.value?.trim() || "";
   const lastName = ui.profileLastName?.value?.trim() || "";
-  const file = ui.profilePhoto?.files?.[0];
-
-  let photoUrl = currentProfile?.photoUrl || "";
 
   if (ui.profileStatus) {
     ui.profileStatus.textContent = "Guardando cambios...";
   }
 
   try {
-    if (file) {
-      const storageRef = ref(storage, `profilePhotos/${currentUser.uid}`);
-      await uploadBytes(storageRef, file);
-      photoUrl = await getDownloadURL(storageRef);
-    }
+    await updateUserProfile(currentUser.uid, firstName, lastName);
 
-    if (file) {
-      await updateUserProfile(currentUser.uid, firstName, lastName, photoUrl);
-    } else {
-      await updateUserProfile(currentUser.uid, firstName, lastName);
-    }
-
-    currentProfile = { ...currentProfile, firstName, lastName, photoUrl };
+    currentProfile = { ...currentProfile, firstName, lastName };
     renderProfileView();
     await refreshCheckinStatus();
-
-    if (ui.profilePhoto) {
-      ui.profilePhoto.value = "";
-    }
 
     if (ui.profileStatus) {
       ui.profileStatus.textContent = "Perfil actualizado correctamente.";

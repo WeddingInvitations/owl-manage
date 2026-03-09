@@ -97,15 +97,22 @@ export function bindAuth(ui, onAuthChange, setAuthUI) {
     });
 
     onAuthStateChanged(auth, async (user) => {
-      let role = "RECEPTION";
-      let mustChangePassword = false;
+      let profile = {
+        role: "RECEPTION",
+        mustChangePassword: false,
+        firstName: "",
+        lastName: "",
+        displayName: "",
+        email: "",
+        photoUrl: "",
+      };
+
       if (user) {
-        const profile = await ensureUserProfile(user);
-        role = profile.role;
-        mustChangePassword = profile.mustChangePassword;
+        profile = await ensureUserProfile(user);
       }
-      setAuthUI(ui, user, role, mustChangePassword);
-      await onAuthChange(user, { role, mustChangePassword });
+
+      setAuthUI(ui, user, profile.role, profile.mustChangePassword);
+      await onAuthChange(user, profile);
     });
   });
 }

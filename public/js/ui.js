@@ -194,7 +194,6 @@ export const ui = {
   profileForm: $("profileForm"),
   profileFirstName: $("profileFirstName"),
   profileLastName: $("profileLastName"),
-  profilePhoto: $("profilePhoto"),
   profileStatus: $("profileStatus"),
   profileAvatar: $("profileAvatar"),
   profileEmail: $("profileEmail"),
@@ -248,9 +247,6 @@ export const ui = {
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {
-    if (currentUi.userBadge) {
-      currentUi.userBadge.textContent = `${user.email} · ${role}`;
-    }
     if (currentUi.logoutBtn) {
       currentUi.logoutBtn.disabled = false;
     }
