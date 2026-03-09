@@ -36,6 +36,7 @@
       <nav class="side-menu">
         <h2>Menú</h2>
         <button class="menu-btn active" data-view="summaryView">Resumen</button>
+        <button class="menu-btn" data-view="profileView">Mi perfil</button>
         <button class="menu-btn" data-view="paymentsView">Ingresos</button>
         <button class="menu-btn" data-view="expensesView">Gastos</button>
         <button class="menu-btn" data-view="checkinsView">Fichajes</button>
@@ -121,6 +122,37 @@
               </div>
             </div>
             <p id="monthlyDetailBalance" class="muted"></p>
+          </div>
+        </section>
+
+        <section id="profileView" class="view hidden">
+          <div class="card profile-card">
+            <h2>Mi perfil</h2>
+            <div class="profile-header">
+              <div id="profileAvatar" class="profile-avatar">?</div>
+              <div class="profile-info">
+                <p class="label">Email</p>
+                <p id="profileEmail" class="value">-</p>
+                <p class="label">Rol</p>
+                <p id="profileRole" class="value">-</p>
+              </div>
+            </div>
+            <form id="profileForm" class="stack profile-form">
+              <label>
+                Nombre
+                <input id="profileFirstName" type="text" placeholder="Tu nombre" />
+              </label>
+              <label>
+                Apellidos
+                <input id="profileLastName" type="text" placeholder="Tus apellidos" />
+              </label>
+              <label>
+                Foto de perfil
+                <input id="profilePhoto" type="file" accept="image/*" />
+              </label>
+              <button id="profileSave" class="btn" type="submit">Guardar cambios</button>
+              <p id="profileStatus" class="muted"></p>
+            </form>
           </div>
         </section>
 
@@ -1046,6 +1078,7 @@
           <button id="moreMenuClose" class="btn ghost small" type="button">Cerrar</button>
         </div>
         <div class="stack" style="margin-top: 16px;">
+          <button class="btn ghost" data-view="profileView" data-close-more>👤 Mi perfil</button>
           <button class="btn ghost" data-view="checkinsView" data-close-more>📋 Fichajes</button>
           <button class="btn ghost" data-view="trainingsView" data-close-more>🏃 Entrenamientos</button>
           <button class="btn ghost" data-view="rolesView" data-close-more>👥 Roles</button>

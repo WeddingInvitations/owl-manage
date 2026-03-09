@@ -47,16 +47,21 @@ export async function ensureUserProfile(user) {
     lastName: data.lastName || "",
     displayName: data.displayName || "",
     email: data.email || user.email,
+    photoUrl: data.photoUrl || user.photoURL || "",
   };
 }
 
-export async function updateUserProfile(userId, firstName, lastName) {
+export async function updateUserProfile(userId, firstName, lastName, photoUrl) {
   const userRef = doc(db, "users", userId);
-  await updateDoc(userRef, {
+  const payload = {
     firstName,
     lastName,
     updatedAt: serverTimestamp(),
-  });
+  };
+  if (typeof photoUrl === "string") {
+    payload.photoUrl = photoUrl;
+  }
+  await updateDoc(userRef, payload);
 }
 
 export async function getUserProfile(userId) {

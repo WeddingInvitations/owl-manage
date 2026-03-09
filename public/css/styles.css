@@ -738,6 +738,47 @@ select:focus {
   border-radius: 4px;
 }
 
+.profile-card {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 24px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+}
+
+.profile-info .value {
+  font-weight: 500;
+}
+
+.profile-form {
+  margin-top: 8px;
+}
+
+.profile-form #profileStatus {
+  font-size: 13px;
+}
+
 .empty-state {
   padding: 24px;
   text-align: center;

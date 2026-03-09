@@ -10,8 +10,13 @@ import {
   updateMenuVisibility,
 } from "./ui.js?v=20250219f";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
-import { auth, db } from "./firebase.js";
+import { auth, db, storage } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 import {
   addPayment,
   addExpense,
@@ -1650,6 +1655,8 @@ bindAuth(
         if (ui.checkinProfileLastName) {
           ui.checkinProfileLastName.value = profile.lastName || "";
         }
+        // Rellenar vista de perfil
+        renderProfileView();
         await refreshAll();
         await refreshAthleteMonthly();
         await refreshAcroMonthly();
@@ -1676,6 +1683,55 @@ bindAuth(
   },
   setAuthUI
 );
+
+function getProfileInitials() {
+  const firstName = currentProfile?.firstName || "";
+  const lastName = currentProfile?.lastName || "";
+  const nameInitials = [firstName, lastName]
+    .filter(Boolean)
+    .map((n) => n[0]?.toUpperCase() || "")
+    .join("");
+
+  if (nameInitials) {
+    return nameInitials.slice(0, 2);
+  }
+
+  const email = currentUser?.email || "";
+  if (email) {
+    return email[0].toUpperCase();
+  }
+
+  return "?";
+}
+
+function renderProfileView() {
+  if (!ui.profileView || !currentUser) return;
+
+  if (ui.profileEmail) {
+    ui.profileEmail.textContent = currentUser.email || "-";
+  }
+  if (ui.profileRole) {
+    ui.profileRole.textContent = currentRole || currentProfile?.role || "-";
+  }
+
+  if (ui.profileFirstName) {
+    ui.profileFirstName.value = currentProfile?.firstName || "";
+  }
+  if (ui.profileLastName) {
+    ui.profileLastName.value = currentProfile?.lastName || "";
+  }
+
+  if (ui.profileAvatar) {
+    const photoUrl = currentProfile?.photoUrl || "";
+    if (photoUrl) {
+      ui.profileAvatar.style.backgroundImage = `url("${photoUrl}")`;
+      ui.profileAvatar.textContent = "";
+    } else {
+      ui.profileAvatar.style.backgroundImage = "";
+      ui.profileAvatar.textContent = getProfileInitials();
+    }
+  }
+}
 
 // ---------- Funciones de importación CSV para pagos/gastos ----------
 
@@ -2203,6 +2259,7 @@ on(ui.checkinProfileForm, "submit", async (e) => {
     await updateUserProfile(currentUser.uid, firstName, lastName);
     // Update local profile
     currentProfile = { ...currentProfile, firstName, lastName };
+    renderProfileView();
     // Hide form
     if (ui.checkinProfileEdit) {
       ui.checkinProfileEdit.classList.add("hidden");
@@ -2213,6 +2270,53 @@ on(ui.checkinProfileForm, "submit", async (e) => {
   } catch (error) {
     console.error("Error updating profile:", error);
     alert("Error al actualizar perfil: " + (error.message || error));
+  }
+});
+
+on(ui.profileForm, "submit", async (e) => {
+  e.preventDefault();
+  if (!currentUser) return;
+
+  const firstName = ui.profileFirstName?.value?.trim() || "";
+  const lastName = ui.profileLastName?.value?.trim() || "";
+  const file = ui.profilePhoto?.files?.[0];
+
+  let photoUrl = currentProfile?.photoUrl || "";
+
+  if (ui.profileStatus) {
+    ui.profileStatus.textContent = "Guardando cambios...";
+  }
+
+  try {
+    if (file) {
+      const storageRef = ref(storage, `profilePhotos/${currentUser.uid}`);
+      await uploadBytes(storageRef, file);
+      photoUrl = await getDownloadURL(storageRef);
+    }
+
+    if (file) {
+      await updateUserProfile(currentUser.uid, firstName, lastName, photoUrl);
+    } else {
+      await updateUserProfile(currentUser.uid, firstName, lastName);
+    }
+
+    currentProfile = { ...currentProfile, firstName, lastName, photoUrl };
+    renderProfileView();
+    await refreshCheckinStatus();
+
+    if (ui.profilePhoto) {
+      ui.profilePhoto.value = "";
+    }
+
+    if (ui.profileStatus) {
+      ui.profileStatus.textContent = "Perfil actualizado correctamente.";
+    }
+  } catch (error) {
+    console.error("Error al actualizar perfil:", error);
+    if (ui.profileStatus) {
+      ui.profileStatus.textContent =
+        "Error al actualizar perfil: " + (error.message || String(error));
+    }
   }
 });
 
