@@ -11,11 +11,7 @@ import {
 } from "./ui.js?v=20250219f";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js?v=20250309a";
-import {
-  updatePassword,
-  reauthenticateWithCredential,
-  EmailAuthProvider,
-} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import {
   addPayment,
   addExpense,
@@ -1342,8 +1338,9 @@ function updateMobileNavActive(viewId) {
   if (!ui.mobileNavButtons) return;
   ui.mobileNavButtons.forEach((btn) => {
     const isMore = btn.dataset.view === "moreView";
+    const moreViews = ["checkinsView", "trainingsView", "rolesView", "profileView"];
     const isActive = btn.dataset.view === viewId || 
-      (isMore && ["checkinsView", "trainingsView", "rolesView", "vacationsView"].includes(viewId));
+      (isMore && moreViews.includes(viewId));
     btn.classList.toggle("active", isActive);
   });
 }
@@ -1588,6 +1585,50 @@ ui.menuButtons.forEach((button) => {
   });
 });
 
+// Mobile navigation buttons
+ui.mobileNavButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const viewId = button.dataset.view;
+    if (viewId === "moreView") {
+      // Open more menu
+      if (ui.moreMenu) {
+        ui.moreMenu.classList.remove("hidden");
+      }
+    } else {
+      setActiveView(viewId, ui);
+      updateMobileNavActive(viewId);
+      if (viewId === "vacationsView") {
+        populateVacationWorkers().then(() => renderVacations());
+      }
+    }
+  });
+});
+
+// More menu functionality
+on(ui.moreMenuClose, "click", () => {
+  if (ui.moreMenu) {
+    ui.moreMenu.classList.add("hidden");
+  }
+});
+
+// More menu option buttons
+document.querySelectorAll('[data-close-more]').forEach((button) => {
+  button.addEventListener("click", () => {
+    const viewId = button.dataset.view;
+    if (viewId) {
+      setActiveView(viewId, ui);
+      updateMobileNavActive(viewId);
+      if (viewId === "vacationsView") {
+        populateVacationWorkers().then(() => renderVacations());
+      }
+    }
+    // Close more menu
+    if (ui.moreMenu) {
+      ui.moreMenu.classList.add("hidden");
+    }
+  });
+});
+
 // Event listener para el botón de cambio de tema
 setTimeout(() => {
   const themeButton = document.getElementById('themeToggle');
@@ -1748,13 +1789,11 @@ function renderProfileView() {
   // Mantener el encabezado sincronizado con las iniciales actuales
   updateUserBadge();
 
-   // Mostrar/ocultar cambio de contraseña según tipo de login
-   if (ui.profilePasswordSection) {
-     const hasPasswordProvider = Array.isArray(auth.currentUser?.providerData)
-       ? auth.currentUser.providerData.some((p) => p && p.providerId === "password")
-       : !!auth.currentUser?.email;
-     ui.profilePasswordSection.classList.toggle("hidden", !hasPasswordProvider);
-   }
+  // Mostrar/ocultar botón de cambio de contraseña según tipo de login
+  if (ui.profileChangePasswordBtn) {
+    const hasEmail = !!auth.currentUser?.email;
+    ui.profileChangePasswordBtn.classList.toggle("hidden", !hasEmail);
+  }
 }
 
 // ---------- Funciones de importación CSV para pagos/gastos ----------
@@ -2327,73 +2366,90 @@ on(ui.profileForm, "submit", async (e) => {
   }
 });
 
-on(ui.profilePasswordForm, "submit", async (e) => {
+// Modal de cambio de contraseña
+on(ui.profileChangePasswordBtn, "click", () => {
+  if (ui.passwordChangeModal) {
+    ui.passwordChangeModal.classList.remove("hidden");
+  }
+  if (ui.passwordChangeModalNew) ui.passwordChangeModalNew.value = "";
+  if (ui.passwordChangeModalConfirm) ui.passwordChangeModalConfirm.value = "";
+  if (ui.passwordChangeModalStatus) ui.passwordChangeModalStatus.textContent = "";
+});
+
+on(ui.passwordChangeModalClose, "click", () => {
+  if (ui.passwordChangeModal) {
+    ui.passwordChangeModal.classList.add("hidden");
+  }
+});
+
+on(ui.passwordChangeModalForm, "submit", async (e) => {
   e.preventDefault();
   if (!auth.currentUser) return;
 
-  const currentPassword = ui.profileCurrentPassword?.value || "";
-  const newPassword = ui.profileNewPassword?.value || "";
-  const confirmPassword = ui.profileConfirmPassword?.value || "";
+  const newPassword = ui.passwordChangeModalNew?.value || "";
+  const confirmPassword = ui.passwordChangeModalConfirm?.value || "";
 
-  if (!currentPassword || !newPassword || !confirmPassword) {
-    if (ui.profilePasswordStatus) {
-      ui.profilePasswordStatus.textContent = "Rellena todos los campos de contraseña.";
+  if (!newPassword || !confirmPassword) {
+    if (ui.passwordChangeModalStatus) {
+      ui.passwordChangeModalStatus.textContent = "Rellena ambos campos de contraseña.";
     }
     return;
   }
 
   if (newPassword.length < 6) {
-    if (ui.profilePasswordStatus) {
-      ui.profilePasswordStatus.textContent = "La nueva contraseña debe tener al menos 6 caracteres.";
+    if (ui.passwordChangeModalStatus) {
+      ui.passwordChangeModalStatus.textContent = "La nueva contraseña debe tener al menos 6 caracteres.";
     }
     return;
   }
 
   if (newPassword !== confirmPassword) {
-    if (ui.profilePasswordStatus) {
-      ui.profilePasswordStatus.textContent = "Las nuevas contraseñas no coinciden.";
+    if (ui.passwordChangeModalStatus) {
+      ui.passwordChangeModalStatus.textContent = "Las contraseñas no coinciden.";
     }
     return;
   }
 
-  if (ui.profilePasswordStatus) {
-    ui.profilePasswordStatus.textContent = "Actualizando contraseña...";
+  if (ui.passwordChangeModalStatus) {
+    ui.passwordChangeModalStatus.textContent = "Actualizando contraseña...";
   }
 
   try {
     const user = auth.currentUser;
     if (!user || !user.email) {
-      if (ui.profilePasswordStatus) {
-        ui.profilePasswordStatus.textContent = "Solo disponible para usuarios con login por email y contraseña.";
+      if (ui.passwordChangeModalStatus) {
+        ui.passwordChangeModalStatus.textContent = "Solo disponible para usuarios con email y contraseña.";
       }
       return;
     }
 
-    const credential = EmailAuthProvider.credential(user.email, currentPassword);
-    await reauthenticateWithCredential(user, credential);
     await updatePassword(user, newPassword);
 
-    if (ui.profileCurrentPassword) ui.profileCurrentPassword.value = "";
-    if (ui.profileNewPassword) ui.profileNewPassword.value = "";
-    if (ui.profileConfirmPassword) ui.profileConfirmPassword.value = "";
+    if (ui.passwordChangeModalNew) ui.passwordChangeModalNew.value = "";
+    if (ui.passwordChangeModalConfirm) ui.passwordChangeModalConfirm.value = "";
 
-    if (ui.profilePasswordStatus) {
-      ui.profilePasswordStatus.textContent = "Contraseña actualizada correctamente.";
+    if (ui.passwordChangeModalStatus) {
+      ui.passwordChangeModalStatus.textContent = "Contraseña actualizada correctamente.";
     }
+
+    // Cerrar modal después de 2 segundos
+    setTimeout(() => {
+      if (ui.passwordChangeModal) {
+        ui.passwordChangeModal.classList.add("hidden");
+      }
+    }, 2000);
   } catch (error) {
-    console.error("Error al cambiar contraseña desde perfil:", error);
+    console.error("Error al cambiar contraseña:", error);
     let message = "Error al cambiar la contraseña.";
-    if (error.code === "auth/wrong-password") {
-      message = "La contraseña actual no es correcta.";
+    if (error.code === "auth/requires-recent-login") {
+      message = "Por seguridad, vuelve a iniciar sesión y prueba de nuevo.";
     } else if (error.code === "auth/too-many-requests") {
-      message = "Demasiados intentos fallidos. Inténtalo de nuevo más tarde.";
-    } else if (error.code === "auth/requires-recent-login") {
-      message = "Vuelve a iniciar sesión y prueba de nuevo.";
+      message = "Demasiados intentos. Inténtalo de nuevo más tarde.";
     } else if (error.message) {
       message = error.message;
     }
-    if (ui.profilePasswordStatus) {
-      ui.profilePasswordStatus.textContent = message;
+    if (ui.passwordChangeModalStatus) {
+      ui.passwordChangeModalStatus.textContent = message;
     }
   }
 });

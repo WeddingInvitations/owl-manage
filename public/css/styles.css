@@ -799,15 +799,10 @@ select:focus {
   font-size: 13px;
 }
 
-.profile-divider {
-  margin: 24px 0 16px;
-  border: none;
+.profile-actions {
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px solid var(--border);
-}
-
-.profile-password-section h3 {
-  margin: 0 0 12px;
-  font-size: 16px;
 }
 
 .empty-state {
@@ -1474,9 +1469,10 @@ select:focus {
     border-top: 1px solid var(--border);
     padding: 8px 4px;
     padding-bottom: max(8px, env(safe-area-inset-bottom));
-    z-index: 100;
+    z-index: 1000;
     justify-content: space-around;
     gap: 4px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   }
 
   .mobile-nav-btn {
@@ -1489,21 +1485,32 @@ select:focus {
     border: none;
     color: var(--muted);
     font-size: 10px;
-    padding: 6px 8px;
+    padding: 6px 4px;
     border-radius: 8px;
     cursor: pointer;
     flex: 1;
     max-width: 80px;
+    min-height: 48px;
+    transition: all 0.2s ease;
   }
 
   .mobile-nav-btn .icon {
     font-size: 20px;
     line-height: 1;
+    margin-bottom: 2px;
   }
 
   .mobile-nav-btn.active {
     color: var(--primary);
     background: rgba(108, 125, 255, 0.1);
+  }
+
+  .mobile-nav-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .mobile-nav-btn.active:hover {
+    background: rgba(108, 125, 255, 0.15);
   }
 
   /* Content area */

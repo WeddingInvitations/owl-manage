@@ -152,26 +152,9 @@
               <button id="profileSave" class="btn" type="submit">Guardar cambios</button>
               <p id="profileStatus" class="muted"></p>
             </form>
-            <hr class="profile-divider" />
-            <section id="profilePasswordSection" class="profile-password-section">
-              <h3>Cambiar contraseña</h3>
-              <form id="profilePasswordForm" class="stack profile-form">
-                <label>
-                  Contraseña actual
-                  <input id="profileCurrentPassword" type="password" autocomplete="current-password" />
-                </label>
-                <label>
-                  Nueva contraseña
-                  <input id="profileNewPassword" type="password" autocomplete="new-password" />
-                </label>
-                <label>
-                  Repetir nueva contraseña
-                  <input id="profileConfirmPassword" type="password" autocomplete="new-password" />
-                </label>
-                <button class="btn" type="submit">Actualizar contraseña</button>
-                <p id="profilePasswordStatus" class="muted"></p>
-              </form>
-            </section>
+            <div class="profile-actions">
+              <button id="profileChangePasswordBtn" class="btn ghost" type="button">Cambiar contraseña</button>
+            </div>
           </div>
         </section>
 
@@ -1102,6 +1085,28 @@
           <button class="btn ghost" data-view="trainingsView" data-close-more>🏃 Entrenamientos</button>
           <button class="btn ghost" data-view="rolesView" data-close-more>👥 Roles</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Password change modal -->
+    <div id="passwordChangeModal" class="modal hidden">
+      <div class="modal-content card">
+        <div class="detail-header">
+          <h3>Cambiar contraseña</h3>
+          <button id="passwordChangeModalClose" class="btn ghost small" type="button">Cerrar</button>
+        </div>
+        <form id="passwordChangeModalForm" class="stack">
+          <label>
+            Nueva contraseña
+            <input id="passwordChangeModalNew" type="password" autocomplete="new-password" required />
+          </label>
+          <label>
+            Repetir nueva contraseña
+            <input id="passwordChangeModalConfirm" type="password" autocomplete="new-password" required />
+          </label>
+          <button class="btn" type="submit">Actualizar contraseña</button>
+          <p id="passwordChangeModalStatus" class="muted"></p>
+        </form>
       </div>
     </div>
 
