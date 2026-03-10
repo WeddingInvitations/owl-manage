@@ -962,3 +962,200 @@ export async function getAllAcroAthleteMonths() {
   });
   return records;
 }
+
+// ========== CLASES Y PROFESORES ==========
+
+export async function getTeachers() {
+  const snap = await getDocs(collection(db, "teachers"));
+  const teachers = [];
+  snap.forEach((docSnap) => {
+    teachers.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return teachers.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+}
+
+export async function createTeacher(teacherData, userId) {
+  const docRef = await addDoc(collection(db, "teachers"), {
+    ...teacherData,
+    createdAt: serverTimestamp(),
+    createdBy: userId,
+  });
+  return docRef.id;
+}
+
+export async function updateTeacher(teacherId, teacherData, userId) {
+  await updateDoc(doc(db, "teachers", teacherId), {
+    ...teacherData,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId,
+  });
+}
+
+export async function deleteTeacher(teacherId) {
+  await deleteDoc(doc(db, "teachers", teacherId));
+}
+
+export async function getClasses() {
+  const snap = await getDocs(collection(db, "classes"));
+  const classes = [];
+  snap.forEach((docSnap) => {
+    classes.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return classes;
+}
+
+export async function createClass(classData, userId) {
+  const docRef = await addDoc(collection(db, "classes"), {
+    ...classData,
+    createdAt: serverTimestamp(),
+    createdBy: userId,
+  });
+  return docRef.id;
+}
+
+export async function updateClass(classId, classData, userId) {
+  await updateDoc(doc(db, "classes", classId), {
+    ...classData,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId,
+  });
+}
+
+export async function deleteClass(classId) {
+  await deleteDoc(doc(db, "classes", classId));
+}
+
+// Asignaciones de profesores a clases
+export async function getClassAssignments(weekStart = null, weekEnd = null) {
+  const snap = await getDocs(collection(db, "class_assignments"));
+  const assignments = [];
+  snap.forEach((docSnap) => {
+    assignments.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  
+  // Filtrar en el cliente si se proporcionan fechas
+  if (weekStart && weekEnd) {
+    return assignments.filter(assignment => 
+      assignment.date >= weekStart && assignment.date <= weekEnd
+    );
+  }
+  
+  return assignments;
+}
+
+export async function createClassAssignment(assignmentData, userId) {
+  const docRef = await addDoc(collection(db, "class_assignments"), {
+    ...assignmentData,
+    createdAt: serverTimestamp(),
+    createdBy: userId,
+  });
+  return docRef.id;
+}
+
+export async function updateClassAssignment(assignmentId, assignmentData, userId) {
+  await updateDoc(doc(db, "class_assignments", assignmentId), {
+    ...assignmentData,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId,
+  });
+}
+
+export async function deleteClassAssignment(assignmentId) {
+  await deleteDoc(doc(db, "class_assignments", assignmentId));
+}
+
+export async function upsertClassAssignment(classId, date, time, teacherId, notes = "", userId) {
+  // Buscar si ya existe una asignación para esta clase, fecha y hora
+  const snap = await getDocs(collection(db, "class_assignments"));
+  let existingAssignment = null;
+  
+  snap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (data.classId === classId && data.date === date && data.time === time) {
+      existingAssignment = { id: docSnap.id, ...data };
+    }
+  });
+  
+  const assignmentData = {
+    classId,
+    date,
+    time,
+    teacherId,
+    notes,
+  };
+  
+  if (existingAssignment) {
+    // Actualizar existente
+    await updateClassAssignment(existingAssignment.id, assignmentData, userId);
+    return existingAssignment.id;
+  } else {
+    // Crear nuevo
+    return await createClassAssignment(assignmentData, userId);
+  }
+}
+
+// Función para importar clases desde CSV
+export async function importClassesFromCSV(csvContent, userId) {
+  const lines = csvContent.split('\n');
+  const header = lines[0].split(',');
+  
+  // Obtener días de la semana (columnas 1-7) y normalizar nombres
+  const rawDays = header.slice(1, 8).map(day => day.trim());
+  const days = rawDays.map(day => {
+    // Normalizar nombres de días
+    switch(day.toLowerCase()) {
+      case 'sabado': return 'Sábado';
+      case 'miércoles': return 'Miércoles';
+      case 'miercoles': return 'Miércoles';
+      default: return day;
+    }
+  });
+  
+  const classes = [];
+  let currentTime = null;
+  
+  console.log('Días detectados:', days);
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    const cells = line.split(',').map(cell => cell.trim());
+    const timeSlot = cells[0];
+    
+    // Si la primera celda tiene un horario (termina en 'h'), es una nueva hora
+    if (timeSlot && timeSlot.endsWith('h')) {
+      currentTime = timeSlot;
+      console.log('Nueva hora:', currentTime);
+    }
+    
+    // Si tenemos un tiempo actual, procesar las clases
+    if (currentTime) {
+      for (let j = 1; j < Math.min(cells.length, 8); j++) {
+        const className = cells[j];
+        if (className && className !== '') {
+          const classData = {
+            name: className,
+            day: days[j - 1],
+            time: currentTime,
+            dayIndex: j - 1, // 0=Lunes, 6=Domingo
+          };
+          classes.push(classData);
+          console.log('Clase añadida:', classData);
+        }
+      }
+    }
+  }
+  
+  // Eliminar clases existentes antes de importar nuevas
+  const existingClasses = await getClasses();
+  const deletePromises = existingClasses.map(cls => deleteClass(cls.id));
+  await Promise.all(deletePromises);
+  
+  // Guardar nuevas clases en Firestore
+  const createPromises = classes.map(classData => createClass(classData, userId));
+  const results = await Promise.all(createPromises);
+  
+  console.log(`Importadas ${results.length} clases:`, classes);
+  return results.length;
+}

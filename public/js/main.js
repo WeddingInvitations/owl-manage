@@ -28,6 +28,20 @@ import {
   addTraining,
   createAthlete,
   getAthletes,
+  getTeachers,
+  createTeacher,
+  updateTeacher,
+  deleteTeacher,
+  getClasses,
+  createClass,
+  updateClass,
+  deleteClass,
+  getClassAssignments,
+  createClassAssignment,
+  updateClassAssignment,
+  deleteClassAssignment,
+  upsertClassAssignment,
+  importClassesFromCSV,
   getAllAthleteMonths,
   getAthleteMonthsForMonth,
   upsertAthleteMonth,
@@ -3583,4 +3597,861 @@ on(ui.downloadAthleteTemplate, "click", () => {
 
 on(ui.downloadAcroTemplate, "click", () => {
   downloadAcroTemplate();
+});
+
+// ========== CLASES Y TURNOS ==========
+
+// Estado de clases
+let currentWeekStart = null;
+let currentWeekEnd = null;
+let selectedWeekOffset = 0;
+let classesData = [];
+let teachersData = [];
+let assignmentsData = [];
+let teacherSearchTerm = "";
+let teacherStatusFilter = "ALL";
+
+// Estado para asignación masiva
+let selectedClasses = new Set();
+let selectedBulkTeacher = null;
+
+// Utilidades de fechas para clases
+function getWeekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Lunes como primer día
+  return new Date(d.setDate(diff));
+}
+
+function getWeekEnd(date) {
+  const weekStart = getWeekStart(date);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  return weekEnd;
+}
+
+function formatDate(date) {
+  return date.toISOString().split('T')[0];
+}
+
+function formatDateForDisplay(date) {
+  return new Intl.DateTimeFormat('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  }).format(date);
+}
+
+function getWeekDates(weekStart) {
+  const dates = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate() + i);
+    dates.push(date);
+  }
+  return dates;
+}
+
+// Renderizado de opciones de semana
+function renderWeekOptions() {
+  if (!ui.weekSelect) return;
+  
+  const today = new Date();
+  const options = [];
+  
+  // Generar opciones de semana (4 semanas atrás a 8 semanas adelante)
+  for (let offset = -4; offset <= 8; offset++) {
+    const weekDate = new Date(today);
+    weekDate.setDate(today.getDate() + (offset * 7));
+    const weekStart = getWeekStart(weekDate);
+    const weekEnd = getWeekEnd(weekDate);
+    
+    const label = `${formatDateForDisplay(weekStart)} - ${formatDateForDisplay(weekEnd)}`;
+    options.push({ offset, label, weekStart, weekEnd });
+  }
+  
+  ui.weekSelect.innerHTML = "";
+  options.forEach(option => {
+    const optionElement = document.createElement("option");
+    optionElement.value = option.offset;
+    optionElement.textContent = option.label;
+    ui.weekSelect.appendChild(optionElement);
+  });
+  
+  // Seleccionar semana actual por defecto
+  selectedWeekOffset = 0;
+  ui.weekSelect.value = selectedWeekOffset;
+  
+  // Establecer fechas actuales
+  const currentOption = options.find(opt => opt.offset === selectedWeekOffset);
+  if (currentOption) {
+    currentWeekStart = currentOption.weekStart;
+    currentWeekEnd = currentOption.weekEnd;
+  }
+}
+
+// Cargar datos de clases
+async function loadClassesData() {
+  try {
+    [classesData, teachersData, assignmentsData] = await Promise.all([
+      getClasses(),
+      getTeachers(),
+      getClassAssignments(formatDate(currentWeekStart), formatDate(currentWeekEnd))
+    ]);
+  } catch (error) {
+    console.error("Error loading classes data:", error);
+  }
+}
+
+// Renderizar tabla de horarios
+function renderScheduleTable() {
+  if (!ui.scheduleTableBody) return;
+  
+  // Horarios típicos del gimnasio
+  const timeSlots = [
+    "07:00h", "08:00h", "09:00h", "10:00h", "11:00h", "12:00h", 
+    "14:30h", "15:30h", "17:00h", "18:00h", "19:00h", "20:00h", "21:00h"
+  ];
+  
+  const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const weekDates = getWeekDates(currentWeekStart);
+  
+  ui.scheduleTableBody.innerHTML = "";
+  
+  timeSlots.forEach(timeSlot => {
+    const row = document.createElement("tr");
+    
+    // Columna de hora
+    const timeCell = document.createElement("td");
+    timeCell.textContent = timeSlot;
+    timeCell.className = "time-header";
+    row.appendChild(timeCell);
+    
+    // Columnas de días
+    days.forEach((day, dayIndex) => {
+      const dayCell = document.createElement("td");
+      dayCell.className = "day-cell";
+      
+      // Buscar clases para este día y hora
+      const dayClasses = classesData.filter(cls => 
+        cls.day === day && cls.time === timeSlot
+      );
+      
+      if (dayClasses.length === 0) {
+        dayCell.innerHTML = '<div class="no-class">-</div>';
+      } else {
+        // Crear un contenedor para múltiples clases
+        const classesContainer = document.createElement("div");
+        classesContainer.className = "classes-container";
+        
+        dayClasses.forEach((cls, index) => {
+          const classSlot = document.createElement("div");
+          classSlot.className = "class-slot";
+          classSlot.dataset.classId = cls.id;
+          classSlot.dataset.day = day;
+          classSlot.dataset.time = timeSlot;
+          classSlot.dataset.date = formatDate(weekDates[dayIndex]);
+          
+          // Buscar asignación de profesor para esta clase
+          const dateForSearch = formatDate(weekDates[dayIndex]);
+          const assignment = assignmentsData.find(assign => 
+            assign.classId === cls.id && 
+            assign.date === dateForSearch && 
+            assign.time === timeSlot
+          );
+          
+          const teacher = assignment ? teachersData.find(t => t.id === assignment.teacherId) : null;
+          
+          if (teacher) {
+            classSlot.classList.add("assigned");
+            classSlot.innerHTML = `
+              <div class="class-info">
+                <div class="class-name">${cls.name}</div>
+                <div class="teacher-info">
+                  <span class="teacher-name">${teacher.name}</span>
+                </div>
+              </div>
+            `;
+          } else {
+            classSlot.classList.add("unassigned");
+            classSlot.innerHTML = `
+              <div class="class-info">
+                <div class="class-name">${cls.name}</div>
+                <div class="teacher-info">
+                  <span class="no-teacher">🎯 Asignar</span>
+                </div>
+              </div>
+            `;
+          }
+          
+          classSlot.addEventListener('click', () => openAssignmentModal(cls, day, timeSlot, formatDate(weekDates[dayIndex]), assignment));
+          
+          classesContainer.appendChild(classSlot);
+        });
+        
+        dayCell.appendChild(classesContainer);
+      }
+      
+      row.appendChild(dayCell);
+    });
+    
+    ui.scheduleTableBody.appendChild(row);
+  });
+}
+
+// Abrir modal de asignación
+function openAssignmentModal(classData, day, time, date, existingAssignment = null) {
+  if (!ui.classAssignmentModal) return;
+  
+  // Llenar información de la clase
+  ui.classDay.textContent = day;
+  ui.classTime.textContent = time;
+  ui.classType.textContent = classData.name;
+  
+  // Llenar select de profesores
+  ui.assignedTeacher.innerHTML = '<option value="">Sin asignar</option>';
+  teachersData
+    .filter(teacher => teacher.status === 'ACTIVE')
+    .forEach(teacher => {
+      const option = document.createElement("option");
+      option.value = teacher.id;
+      option.textContent = teacher.name;
+      if (existingAssignment && existingAssignment.teacherId === teacher.id) {
+        option.selected = true;
+      }
+      ui.assignedTeacher.appendChild(option);
+    });
+  
+  // Llenar datos del formulario
+  ui.assignmentClassId.value = classData.id;
+  ui.assignmentDay.value = day;
+  ui.assignmentTime.value = time;
+  ui.assignmentNotes.value = existingAssignment?.notes || "";
+  
+  ui.classAssignmentModal.classList.remove("hidden");
+}
+
+// Renderizar lista de profesores
+function renderTeachersList() {
+  if (!ui.teacherList) return;
+  
+  const filteredTeachers = teachersData.filter(teacher => {
+    const matchesSearch = !teacherSearchTerm || 
+      teacher.name?.toLowerCase().includes(teacherSearchTerm.toLowerCase()) ||
+      teacher.email?.toLowerCase().includes(teacherSearchTerm.toLowerCase());
+    
+    const matchesStatus = teacherStatusFilter === "ALL" || teacher.status === teacherStatusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+  
+  ui.teacherList.innerHTML = "";
+  
+  filteredTeachers.forEach(teacher => {
+    const row = document.createElement("tr");
+    
+    const specialties = Array.isArray(teacher.specialties) ? teacher.specialties : [];
+    const specialtiesHtml = specialties.map(spec => 
+      `<span class="specialty-badge">${spec}</span>`
+    ).join('');
+    
+    row.innerHTML = `
+      <td>${teacher.name || '-'}</td>
+      <td>${teacher.email || '-'}</td>
+      <td>${teacher.phone || '-'}</td>
+      <td>
+        <div class="teacher-specialties">${specialtiesHtml}</div>
+      </td>
+      <td>
+        <span class="teacher-status ${teacher.status?.toLowerCase() || 'inactive'}">
+          ${teacher.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}
+        </span>
+      </td>
+      <td>
+        <button class="btn small secondary" onclick="editTeacher('${teacher.id}')">Editar</button>
+        <button class="btn small danger" onclick="deleteTeacherConfirm('${teacher.id}')">Eliminar</button>
+      </td>
+    `;
+    
+    ui.teacherList.appendChild(row);
+  });
+}
+
+// ========== ASIGNACIÓN MASIVA ==========
+
+// Renderizar calendario para asignación masiva
+function renderBulkScheduleTable() {
+  if (!ui.bulkScheduleTableBody) return;
+  
+  const timeSlots = [
+    "07:00h", "08:00h", "09:00h", "10:00h", "11:00h", "12:00h", 
+    "14:30h", "15:30h", "17:00h", "18:00h", "19:00h", "20:00h", "21:00h"
+  ];
+  
+  const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const weekDates = getWeekDates(currentWeekStart);
+  
+  ui.bulkScheduleTableBody.innerHTML = "";
+  
+  timeSlots.forEach(timeSlot => {
+    const row = document.createElement("tr");
+    
+    // Columna de hora
+    const timeCell = document.createElement("td");
+    timeCell.textContent = timeSlot;
+    timeCell.className = "time-header";
+    row.appendChild(timeCell);
+    
+    // Columnas de días
+    days.forEach((day, dayIndex) => {
+      const dayCell = document.createElement("td");
+      dayCell.className = "day-cell";
+      
+      // Buscar clases para este día y hora
+      const dayClasses = classesData.filter(cls => 
+        cls.day === day && cls.time === timeSlot
+      );
+      
+      if (dayClasses.length === 0) {
+        dayCell.innerHTML = '<div class="no-class">-</div>';
+      } else {
+        const classesContainer = document.createElement("div");
+        classesContainer.className = "classes-container";
+        
+        dayClasses.forEach(cls => {
+          const classSlot = document.createElement("div");
+          classSlot.className = "class-slot";
+          classSlot.dataset.classId = cls.id;
+          classSlot.dataset.day = day;
+          classSlot.dataset.time = timeSlot;
+          classSlot.dataset.date = formatDate(weekDates[dayIndex]);
+          
+          // Verificar si ya está asignada
+          const assignment = assignmentsData.find(assign => 
+            assign.classId === cls.id && 
+            assign.date === formatDate(weekDates[dayIndex]) && 
+            assign.time === timeSlot
+          );
+          
+          const teacher = assignment ? teachersData.find(t => t.id === assignment.teacherId) : null;
+          
+          if (teacher) {
+            classSlot.classList.add("assigned");
+          } else {
+            classSlot.classList.add("unassigned");
+          }
+          
+          // Verificar si está seleccionada
+          const classKey = `${cls.id}|${formatDate(weekDates[dayIndex])}|${timeSlot}`;
+          if (selectedClasses.has(classKey)) {
+            classSlot.classList.add("selected");
+          }
+          
+          classSlot.innerHTML = `
+            <div class="class-info">
+              <div class="class-name">${cls.name}</div>
+              <div class="teacher-info">
+                <span class="teacher-name">${teacher ? teacher.name : 'Sin asignar'}</span>
+              </div>
+            </div>
+          `;
+          
+          // Event listener para selección
+          classSlot.addEventListener('click', () => toggleClassSelection(cls, day, timeSlot, formatDate(weekDates[dayIndex]), classSlot));
+          
+          classesContainer.appendChild(classSlot);
+        });
+        
+        dayCell.appendChild(classesContainer);
+      }
+      
+      row.appendChild(dayCell);
+    });
+    
+    ui.bulkScheduleTableBody.appendChild(row);
+  });
+}
+
+// Toggle selección de clase
+function toggleClassSelection(classData, day, time, date, element) {
+  const classKey = `${classData.id}|${date}|${time}`;
+  
+  if (selectedClasses.has(classKey)) {
+    selectedClasses.delete(classKey);
+    element.classList.remove("selected");
+  } else {
+    selectedClasses.add(classKey);
+    element.classList.add("selected");
+  }
+  
+  updateSelectionSummary();
+}
+
+// Actualizar resumen de selección
+function updateSelectionSummary() {
+  const count = selectedClasses.size;
+  
+  // Actualizar contador
+  ui.selectedClassesCount.textContent = count;
+  ui.assignCountText.textContent = count;
+  
+  // Habilitar/deshabilitar botón
+  ui.bulkAssignExecute.disabled = count === 0 || !selectedBulkTeacher;
+  
+  // Actualizar lista de clases seleccionadas
+  ui.selectedClassesList.innerHTML = "";
+  
+  selectedClasses.forEach(classKey => {
+    const [classId, date, time] = classKey.split('-');
+    const classData = classesData.find(c => c.id === classId);
+    
+    if (classData) {
+      const item = document.createElement("div");
+      item.className = "selected-class-item";
+      item.innerHTML = `
+        ${classData.name} - ${classData.day} ${time}
+        <button class="remove-btn" onclick="removeClassSelection('${classKey}')">×</button>
+      `;
+      ui.selectedClassesList.appendChild(item);
+    }
+  });
+}
+
+// Quitar selección de clase individual
+window.removeClassSelection = function(classKey) {
+  selectedClasses.delete(classKey);
+  renderBulkScheduleTable();
+  updateSelectionSummary();
+};
+
+// Limpiar toda la selección
+function clearAllSelection() {
+  selectedClasses.clear();
+  renderBulkScheduleTable();
+  updateSelectionSummary();
+}
+
+// Renderizar opciones de profesores para asignación masiva
+function renderBulkTeacherOptions() {
+  if (!ui.bulkTeacherSelect) return;
+  
+  ui.bulkTeacherSelect.innerHTML = '<option value="">Seleccionar profesor...</option>';
+  
+  teachersData
+    .filter(teacher => teacher.status === 'ACTIVE')
+    .forEach(teacher => {
+      const option = document.createElement("option");
+      option.value = teacher.id;
+      option.textContent = teacher.name;
+      ui.bulkTeacherSelect.appendChild(option);
+    });
+}
+
+// Ejecutar asignación masiva
+async function executeBulkAssignment() {
+  if (!selectedBulkTeacher || selectedClasses.size === 0) return;
+  
+  console.log('Ejecutando asignación masiva para', selectedClasses.size, 'clases');
+  console.log('Profesor seleccionado:', selectedBulkTeacher);
+  
+  ui.bulkAssignExecute.disabled = true;
+  ui.bulkAssignExecute.textContent = "Asignando...";
+  
+  try {
+    const assignments = [];
+    
+    selectedClasses.forEach(classKey => {
+      const [classId, date, time] = classKey.split('|');
+      console.log('Asignando clase:', classId, 'el', date, 'a las', time);
+      assignments.push(
+        upsertClassAssignment(classId, date, time, selectedBulkTeacher, "", currentUser?.uid)
+      );
+    });
+    
+    await Promise.all(assignments);
+    console.log('Todas las asignaciones completadas');
+    
+    // Limpiar selección y cerrar modal
+    clearAllSelection();
+    ui.bulkAssignModal.classList.add("hidden");
+    
+    // Refrescar vista principal
+    console.log('Refrescando vista principal...');
+    await refreshClassesView();
+    
+    alert(`Se asignaron ${assignments.length} clases correctamente.`);
+    
+  } catch (error) {
+    console.error("Error in bulk assignment:", error);
+    alert("Error al realizar la asignación masiva");
+  } finally {
+    ui.bulkAssignExecute.disabled = false;
+    ui.bulkAssignExecute.textContent = `🎯 Asignar a 0 clases`;
+  }
+}
+
+// Funciones de profesores
+window.editTeacher = async function(teacherId) {
+  const teacher = teachersData.find(t => t.id === teacherId);
+  if (!teacher) return;
+  
+  ui.teacherModalTitle.textContent = "Editar Profesor";
+  ui.teacherId.value = teacher.id;
+  ui.teacherName.value = teacher.name || "";
+  ui.teacherEmail.value = teacher.email || "";
+  ui.teacherPhone.value = teacher.phone || "";
+  ui.teacherStatus.value = teacher.status || "ACTIVE";
+  
+  // Seleccionar especialidades
+  Array.from(ui.teacherSpecialties.options).forEach(option => {
+    option.selected = teacher.specialties?.includes(option.value) || false;
+  });
+  
+  ui.teacherModal.classList.remove("hidden");
+};
+
+window.deleteTeacherConfirm = async function(teacherId) {
+  const teacher = teachersData.find(t => t.id === teacherId);
+  if (!teacher) return;
+  
+  if (confirm(`¿Estás seguro de que quieres eliminar al profesor "${teacher.name}"?`)) {
+    try {
+      await deleteTeacher(teacherId);
+      await refreshClassesView();
+    } catch (error) {
+      console.error("Error deleting teacher:", error);
+      alert("Error al eliminar el profesor");
+    }
+  }
+};
+
+// Refrescar vista de clases
+async function refreshClassesView() {
+  await loadClassesData(); // Esta función ya carga classes, teachers y assignments
+  renderScheduleTable();
+  renderTeachersList();
+}
+
+// Event listeners para clases
+
+on(ui.weekSelect, "change", async (event) => {
+  selectedWeekOffset = parseInt(event.target.value);
+  const today = new Date();
+  const weekDate = new Date(today);
+  weekDate.setDate(today.getDate() + (selectedWeekOffset * 7));
+  currentWeekStart = getWeekStart(weekDate);
+  currentWeekEnd = getWeekEnd(weekDate);
+  await refreshClassesView();
+});
+
+on(ui.prevWeekBtn, "click", async () => {
+  selectedWeekOffset--;
+  ui.weekSelect.value = selectedWeekOffset;
+  const today = new Date();
+  const weekDate = new Date(today);
+  weekDate.setDate(today.getDate() + (selectedWeekOffset * 7));
+  currentWeekStart = getWeekStart(weekDate);
+  currentWeekEnd = getWeekEnd(weekDate);
+  await refreshClassesView();
+});
+
+on(ui.nextWeekBtn, "click", async () => {
+  selectedWeekOffset++;
+  ui.weekSelect.value = selectedWeekOffset;
+  const today = new Date();
+  const weekDate = new Date(today);
+  weekDate.setDate(today.getDate() + (selectedWeekOffset * 7));
+  currentWeekStart = getWeekStart(weekDate);
+  currentWeekEnd = getWeekEnd(weekDate);
+  await refreshClassesView();
+});
+
+on(ui.currentWeekBtn, "click", async () => {
+  selectedWeekOffset = 0;
+  ui.weekSelect.value = selectedWeekOffset;
+  const today = new Date();
+  currentWeekStart = getWeekStart(today);
+  currentWeekEnd = getWeekEnd(today);
+  await refreshClassesView();
+});
+
+on(ui.addTeacherBtn, "click", () => {
+  ui.teacherModalTitle.textContent = "Añadir Profesor";
+  ui.teacherForm.reset();
+  ui.teacherId.value = "";
+  ui.teacherModal.classList.remove("hidden");
+});
+
+on(ui.bulkAssignBtn, "click", async () => {
+  console.log('Abriendo modal de asignación masiva');
+  
+  // Asegurar que los datos estén cargados
+  if (!classesData || classesData.length === 0) {
+    console.log('Cargando datos de clases...');
+    await loadClassesData();
+  }
+  
+  if (!assignmentsData) {
+    console.log('Cargando datos de asignaciones...');
+    await loadAssignmentsData();
+  }
+  
+  if (!teachersData || teachersData.length === 0) {
+    console.log('Cargando datos de profesores...');
+    await loadTeachersData();
+  }
+  
+  // Limpiar selección anterior
+  selectedClasses.clear();
+  selectedBulkTeacher = null;
+  
+  // Renderizar contenido del modal
+  renderBulkTeacherOptions();
+  renderBulkScheduleTable();
+  updateSelectionSummary();
+  
+  // Resetear UI
+  ui.bulkTeacherSelect.value = "";
+  ui.selectedTeacherName.textContent = "Ninguno seleccionado";
+  
+  ui.bulkAssignModal.classList.remove("hidden");
+});
+
+on(ui.teacherModalClose, "click", () => {
+  ui.teacherModal.classList.add("hidden");
+});
+
+on(ui.cancelTeacher, "click", () => {
+  ui.teacherModal.classList.add("hidden");
+});
+
+on(ui.teacherForm, "submit", async (event) => {
+  event.preventDefault();
+  
+  const teacherData = {
+    name: ui.teacherName.value.trim(),
+    email: ui.teacherEmail.value.trim(),
+    phone: ui.teacherPhone.value.trim(),
+    specialties: Array.from(ui.teacherSpecialties.selectedOptions).map(opt => opt.value),
+    status: ui.teacherStatus.value,
+  };
+  
+  try {
+    const teacherId = ui.teacherId.value;
+    if (teacherId) {
+      await updateTeacher(teacherId, teacherData, currentUser?.uid);
+    } else {
+      await createTeacher(teacherData, currentUser?.uid);
+    }
+    
+    ui.teacherModal.classList.add("hidden");
+    await refreshClassesView();
+  } catch (error) {
+    console.error("Error saving teacher:", error);
+    alert("Error al guardar el profesor");
+  }
+});
+
+on(ui.teacherSearch, "input", (event) => {
+  teacherSearchTerm = event.target.value;
+  renderTeachersList();
+});
+
+on(ui.teacherStatusFilter, "change", (event) => {
+  teacherStatusFilter = event.target.value;
+  renderTeachersList();
+});
+
+on(ui.assignmentModalClose, "click", () => {
+  ui.classAssignmentModal.classList.add("hidden");
+});
+
+on(ui.cancelAssignment, "click", () => {
+  ui.classAssignmentModal.classList.add("hidden");
+});
+
+on(ui.assignmentForm, "submit", async (event) => {
+  event.preventDefault();
+  
+  const classId = ui.assignmentClassId.value;
+  const day = ui.assignmentDay.value;
+  const time = ui.assignmentTime.value;
+  const teacherId = ui.assignedTeacher.value;
+  const notes = ui.assignmentNotes.value.trim();
+  
+  // Calcular fecha basada en el día de la semana
+  const weekDates = getWeekDates(currentWeekStart);
+  const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const dayIndex = days.indexOf(day);
+  const date = formatDate(weekDates[dayIndex]);
+  
+  try {
+    if (teacherId) {
+      await upsertClassAssignment(classId, date, time, teacherId, notes, currentUser?.uid);
+    } else {
+      // Eliminar asignación si no hay profesor seleccionado
+      const existingAssignment = assignmentsData.find(assign => 
+        assign.classId === classId && 
+        assign.date === date && 
+        assign.time === time
+      );
+      if (existingAssignment) {
+        await deleteClassAssignment(existingAssignment.id);
+      }
+    }
+    
+    ui.classAssignmentModal.classList.add("hidden");
+    await refreshClassesView();
+  } catch (error) {
+    console.error("Error saving assignment:", error);
+    alert("Error al guardar la asignación");
+  }
+});
+
+on(ui.removeAssignment, "click", async () => {
+  const classId = ui.assignmentClassId.value;
+  const day = ui.assignmentDay.value;
+  const time = ui.assignmentTime.value;
+  
+  // Calcular fecha basada en el día de la semana
+  const weekDates = getWeekDates(currentWeekStart);
+  const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const dayIndex = days.indexOf(day);
+  const date = formatDate(weekDates[dayIndex]);
+  
+  const existingAssignment = assignmentsData.find(assign => 
+    assign.classId === classId && 
+    assign.date === date && 
+    assign.time === time
+  );
+  
+  if (existingAssignment && confirm("¿Estás seguro de que quieres quitar esta asignación?")) {
+    try {
+      await deleteClassAssignment(existingAssignment.id);
+      ui.classAssignmentModal.classList.add("hidden");
+      await refreshClassesView();
+    } catch (error) {
+      console.error("Error removing assignment:", error);
+      alert("Error al quitar la asignación");
+    }
+  }
+});
+
+on(ui.importClassesBtn, "click", () => {
+  ui.importClassesModal.classList.remove("hidden");
+});
+
+on(ui.importModalClose, "click", () => {
+  ui.importClassesModal.classList.add("hidden");
+});
+
+on(ui.cancelImport, "click", () => {
+  ui.importClassesModal.classList.add("hidden");
+});
+
+on(ui.classesFile, "change", (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const content = e.target.result;
+    const lines = content.split('\n').slice(0, 5); // Mostrar solo las primeras 5 líneas
+    ui.previewContent.innerHTML = `<pre>${lines.join('\n')}</pre>`;
+    ui.importPreview.classList.remove("hidden");
+  };
+  reader.readAsText(file);
+});
+
+on(ui.importClassesForm, "submit", async (event) => {
+  event.preventDefault();
+  
+  const file = ui.classesFile.files[0];
+  if (!file) return;
+  
+  ui.importStatus.textContent = "Importando clases...";
+  ui.importStatus.className = "status-message info";
+  
+  try {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const csvContent = e.target.result;
+        const importedCount = await importClassesFromCSV(csvContent, currentUser?.uid);
+        
+        ui.importStatus.textContent = `Se importaron ${importedCount} clases correctamente.`;
+        ui.importStatus.className = "status-message success";
+        
+        ui.importClassesForm.reset();
+        ui.importPreview.classList.add("hidden");
+        
+        setTimeout(() => {
+          ui.importClassesModal.classList.add("hidden");
+          ui.importStatus.textContent = "";
+          ui.importStatus.className = "status-message";
+        }, 2000);
+        
+        await refreshClassesView();
+      } catch (error) {
+        console.error("Error importing classes:", error);
+        ui.importStatus.textContent = `Error al importar: ${error.message}`;
+        ui.importStatus.className = "status-message error";
+      }
+    };
+    reader.readAsText(file);
+  } catch (error) {
+    console.error("Error reading file:", error);
+    ui.importStatus.textContent = `Error al leer el archivo: ${error.message}`;
+    ui.importStatus.className = "status-message error";
+  }
+});
+
+// Event listeners para asignación masiva
+on(ui.bulkAssignModalClose, "click", () => {
+  ui.bulkAssignModal.classList.add("hidden");
+});
+
+on(ui.bulkAssignCancel, "click", () => {
+  ui.bulkAssignModal.classList.add("hidden");
+});
+
+on(ui.bulkTeacherSelect, "change", (event) => {
+  selectedBulkTeacher = event.target.value || null;
+  const teacherName = selectedBulkTeacher 
+    ? teachersData.find(t => t.id === selectedBulkTeacher)?.name || "Desconocido"
+    : "Ninguno seleccionado";
+  
+  ui.selectedTeacherName.textContent = teacherName;
+  updateSelectionSummary();
+});
+
+on(ui.bulkClearSelection, "click", () => {
+  clearAllSelection();
+});
+
+on(ui.bulkAssignExecute, "click", () => {
+  if (selectedClasses.size === 0 || !selectedBulkTeacher) return;
+  
+  const teacher = teachersData.find(t => t.id === selectedBulkTeacher);
+  const confirmation = confirm(
+    `¿Estás seguro de asignar ${selectedClasses.size} clases al profesor ${teacher?.name}?`
+  );
+  
+  if (confirmation) {
+    executeBulkAssignment();
+  }
+});
+
+// Inicialización de clases
+async function initializeClasses() {
+  renderWeekOptions();
+  await refreshClassesView();
+}
+
+// Llamar a la inicialización cuando se carga la vista de clases
+document.addEventListener('DOMContentLoaded', () => {
+  const classesViewBtn = document.querySelector('[data-view="classesView"]');
+  if (classesViewBtn) {
+    classesViewBtn.addEventListener('click', initializeClasses);
+  }
 });

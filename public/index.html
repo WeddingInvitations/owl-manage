@@ -47,6 +47,7 @@
         <button class="menu-btn" data-view="trainingsView">Entrenamientos</button>
         <button class="menu-btn" data-view="athletesView">Atletas</button>
         <button class="menu-btn" data-view="acroView">Atletas Acrobacias</button>
+        <button class="menu-btn" data-view="classesView">Clases</button>
         <button class="menu-btn" data-view="rolesView">Roles</button>
       </nav>
       <section class="content">
@@ -978,6 +979,281 @@
           </div>
         </section>
 
+        <!-- ========== CLASES ========== -->
+        <section id="classesView" class="view hidden">
+          <div class="card">
+            <div class="detail-header">
+              <h2>Gestión de Clases y Turnos</h2>
+              <div class="header-actions">
+                <button id="bulkAssignBtn" class="btn success">🎯 Asignar Profesor</button>
+                <button id="importClassesBtn" class="btn primary">Importar Horarios</button>
+                <button id="addTeacherBtn" class="btn secondary">Añadir Profesor</button>
+              </div>
+            </div>
+
+            <!-- Selector de semana -->
+            <div class="filter-row">
+              <label>
+                Semana:
+                <select id="weekSelect"></select>
+              </label>
+              <button id="prevWeekBtn" class="btn ghost small">← Anterior</button>
+              <button id="nextWeekBtn" class="btn ghost small">Siguiente →</button>
+              <button id="currentWeekBtn" class="btn ghost small">Semana actual</button>
+            </div>
+
+            <!-- Tabla de horarios -->
+            <div class="schedule-container">
+              <div class="table-container">
+                <table class="table schedule-table">
+                  <thead>
+                    <tr>
+                      <th>Hora</th>
+                      <th>Lunes</th>
+                      <th>Martes</th>
+                      <th>Miércoles</th>
+                      <th>Jueves</th>
+                      <th>Viernes</th>
+                      <th>Sábado</th>
+                      <th>Domingo</th>
+                    </tr>
+                  </thead>
+                  <tbody id="scheduleTableBody">
+                    <!-- Horarios generados dinámicamente -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de profesores -->
+          <div class="card">
+            <div class="detail-header">
+              <h3>Profesores</h3>
+              <div class="filter-row">
+                <input id="teacherSearch" type="search" placeholder="Buscar profesor..." />
+                <select id="teacherStatusFilter">
+                  <option value="ALL">Todos</option>
+                  <option value="ACTIVE">Activos</option>
+                  <option value="INACTIVE">Inactivos</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="table-container">
+              <table class="table teacher-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Especialidades</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="teacherList">
+                  <!-- Profesores generados dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Modales para clases -->
+        <div id="teacherModal" class="modal hidden">
+          <div class="modal-content card">
+            <div class="detail-header">
+              <h3 id="teacherModalTitle">Añadir Profesor</h3>
+              <button id="teacherModalClose" class="btn ghost small">Cerrar</button>
+            </div>
+            <form id="teacherForm" class="stack">
+              <input type="hidden" id="teacherId" />
+              <label>
+                Nombre completo *
+                <input id="teacherName" type="text" required />
+              </label>
+              <label>
+                Email
+                <input id="teacherEmail" type="email" />
+              </label>
+              <label>
+                Teléfono
+                <input id="teacherPhone" type="tel" />
+              </label>
+              <label>
+                Especialidades
+                <select id="teacherSpecialties" multiple>
+                  <option value="Functional Fitness">Functional Fitness</option>
+                  <option value="Gimnásticos">Gimnásticos</option>
+                  <option value="Halterofilia">Halterofilia</option>
+                  <option value="Hyrox">Hyrox</option>
+                  <option value="Classic Strength">Classic Strength</option>
+                  <option value="Fundamentos">Fundamentos</option>
+                  <option value="Hybrid">Hybrid</option>
+                  <option value="Functional Fitness Partner">Functional Fitness Partner</option>
+                </select>
+              </label>
+              <label>
+                Estado
+                <select id="teacherStatus">
+                  <option value="ACTIVE">Activo</option>
+                  <option value="INACTIVE">Inactivo</option>
+                </select>
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn primary">Guardar</button>
+                <button type="button" id="cancelTeacher" class="btn ghost">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="classAssignmentModal" class="modal hidden">
+          <div class="modal-content card">
+            <div class="detail-header">
+              <h3 id="assignmentModalTitle">Asignar Profesor</h3>
+              <button id="assignmentModalClose" class="btn ghost small">Cerrar</button>
+            </div>
+            <form id="assignmentForm" class="stack">
+              <input type="hidden" id="assignmentClassId" />
+              <input type="hidden" id="assignmentDay" />
+              <input type="hidden" id="assignmentTime" />
+              
+              <div id="classInfo" class="info-card">
+                <h4 id="classInfoTitle">Información de la clase</h4>
+                <p><strong>Día:</strong> <span id="classDay"></span></p>
+                <p><strong>Hora:</strong> <span id="classTime"></span></p>
+                <p><strong>Tipo:</strong> <span id="classType"></span></p>
+              </div>
+
+              <label>
+                Profesor asignado
+                <select id="assignedTeacher">
+                  <option value="">Sin asignar</option>
+                  <!-- Opciones generadas dinámicamente -->
+                </select>
+              </label>
+              
+              <label>
+                Notas (opcional)
+                <textarea id="assignmentNotes" rows="3" placeholder="Notas sobre la clase o el profesor..."></textarea>
+              </label>
+
+              <div class="form-actions">
+                <button type="submit" class="btn primary">Guardar Asignación</button>
+                <button type="button" id="cancelAssignment" class="btn ghost">Cancelar</button>
+                <button type="button" id="removeAssignment" class="btn danger">Quitar Asignación</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="importClassesModal" class="modal hidden">
+          <div class="modal-content card">
+            <div class="detail-header">
+              <h3>Importar Horarios desde CSV</h3>
+              <button id="importModalClose" class="btn ghost small">Cerrar</button>
+            </div>
+            <form id="importClassesForm" class="stack">
+              <div class="info-card">
+                <p>Sube un archivo CSV con la estructura de horarios. El sistema procesará automáticamente las clases y horarios.</p>
+              </div>
+              
+              <label>
+                Archivo CSV
+                <input id="classesFile" type="file" accept=".csv" required />
+              </label>
+
+              <div id="importPreview" class="hidden">
+                <h4>Vista previa:</h4>
+                <div id="previewContent"></div>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn primary">Importar Clases</button>
+                <button type="button" id="cancelImport" class="btn ghost">Cancelar</button>
+              </div>
+            </form>
+            <div id="importStatus" class="status-message"></div>
+          </div>
+        </div>
+
+        <div id="bulkAssignModal" class="modal hidden">
+          <div class="modal-content card bulk-assign-modal">
+            <div class="detail-header">
+              <h3>Asignar Profesor a Múltiples Clases</h3>
+              <button id="bulkAssignModalClose" class="btn ghost small">Cerrar</button>
+            </div>
+            
+            <div class="bulk-assign-content">
+              <!-- Selector de profesor -->
+              <div class="professor-selection">
+                <div class="info-card">
+                  <h4>👨‍🏫 Seleccionar Profesor</h4>
+                  <label>
+                    Profesor:
+                    <select id="bulkTeacherSelect">
+                      <option value="">Seleccionar profesor...</option>
+                      <!-- Opciones generadas dinámicamente -->
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Calendario de selección -->
+              <div class="class-selection">
+                <div class="info-card">
+                  <h4>📅 Seleccionar Clases</h4>
+                  <p>Haz clic en las clases que quieres asignar al profesor seleccionado. Las clases seleccionadas se marcarán en azul.</p>
+                </div>
+                
+                <div class="bulk-schedule-container">
+                  <div class="table-container">
+                    <table class="table schedule-table bulk-schedule-table">
+                      <thead>
+                        <tr>
+                          <th>Hora</th>
+                          <th>Lunes</th>
+                          <th>Martes</th>
+                          <th>Miércoles</th>
+                          <th>Jueves</th>
+                          <th>Viernes</th>
+                          <th>Sábado</th>
+                          <th>Domingo</th>
+                        </tr>
+                      </thead>
+                      <tbody id="bulkScheduleTableBody">
+                        <!-- Horarios para selección múltiple -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resumen de selección -->
+              <div class="selection-summary">
+                <div class="info-card">
+                  <h4>📋 Resumen de Asignación</h4>
+                  <p><strong>Profesor:</strong> <span id="selectedTeacherName">Ninguno seleccionado</span></p>
+                  <p><strong>Clases seleccionadas:</strong> <span id="selectedClassesCount">0</span></p>
+                  <div id="selectedClassesList" class="selected-classes-list"></div>
+                </div>
+              </div>
+
+              <!-- Botones de acción -->
+              <div class="form-actions">
+                <button type="button" id="bulkAssignExecute" class="btn success" disabled>
+                  🎯 Asignar a <span id="assignCountText">0</span> clases
+                </button>
+                <button type="button" id="bulkClearSelection" class="btn secondary">
+                  🗑️ Limpiar Selección
+                </button>
+                <button type="button" id="bulkAssignCancel" class="btn ghost">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
 
         <section id="rolesView" class="view hidden">
