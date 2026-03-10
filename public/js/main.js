@@ -3715,6 +3715,19 @@ async function loadClassesData() {
   }
 }
 
+// Función para normalizar nombres de clases para data-attributes
+function normalizeClassType(className) {
+  if (!className) return '';
+  return className.toLowerCase()
+    .replace(/á/g, 'a')
+    .replace(/é/g, 'e')
+    .replace(/í/g, 'i')
+    .replace(/ó/g, 'o')
+    .replace(/ú/g, 'u')
+    .replace(/ñ/g, 'n')
+    .trim();
+}
+
 // Renderizar tabla de horarios
 function renderScheduleTable() {
   if (!ui.scheduleTableBody) return;
@@ -3763,6 +3776,7 @@ function renderScheduleTable() {
           classSlot.dataset.day = day;
           classSlot.dataset.time = timeSlot;
           classSlot.dataset.date = formatDate(weekDates[dayIndex]);
+          classSlot.dataset.classType = normalizeClassType(cls.name);
           
           // Buscar asignación de profesor para esta clase
           const dateForSearch = formatDate(weekDates[dayIndex]);
@@ -3776,25 +3790,16 @@ function renderScheduleTable() {
           
           if (teacher) {
             classSlot.classList.add("assigned");
-            classSlot.innerHTML = `
-              <div class="class-info">
-                <div class="class-name">${cls.name}</div>
-                <div class="teacher-info">
-                  <span class="teacher-name">${teacher.name}</span>
-                </div>
-              </div>
-            `;
-          } else {
-            classSlot.classList.add("unassigned");
-            classSlot.innerHTML = `
-              <div class="class-info">
-                <div class="class-name">${cls.name}</div>
-                <div class="teacher-info">
-                  <span class="no-teacher">🎯 Asignar</span>
-                </div>
-              </div>
-            `;
           }
+          
+          classSlot.innerHTML = `
+            <div class="class-info">
+              <div class="class-name">${cls.name}</div>
+              <div class="teacher-info">
+                <span class="teacher-name">${teacher ? teacher.name : 'Sin asignar'}</span>
+              </div>
+            </div>
+          `;
           
           classSlot.addEventListener('click', () => openAssignmentModal(cls, day, timeSlot, formatDate(weekDates[dayIndex]), assignment));
           
@@ -3937,6 +3942,7 @@ function renderBulkScheduleTable() {
           classSlot.dataset.day = day;
           classSlot.dataset.time = timeSlot;
           classSlot.dataset.date = formatDate(weekDates[dayIndex]);
+          classSlot.dataset.classType = normalizeClassType(cls.name);
           
           // Verificar si ya está asignada
           const assignment = assignmentsData.find(assign => 
@@ -3949,8 +3955,6 @@ function renderBulkScheduleTable() {
           
           if (teacher) {
             classSlot.classList.add("assigned");
-          } else {
-            classSlot.classList.add("unassigned");
           }
           
           // Verificar si está seleccionada

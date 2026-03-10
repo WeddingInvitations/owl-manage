@@ -2140,26 +2140,104 @@ select:focus {
 }
 
 .class-slot {
-  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  position: relative;
   border: 2px solid var(--border);
-  border-radius: 6px;
-  padding: 6px;
-  margin: 1px 0;
+  border-radius: 8px;
+  padding: 8px;
+  margin: 2px 0;
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.75rem;
   line-height: 1.2;
-  min-height: 45px;
+  min-height: 50px;
   display: flex;
   align-items: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   flex: 1;
+  overflow: hidden;
+}
+
+/* Colores específicos por tipo de clase */
+.class-slot[data-class-type="gimnasticos"] {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border-color: #047857;
+}
+
+.class-slot[data-class-type="functional fitness"] {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: white;
+  border-color: #c2410c;
+}
+
+.class-slot[data-class-type="fundamentos"] {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  border-color: #1d4ed8;
+}
+
+.class-slot[data-class-type="hyrox"] {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #92400e;
+  border-color: #d97706;
+}
+
+.class-slot[data-class-type="halterofilia"] {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+  border-color: #374151;
+}
+
+.class-slot[data-class-type="functional fitness partner"] {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  border-color: #991b1b;
+}
+
+.class-slot[data-class-type="hybrid"] {
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  color: white;
+  border-color: #dc2626;
+}
+
+.class-slot[data-class-type="classic strength"] {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: white;
+  border-color: #6d28d9;
+}
+
+/* Fallback para clases sin tipo definido */
+.class-slot:not([data-class-type]) {
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  color: #64748b;
+  border-color: var(--border);
+}
+
+/* Check verde para clases asignadas */
+.class-slot.assigned::after {
+  content: '✓';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  background: #10b981;
+  border: 2px solid white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 2;
 }
 
 /* Cuando hay múltiples clases, reducir el tamaño */
 .classes-container .class-slot {
-  min-height: 35px;
-  padding: 4px;
+  min-height: 40px;
+  padding: 6px;
   font-size: 0.7rem;
 }
 
@@ -2175,32 +2253,8 @@ select:focus {
 
 .class-slot:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  border-color: var(--primary);
-}
-
-.class-slot.assigned {
-  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-  border-color: var(--success);
-  color: #166534;
-}
-
-.class-slot.assigned:hover {
-  background: linear-gradient(135deg, #bbf7d0, #86efac);
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.2);
-}
-
-.class-slot.unassigned {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  border-color: var(--warning);
-  color: #92400e;
-}
-
-.class-slot.unassigned:hover {
-  background: linear-gradient(135deg, #fde68a, #fcd34d);
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.2);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  filter: brightness(1.1);
 }
 
 .class-info {
@@ -2543,60 +2597,73 @@ select:focus {
 }
 
 .bulk-schedule-table .class-slot {
-  background: var(--card);
-  border: 1px solid var(--border);
+  position: relative;
+  border: 2px solid var(--border);
   border-radius: 6px;
   padding: 8px;
   margin: 2px;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-height: 60px;
 }
 
-.bulk-schedule-table .class-slot.unassigned {
-  border-left: 4px solid var(--warning);
-}
+/* Los estilos de colores por tipo se heredan de los globales */
 
-.bulk-schedule-table .class-slot.assigned {
-  border-left: 4px solid var(--success);
+/* Check verde para clases asignadas en bulk también */
+.bulk-schedule-table .class-slot.assigned::after {
+  content: '✓';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  background: #10b981;
+  border: 2px solid white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 3;
 }
 
 .bulk-schedule-table .class-slot:hover {
-  background: var(--hover);
   transform: scale(1.02);
+  filter: brightness(1.1);
 }
 
 .bulk-schedule-table .class-info .class-name {
   font-weight: 600;
-  color: var(--text);
   margin-bottom: 4px;
 }
 
 .bulk-schedule-table .class-info .teacher-name {
   font-size: 0.85em;
-  color: var(--text-muted);
+  opacity: 0.9;
 }
 
-.bulk-schedule-table .class-slot {
-  transition: all 0.3s ease;
-  position: relative;
-}
-
+/* Checkbox para selección múltiple */
 .bulk-schedule-table .class-slot::before {
   content: '';
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 4px;
+  left: 4px;
   width: 16px;
   height: 16px;
-  border: 2px solid var(--border);
+  border: 2px solid rgba(255, 255, 255, 0.5);
   border-radius: 3px;
-  background: var(--card);
+  background: rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  z-index: 2;
 }
 
+/* Estado seleccionado para asignación masiva */
 .bulk-schedule-table .class-slot.selected {
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe) !important;
-  border-color: var(--primary) !important;
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
   transform: scale(1.02);
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3) !important;
 }
@@ -2606,24 +2673,14 @@ select:focus {
   border-color: var(--primary);
 }
 
-.bulk-schedule-table .class-slot.selected::after {
+.bulk-schedule-table .class-slot.selected::before {
   content: '✓';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: white;
   font-size: 0.7rem;
   font-weight: 700;
-}
-
-.bulk-schedule-table .class-slot:hover {
-  transform: scale(1.05);
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .selection-summary {
