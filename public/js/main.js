@@ -1742,26 +1742,32 @@ if (ui.athleteList) {
         button.textContent = "Guardando...";
         button.disabled = true;
         
-        // Update athlete month data
+        // Update athlete month data with multi-month logic like in modal
         const monthKey = selectedAthleteListMonth || selectedAthleteMonth;
-        await upsertAthleteMonth(
-          athleteId,
-          monthKey,
-          {
-            athleteName,
-            tariff: newTariff,
-            price: newPrice,
-            basePrice: newPrice,
-            discount: 0,
-            discountReason: "",
-            paid: newPaid,
-            active: newPaid,
-            durationMonths: plan.durationMonths,
-            priceMonthly: plan.priceMonthly,
-            isPaymentMonth: true,
-          },
-          currentUser?.uid
-        );
+        const duration = plan.durationMonths || 1;
+        
+        // Create payments for all months in the duration (like in modal)
+        for (let i = 0; i < duration; i += 1) {
+          const targetMonth = addMonthsToKey(monthKey, i);
+          await upsertAthleteMonth(
+            athleteId,
+            targetMonth,
+            {
+              athleteName,
+              tariff: newTariff,
+              price: newPrice,
+              basePrice: newPrice,
+              discount: 0,
+              discountReason: "",
+              paid: newPaid,
+              active: newPaid,
+              durationMonths: plan.durationMonths,
+              priceMonthly: plan.priceMonthly,
+              isPaymentMonth: i === 0, // Only first month is payment month
+            },
+            currentUser?.uid
+          );
+        }
         
         // Refresh the list
         await refreshAthleteMonthly();
@@ -1816,26 +1822,32 @@ if (ui.acroList) {
         button.textContent = "Guardando...";
         button.disabled = true;
         
-        // Update acro athlete month data
+        // Update acro athlete month data with multi-month logic like in modal
         const monthKey = selectedAcroListMonth || selectedAcroMonth;
-        await upsertAcroAthleteMonth(
-          athleteId,
-          monthKey,
-          {
-            athleteName,
-            tariff: newTariff,
-            price: newPrice,
-            basePrice: newPrice,
-            discount: 0,
-            discountReason: "",
-            paid: newPaid,
-            active: newPaid,
-            durationMonths: plan.durationMonths,
-            priceMonthly: plan.priceMonthly,
-            isPaymentMonth: true,
-          },
-          currentUser?.uid
-        );
+        const duration = plan.durationMonths || 1;
+        
+        // Create payments for all months in the duration (like in modal)
+        for (let i = 0; i < duration; i += 1) {
+          const targetMonth = addMonthsToKey(monthKey, i);
+          await upsertAcroAthleteMonth(
+            athleteId,
+            targetMonth,
+            {
+              athleteName,
+              tariff: newTariff,
+              price: newPrice,
+              basePrice: newPrice,
+              discount: 0,
+              discountReason: "",
+              paid: newPaid,
+              active: newPaid,
+              durationMonths: plan.durationMonths,
+              priceMonthly: plan.priceMonthly,
+              isPaymentMonth: i === 0, // Only first month is payment month
+            },
+            currentUser?.uid
+          );
+        }
         
         // Refresh the list
         await refreshAcroMonthly();

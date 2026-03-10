@@ -1255,10 +1255,11 @@ select:focus {
   inset: 0;
   background: rgba(8, 10, 16, 0.7);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 24px;
   z-index: 50;
+  overflow-y: auto;
 }
 
 .modal.hidden {
@@ -1267,6 +1268,17 @@ select:focus {
 
 .modal-content {
   width: min(520px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Modal de alta de usuario más grande */
+#athleteModal .modal-content {
+  width: min(600px, 95vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .badge {
