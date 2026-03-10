@@ -3626,6 +3626,8 @@ let teacherStatusFilter = "ALL";
 // Estado para asignación masiva
 let selectedClasses = new Set();
 let selectedBulkTeacher = null;
+let bulkCurrentWeekStart = null;
+let bulkCurrentWeekEnd = null;
 
 // Utilidades de fechas para clases
 function getWeekStart(date) {
@@ -3712,6 +3714,15 @@ async function loadClassesData() {
     ]);
   } catch (error) {
     console.error("Error loading classes data:", error);
+  }
+}
+
+// Cargar asignaciones para la semana específica de la modal
+async function loadAssignmentsForBulkWeek() {
+  try {
+    assignmentsData = await getClassAssignments(formatDate(bulkCurrentWeekStart), formatDate(bulkCurrentWeekEnd));
+  } catch (error) {
+    console.error("Error loading assignments for bulk week:", error);
   }
 }
 
@@ -3906,7 +3917,7 @@ function renderBulkScheduleTable() {
   ];
   
   const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-  const weekDates = getWeekDates(currentWeekStart);
+  const weekDates = getWeekDates(bulkCurrentWeekStart);
   
   ui.bulkScheduleTableBody.innerHTML = "";
   
@@ -3986,6 +3997,19 @@ function renderBulkScheduleTable() {
     
     ui.bulkScheduleTableBody.appendChild(row);
   });
+}
+
+// Actualizar display de semana en modal de asignación masiva
+function updateBulkWeekDisplay() {
+  if (!ui.bulkCurrentWeekDisplay || !bulkCurrentWeekStart) return;
+  
+  const weekEnd = new Date(bulkCurrentWeekStart);
+  weekEnd.setDate(bulkCurrentWeekStart.getDate() + 6);
+  
+  const startStr = formatDateForDisplay(bulkCurrentWeekStart);
+  const endStr = formatDateForDisplay(weekEnd);
+  
+  ui.bulkCurrentWeekDisplay.textContent = `Semana del ${startStr} - ${endStr}`;
 }
 
 // Toggle selección de clase
@@ -4217,12 +4241,17 @@ on(ui.bulkAssignBtn, "click", async () => {
     await loadTeachersData();
   }
   
+  // Inicializar semana de la modal con la semana actual del vista principal
+  bulkCurrentWeekStart = new Date(currentWeekStart);
+  bulkCurrentWeekEnd = new Date(currentWeekEnd);
+  
   // Limpiar selección anterior
   selectedClasses.clear();
   selectedBulkTeacher = null;
   
   // Renderizar contenido del modal
   renderBulkTeacherOptions();
+  updateBulkWeekDisplay();
   renderBulkScheduleTable();
   updateSelectionSummary();
   
@@ -4231,6 +4260,37 @@ on(ui.bulkAssignBtn, "click", async () => {
   ui.selectedTeacherName.textContent = "Ninguno seleccionado";
   
   ui.bulkAssignModal.classList.remove("hidden");
+});
+
+// Navegación de semanas en modal de asignación masiva
+on(ui.bulkPrevWeekBtn, "click", async () => {
+  bulkCurrentWeekStart.setDate(bulkCurrentWeekStart.getDate() - 7);
+  bulkCurrentWeekEnd = getWeekEnd(bulkCurrentWeekStart);
+  
+  // Recargar asignaciones para la nueva semana
+  await loadAssignmentsForBulkWeek();
+  
+  // Limpiar selecciones
+  selectedClasses.clear();
+  
+  updateBulkWeekDisplay();
+  renderBulkScheduleTable();
+  updateSelectionSummary();
+});
+
+on(ui.bulkNextWeekBtn, "click", async () => {
+  bulkCurrentWeekStart.setDate(bulkCurrentWeekStart.getDate() + 7);
+  bulkCurrentWeekEnd = getWeekEnd(bulkCurrentWeekStart);
+  
+  // Recargar asignaciones para la nueva semana
+  await loadAssignmentsForBulkWeek();
+  
+  // Limpiar selecciones
+  selectedClasses.clear();
+  
+  updateBulkWeekDisplay();
+  renderBulkScheduleTable();
+  updateSelectionSummary();
 });
 
 on(ui.teacherModalClose, "click", () => {

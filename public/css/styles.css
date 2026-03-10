@@ -2745,6 +2745,34 @@ select:focus {
   100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
 }
 
+/* Navegación de semanas en modal de asignación */
+.week-selection {
+  margin-bottom: 1.5rem;
+}
+
+.week-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.current-week-text {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--primary);
+  min-width: 200px;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border: 2px solid var(--primary);
+  border-radius: 20px;
+}
+
+.week-navigation .btn {
+  white-space: nowrap;
+}
+
 /* Responsive para asignación masiva */
 @media (max-width: 768px) {
   .bulk-assign-modal .modal-content {

@@ -1,0 +1,24 @@
+[debug] [2026-03-10T12:24:07.238Z] ----------------------------------------------------------------------
+[debug] [2026-03-10T12:24:07.242Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\o001830\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js serve --host 0.0.0.0 --port 5000
+[debug] [2026-03-10T12:24:07.242Z] CLI Version:   15.5.1
+[debug] [2026-03-10T12:24:07.242Z] Platform:      win32
+[debug] [2026-03-10T12:24:07.242Z] Node Version:  v20.18.3
+[debug] [2026-03-10T12:24:07.243Z] Time:          Tue Mar 10 2026 13:24:07 GMT+0100 (hora estándar de Europa central)
+[debug] [2026-03-10T12:24:07.243Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-10T12:24:07.245Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-03-10T12:24:13.041Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-10T12:24:13.041Z] > authorizing via signed-in user (weddinginvitationscampfire@gmail.com)
+[debug] [2026-03-10T12:24:13.042Z] [iam] checking project owl-manage for permissions ["firebase.projects.get"]
+[debug] [2026-03-10T12:24:13.043Z] Checked if tokens are valid: false, expires at: 1773138813814
+[debug] [2026-03-10T12:24:13.043Z] Checked if tokens are valid: false, expires at: 1773138813814
+[debug] [2026-03-10T12:24:13.044Z] > refreshing access token with scopes: []
+[debug] [2026-03-10T12:24:13.046Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-03-10T12:24:13.046Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-10T12:24:13.199Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-03-10T12:24:13.200Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-10T12:24:13.216Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage:testIamPermissions [none]
+[debug] [2026-03-10T12:24:13.217Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage:testIamPermissions  x-goog-user-project=owl-manage
+[debug] [2026-03-10T12:24:13.217Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2026-03-10T12:24:13.311Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-03-10T12:24:13.311Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
