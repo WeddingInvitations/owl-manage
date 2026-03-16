@@ -127,12 +127,12 @@ div, span, p, li, td, th, label, button, input, select, textarea {
   margin: 0;
 }
 
-.grid {
+/* .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
   padding: 24px 32px 48px;
-}
+} */
 
 .main-shell {
   display: grid;
@@ -1292,10 +1292,10 @@ select:focus {
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.app-footer {
+/* .app-footer {
   padding: 16px 32px 32px;
   color: var(--muted);
-}
+} */
 
 /* Filter row for athlete/acro list headers */
 .filter-row {
