@@ -60,6 +60,7 @@ import {
   getVacationsForUser,
   getVacationsForAll,
   deleteVacation,
+  updateVacation,
   getHolidaysForYear,
   updateUserRole,
   setMustChangePassword,
@@ -72,7 +73,7 @@ import {
   deletePayment,
   updateExpense,
   deleteExpense,
-} from "./data.js?v=20250219f";
+} from "./data.js?v=20250316a";
 import { createUserWithRole } from "./admin.js";
 
 // Exponer Firebase globalmente para debugging
@@ -1512,8 +1513,8 @@ async function renderVacations() {
         }
       },
       datesSet: function(arg) {
-        // Only update legend/list on navigation
-        renderVacationsListAndLegend();
+        // Only update legend/list on navigation - call renderVacations to get fresh data
+        renderVacations();
       },
     });
     calendar.render();
@@ -1524,56 +1525,145 @@ async function renderVacations() {
   ui._vacationFullCalendar.removeAllEvents();
   events.forEach(ev => ui._vacationFullCalendar.addEvent(ev));
   // Also update the list and legend
-  renderVacationsListAndLegend();
+  renderVacationsListAndLegend({ vacations, users, colorMap, palette });
 
 }
 
+// Calculate vacation summary
+function calculateVacationSummary(vacations) {
+  if (!vacations || vacations.length === 0) {
+    return { totalDays: 0, totalPeriods: 0, currentYearDays: 0 };
+  }
+  
+  const currentYear = new Date().getFullYear();
+  let totalDays = 0;
+  let currentYearDays = 0;
+  
+  vacations.forEach(v => {
+    const start = new Date(v.startDate);
+    const end = new Date(v.endDate);
+    // Calculate vacation days (inclusive)
+    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    totalDays += days;
+    
+    // Check if vacation is in current year
+    if (start.getFullYear() === currentYear || end.getFullYear() === currentYear) {
+      currentYearDays += days;
+    }
+  });
+  
+  return {
+    totalDays,
+    totalPeriods: vacations.length,
+    currentYearDays
+  };
+}
+
 // Helper to update legend and list only
-function renderVacationsListAndLegend() {
-  // Get current calendar date
-  let now = new Date();
-  if (ui._vacationFullCalendar) {
-    now = ui._vacationFullCalendar.getDate();
-  }
-  // Use the latest vacations, users, colorMap, palette from closure
+function renderVacationsListAndLegend(data = {}) {
+  const { vacations = [], users = [], colorMap = {}, palette = [] } = data;
+  
+  // Hide legend and summary - not needed
   if (ui.vacationLegend) {
-    ui.vacationLegend.innerHTML = '';
-    if (typeof users === 'undefined' || users.length === 0) {
-      ui.vacationLegend.classList.add('hidden');
-    } else {
-      ui.vacationLegend.classList.remove('hidden');
-      users.forEach((u) => {
-        const item = document.createElement('div'); item.className = 'vacation-legend-item';
-        const sw = document.createElement('div'); sw.className = 'vacation-swatch'; sw.style.background = colorMap[u.id] || palette[0];
-        const name = document.createElement('div'); name.className = 'name'; name.textContent = u.name;
-        item.appendChild(sw); item.appendChild(name);
-        ui.vacationLegend.appendChild(item);
-      });
-    }
+    ui.vacationLegend.style.display = 'none';
   }
-  // Render list below
-  if (ui.vacationList) {
-    ui.vacationList.innerHTML = '';
-    if (typeof vacations !== 'undefined') {
-      vacations.sort((a,b)=> new Date(a.startDate) - new Date(b.startDate));
-      vacations.forEach((v)=>{
-        const li = document.createElement('li');
-        li.innerHTML = `<strong>${v.userName || v.userId || 'Desconocido'}</strong> · ${v.startDate} → ${v.endDate} <div class="muted">${v.reason || ''}</div>`;
-        const actions = document.createElement('div'); actions.className = 'btn-group';
-        if (currentRole === 'OWNER' || v.createdBy === currentUser?.uid) {
-          const del = document.createElement('button'); del.className = 'btn ghost small'; del.textContent = 'Eliminar';
-          del.addEventListener('click', async () => {
-            if (!confirm('Eliminar este período de vacaciones?')) return;
-            await deleteVacation(v.id);
-            await renderVacations();
-          });
-          actions.appendChild(del);
-        }
-        li.appendChild(actions);
-        ui.vacationList.appendChild(li);
-      });
-    }
+  if (ui.vacationSummary) {
+    ui.vacationSummary.style.display = 'none';
   }
+
+  // Render list  
+  if (!ui.vacationList) {
+    return;
+  }
+  
+  ui.vacationList.innerHTML = '';
+  
+  if (vacations.length > 0) {
+    vacations.sort((a,b)=> new Date(a.startDate) - new Date(b.startDate));
+    vacations.forEach((v)=>{
+      const li = document.createElement('li');
+      li.className = 'vacation-item';
+      
+      // Calculate vacation days
+      const startDate = new Date(v.startDate);
+      const endDate = new Date(v.endDate);
+      const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+      
+      // Create table-like structure for better alignment
+      const table = document.createElement('div');
+      table.className = 'vacation-table';
+      
+      const nameCell = document.createElement('div');
+      nameCell.className = 'vacation-cell name-cell';
+      nameCell.textContent = v.userName || v.userId || 'Desconocido';
+      
+      const datesCell = document.createElement('div');
+      datesCell.className = 'vacation-cell dates-cell';
+      datesCell.textContent = `${v.startDate} → ${v.endDate}`;
+      
+      const daysCell = document.createElement('div');
+      daysCell.className = 'vacation-cell days-cell';
+      daysCell.textContent = `${days} día${days !== 1 ? 's' : ''}`;
+      
+      const reasonCell = document.createElement('div');
+      reasonCell.className = 'vacation-cell reason-cell';
+      reasonCell.textContent = v.reason || '-';
+      
+      const actionsCell = document.createElement('div');
+      actionsCell.className = 'vacation-cell actions-cell';
+      
+      // Add edit button
+      if (currentRole === 'OWNER' || v.createdBy === currentUser?.uid) {
+        const edit = document.createElement('button'); 
+        edit.className = 'btn ghost small'; 
+        edit.textContent = 'Editar';
+        edit.addEventListener('click', () => openEditVacationModal(v));
+        actionsCell.appendChild(edit);
+      }
+      
+      // Add delete button
+      if (currentRole === 'OWNER' || v.createdBy === currentUser?.uid) {
+        const del = document.createElement('button'); 
+        del.className = 'btn ghost small danger'; 
+        del.textContent = 'Eliminar';
+        del.addEventListener('click', async () => {
+          if (!confirm('¿Eliminar este período de vacaciones?')) return;
+          await deleteVacation(v.id);
+          await renderVacations();
+        });
+        actionsCell.appendChild(del);
+      }
+      
+      table.appendChild(nameCell);
+      table.appendChild(datesCell);
+      table.appendChild(daysCell);
+      table.appendChild(reasonCell);
+      table.appendChild(actionsCell);
+      
+      li.appendChild(table);
+      ui.vacationList.appendChild(li);
+    });
+  } else {
+    // Show empty state
+    const li = document.createElement('li');
+    li.className = 'vacation-empty';
+    li.innerHTML = '<div class="empty-message">No hay vacaciones registradas</div>';
+    ui.vacationList.appendChild(li);
+  }
+}
+
+// Open edit vacation modal
+function openEditVacationModal(vacation) {
+  if (!ui.vacationEditModal) return;
+  
+  ui.vacationEditId.value = vacation.id;
+  ui.vacationEditUserId.value = vacation.userId;
+  ui.vacationEditStart.value = vacation.startDate;
+  ui.vacationEditEnd.value = vacation.endDate;
+  ui.vacationEditReason.value = vacation.reason || '';
+  ui.vacationEditDisplayName.value = vacation.userName || '';
+  
+  ui.vacationEditModal.classList.remove('hidden');
 }
 
 // Vacation modal open/close and submit
@@ -1607,6 +1697,15 @@ on(ui.vacationAddBtn, "click", () => {
   ui.vacationEnd.value = "";
   ui.vacationReason.value = "";
   ui.vacationDisplayName.value = "";
+  // Clear edit modal fields to avoid confusion
+  if (ui.vacationEditModal) {
+    ui.vacationEditId.value = "";
+    ui.vacationEditUserId.value = "";
+    ui.vacationEditStart.value = "";
+    ui.vacationEditEnd.value = "";
+    ui.vacationEditReason.value = "";
+    ui.vacationEditDisplayName.value = "";
+  }
   ui.vacationModal.classList.remove("hidden");
 });
 on(ui.vacationModalClose, "click", () => ui.vacationModal?.classList.add("hidden"));
@@ -1647,6 +1746,43 @@ on(ui.vacationForm, "submit", async (event) => {
 
 on(ui.vacationWorkerSelect, "change", async () => renderVacations());
 on(ui.vacationMonth, "change", async () => renderVacations());
+
+// Edit vacation modal events
+on(ui.vacationEditModalClose, "click", () => ui.vacationEditModal?.classList.add("hidden"));
+on(ui.vacationEditCancelBtn, "click", () => ui.vacationEditModal?.classList.add("hidden"));
+
+on(ui.vacationEditForm, "submit", async (event) => {
+  event.preventDefault();
+  if (!currentUser) return;
+  
+  const vacationId = ui.vacationEditId.value;
+  const originalUserId = ui.vacationEditUserId.value; // Preserve original user
+  const start = ui.vacationEditStart.value;
+  const end = ui.vacationEditEnd.value;  
+  const reason = ui.vacationEditReason.value;
+  const customName = ui.vacationEditDisplayName.value.trim();
+  
+  // Determine display name
+  let userName = customName;
+  if (!userName) {
+    if (originalUserId === currentUser.uid) {
+      userName = (currentProfile?.firstName ? `${currentProfile.firstName} ${currentProfile.lastName || ""}` : currentUser.email) || "";
+    } else {
+      // For other users, try to get name from worker select or use original name
+      const workerOption = ui.vacationWorkerSelect?.querySelector(`option[value="${originalUserId}"]`);
+      userName = workerOption ? workerOption.textContent.split('(')[0].trim() : originalUserId;
+    }
+  }
+  
+  try {
+    await updateVacation(vacationId, originalUserId, userName, start, end, reason);
+    ui.vacationEditModal?.classList.add("hidden");
+    await renderVacations();
+  } catch (err) {
+    console.error("Error updating vacation:", err);
+    alert("Error al actualizar vacaciones: " + (err.message || err));
+  }
+});
 
 
 ui.menuButtons.forEach((button) => {

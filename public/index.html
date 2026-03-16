@@ -597,6 +597,22 @@
             <div id="vacationCalendar" class="calendar" style="min-height:200px;margin-top:12px;"></div>
             <div id="vacationLegend" class="vacation-legend" style="margin-top:8px;"></div>
             <h3>Vacaciones registradas</h3>
+            <div id="vacationSummary" class="vacation-summary" style="display:none; margin-bottom:16px;">
+              <div class="summary-grid">
+                <div class="summary-item">
+                  <div class="summary-number" id="vacationTotalDays">0</div>
+                  <div class="summary-label">Días totales</div>
+                </div>
+                <div class="summary-item">
+                  <div class="summary-number" id="vacationTotalPeriods">0</div>
+                  <div class="summary-label">Períodos</div>
+                </div>
+                <div class="summary-item">
+                  <div class="summary-number" id="vacationCurrentYear">0</div>
+                  <div class="summary-label">Este año</div>
+                </div>
+              </div>
+            </div>
             <ul id="vacationList" class="list"></ul>
           </div>
 
@@ -628,6 +644,41 @@
                 <div class="btn-group">
                   <button class="btn" type="submit">Guardar</button>
                   <button id="vacationCancelBtn" class="btn ghost" type="button">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Edit Vacation modal -->
+          <div id="vacationEditModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Editar vacaciones</h3>
+                <button id="vacationEditModalClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="vacationEditForm" class="stack">
+                <input id="vacationEditId" type="hidden" />
+                <input id="vacationEditUserId" type="hidden" />
+                <label>
+                  Fecha inicio
+                  <input id="vacationEditStart" type="date" required />
+                </label>
+                <label>
+                  Fecha fin
+                  <input id="vacationEditEnd" type="date" required />
+                </label>
+                <label>
+                  Motivo
+                  <textarea id="vacationEditReason" placeholder="Motivo de las vacaciones..."></textarea>
+                </label>
+                <label>
+                  Nombre para mostrar
+                  <input id="vacationEditDisplayName" type="text" placeholder="Nombre que aparecerá en el calendario..." />
+                  <small style="color: #666; font-size: 0.9em;">Opcional: si no se especifica, se usará el nombre del perfil</small>
+                </label>
+                <div class="btn-group">
+                  <button class="btn" type="submit">Actualizar</button>
+                  <button id="vacationEditCancelBtn" class="btn ghost" type="button">Cancelar</button>
                 </div>
               </form>
             </div>

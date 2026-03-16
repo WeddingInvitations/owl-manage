@@ -313,6 +313,20 @@ export async function deleteVacation(vacationId) {
   await deleteDoc(doc(db, "vacations", vacationId));
 }
 
+// Función para actualizar vacaciones existentes
+export async function updateVacation(vacationId, userId, userName, startDateISO, endDateISO, reason) {
+  const vacationRef = doc(db, "vacations", vacationId);
+  await updateDoc(vacationRef, {
+    userId,
+    userName,
+    startDate: startDateISO,
+    endDate: endDateISO,
+    reason: reason || "",
+    updatedAt: serverTimestamp(),
+  });
+}
+
+
 // Return a list of national + Comunidad de Madrid fixed holidays for a given year
 export function getHolidaysForYear(year) {
   const y = Number(year) || new Date().getFullYear();

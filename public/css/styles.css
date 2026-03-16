@@ -1749,10 +1749,153 @@ select:focus {
 }
 
 /* Vacation legend */
-.vacation-legend { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
+.vacation-legend { display:none; }
 .vacation-legend-item { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); background: rgba(0,0,0,0.04); padding:6px 8px; border-radius:8px; }
 .vacation-swatch { width:14px; height:14px; border-radius:4px; box-shadow: 0 1px 0 rgba(0,0,0,0.2) inset; }
 .vacation-legend-item .name { color:var(--text); font-weight:600; }
+
+/* Vacation summary - hidden */
+.vacation-summary {
+  display: none !important;
+}
+
+/* Improved vacation list with table-like structure */
+.vacation-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--bg);
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.vacation-item:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.vacation-table {
+  display: grid;
+  grid-template-columns: 1fr 200px 80px 1fr 140px;
+  gap: 20px;
+  padding: 16px 20px;
+  align-items: center;
+  min-height: 50px;
+}
+
+.vacation-cell {
+  padding: 4px 8px;
+}
+
+.name-cell {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.dates-cell {
+  font-size: 14px;
+  color: var(--muted);
+  font-family: 'Courier New', monospace;
+  text-align: center;
+}
+
+.days-cell {
+  font-size: 13px;
+  color: var(--primary);
+  font-weight: 500;
+  text-align: center;
+}
+
+.reason-cell {
+  font-size: 13px;
+  color: var(--muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.actions-cell .btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  min-width: 60px;
+  white-space: nowrap;
+}
+
+.actions-cell .btn.danger:hover {
+  background-color: var(--error);
+  color: white;
+}
+
+.vacation-empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--muted);
+}
+
+.empty-message {
+  font-style: italic;
+  font-size: 14px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .vacation-table {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+  
+  .vacation-cell {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .vacation-cell:last-child {
+    border-bottom: none;
+  }
+  
+  .name-cell:before {
+    content: "Nombre: ";
+    font-weight: normal;
+    color: var(--muted);
+  }
+  
+  .dates-cell:before {
+    content: "Fechas: ";
+    font-weight: normal;
+    color: var(--muted);
+  }
+  
+  .days-cell:before {
+    content: "Días: ";
+    font-weight: normal;
+    color: var(--muted);
+  }
+  
+  .reason-cell:before {
+    content: "Motivo: ";
+    font-weight: normal;
+    color: var(--muted);
+  }
+  
+  .dates-cell,
+  .days-cell {
+    text-align: left;
+  }
+  
+  .actions-cell {
+    justify-content: center;
+    padding-top: 12px;
+  }
+}
 
 
   .table th,
