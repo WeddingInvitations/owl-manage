@@ -1507,6 +1507,11 @@ async function renderVacations() {
         center: 'title',
         right: 'dayGridMonth,dayGridWeek',
       },
+      buttonText: {
+        today: 'Hoy',
+        month: 'Mes',
+        week: 'Semana'
+      },
       eventDidMount: function(info) {
         if (info.event.extendedProps.reason) {
           info.el.title = info.event.title + ': ' + info.event.extendedProps.reason;
@@ -1605,10 +1610,6 @@ function renderVacationsListAndLegend(data = {}) {
       daysCell.className = 'vacation-cell days-cell';
       daysCell.textContent = `${days} día${days !== 1 ? 's' : ''}`;
       
-      const reasonCell = document.createElement('div');
-      reasonCell.className = 'vacation-cell reason-cell';
-      reasonCell.textContent = v.reason || '-';
-      
       const actionsCell = document.createElement('div');
       actionsCell.className = 'vacation-cell actions-cell';
       
@@ -1637,7 +1638,6 @@ function renderVacationsListAndLegend(data = {}) {
       table.appendChild(nameCell);
       table.appendChild(datesCell);
       table.appendChild(daysCell);
-      table.appendChild(reasonCell);
       table.appendChild(actionsCell);
       
       li.appendChild(table);
