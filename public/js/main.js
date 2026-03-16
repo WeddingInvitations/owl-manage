@@ -1606,6 +1606,7 @@ on(ui.vacationAddBtn, "click", () => {
   ui.vacationStart.value = "";
   ui.vacationEnd.value = "";
   ui.vacationReason.value = "";
+  ui.vacationDisplayName.value = "";
   ui.vacationModal.classList.remove("hidden");
 });
 on(ui.vacationModalClose, "click", () => ui.vacationModal?.classList.add("hidden"));
@@ -1617,8 +1618,23 @@ on(ui.vacationForm, "submit", async (event) => {
   const start = ui.vacationStart.value;
   const end = ui.vacationEnd.value;
   const reason = ui.vacationReason.value;
+  const customName = ui.vacationDisplayName.value.trim();
   const forUser = ui.vacationWorkerSelect?.value || currentUser.uid;
-  const userName = (currentProfile?.firstName ? `${currentProfile.firstName} ${currentProfile.lastName || ""}` : currentUser.email) || "";
+  
+  // Determinar el nombre a mostrar
+  let userName = customName;
+  if (!userName) {
+    // Si no hay nombre personalizado, usar el del usuario seleccionado o el actual
+    if (forUser === currentUser.uid) {
+      // Si es el usuario actual, usar su perfil
+      userName = (currentProfile?.firstName ? `${currentProfile.firstName} ${currentProfile.lastName || ""}` : currentUser.email) || "";
+    } else {
+      // Si es otro usuario, buscar su información en la lista de trabajadores
+      const workerOption = ui.vacationWorkerSelect.querySelector(`option[value="${forUser}"]`);
+      userName = workerOption ? workerOption.textContent.split('(')[0].trim() : forUser;
+    }
+  }
+  
   try {
     await addVacation(forUser, userName, start, end, reason, currentUser.uid);
     ui.vacationModal?.classList.add("hidden");

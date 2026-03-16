@@ -145,6 +145,7 @@ export const ui = {
   vacationStart: $("vacationStart"),
   vacationEnd: $("vacationEnd"),
   vacationReason: $("vacationReason"),
+  vacationDisplayName: $("vacationDisplayName"),
   vacationCancelBtn: $("vacationCancelBtn"),
   trainingForm: $("trainingForm"),
   trainingTitle: $("trainingTitle"),
