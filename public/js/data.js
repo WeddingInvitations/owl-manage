@@ -1,3 +1,21 @@
+// --- Pagos empleados ---
+import { collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
+
+export async function addEmployeePayment({ name, amount, method, date, userId }) {
+  await addDoc(collection(db, "employee_payments"), {
+    name,
+    amount: Number(amount),
+    method,
+    date,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+}
+
+export async function loadEmployeePayments() {
+  const snap = await getDocs(collection(db, "employee_payments"));
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
 import { db } from "./firebase.js";
 import {
   collection,

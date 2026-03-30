@@ -3,6 +3,20 @@ export const $ = (id) => document.getElementById(id);
 export const formatCurrency = (value) => `${value.toFixed(2)} €`;
 
 export const ui = {
+    // Pagos empleados
+    employeePaymentsView: $("employeePaymentsView"),
+    employeePaymentsList: $("employeePaymentsList"),
+    employeePaymentYearSelect: $("employeePaymentYearSelect"),
+    employeePaymentMonthSelect: $("employeePaymentMonthSelect"),
+    employeePaymentNameFilter: $("employeePaymentNameFilter"),
+    employeePaymentAddBtn: $("employeePaymentAddBtn"),
+    employeePaymentModal: $("employeePaymentModal"),
+    employeePaymentModalClose: $("employeePaymentModalClose"),
+    employeePaymentForm: $("employeePaymentForm"),
+    employeePaymentName: $("employeePaymentName"),
+    employeePaymentAmount: $("employeePaymentAmount"),
+    employeePaymentMethod: $("employeePaymentMethod"),
+    employeePaymentDate: $("employeePaymentDate"),
   userBadge: $("userBadge"),
   userAvatar: $("userAvatar"),
   logoutBtn: $("logoutBtn"),

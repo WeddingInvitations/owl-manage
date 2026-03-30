@@ -22,3 +22,64 @@
 [debug] [2026-03-10T12:24:13.217Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage:testIamPermissions {"permissions":["firebase.projects.get"]}
 [debug] [2026-03-10T12:24:13.311Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
 [debug] [2026-03-10T12:24:13.311Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-03-10T12:24:13.875Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage:testIamPermissions 200
+[debug] [2026-03-10T12:24:13.875Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2026-03-10T12:24:13.876Z] Checked if tokens are valid: true, expires at: 1773149052200
+[debug] [2026-03-10T12:24:13.877Z] Checked if tokens are valid: true, expires at: 1773149052200
+[debug] [2026-03-10T12:24:13.877Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage [none]
+[debug] [2026-03-10T12:24:14.063Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage 200
+[debug] [2026-03-10T12:24:14.063Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage {"projectNumber":"971812158","projectId":"owl-manage","lifecycleState":"ACTIVE","name":"owl-manage","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-02-05T12:44:43.322774Z"}
+[info] 
+[info] === Serving from 'C:\Users\o001830\owl\owlManage'...
+[info] 
+[debug] [2026-03-10T12:24:14.068Z] Checked if tokens are valid: true, expires at: 1773149052200
+[debug] [2026-03-10T12:24:14.068Z] Checked if tokens are valid: true, expires at: 1773149052200
+[debug] [2026-03-10T12:24:14.078Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/owl-manage/sites 
+[debug] [2026-03-10T12:24:14.092Z] defaultcredentials: writing to file C:\Users\o001830\AppData\Roaming\firebase\weddinginvitationscampfire_gmail_com_application_default_credentials.json
+[debug] [2026-03-10T12:24:14.093Z] Setting GAC to C:\Users\o001830\AppData\Roaming\firebase\weddinginvitationscampfire_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\o001830\\AppData\\Roaming\\firebase\\weddinginvitationscampfire_gmail_com_application_default_credentials.json"}}
+[debug] [2026-03-10T12:24:14.094Z] Checked if tokens are valid: true, expires at: 1773149052200
+[debug] [2026-03-10T12:24:14.094Z] Checked if tokens are valid: true, expires at: 1773149052200
+[debug] [2026-03-10T12:24:14.094Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/owl-manage/adminSdkConfig [none]
+[debug] [2026-03-10T12:24:14.417Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/owl-manage/adminSdkConfig 200
+[debug] [2026-03-10T12:24:14.417Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/owl-manage/adminSdkConfig {"projectId":"owl-manage","storageBucket":"owl-manage.firebasestorage.app","locationId":"europe-west"}
+[debug] [2026-03-10T12:24:15.134Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/owl-manage/sites 200
+[debug] [2026-03-10T12:24:15.134Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/owl-manage/sites {"sites":[{"name":"projects/owl-manage/sites/owl-manage","defaultUrl":"https://owl-manage.web.app","type":"DEFAULT_SITE"}]}
+[debug] [2026-03-10T12:24:15.134Z] Checked if tokens are valid: true, expires at: 1773149052200
+[debug] [2026-03-10T12:24:15.134Z] Checked if tokens are valid: true, expires at: 1773149052200
+[debug] [2026-03-10T12:24:15.135Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/owl-manage/webApps/-/config [none]
+[debug] [2026-03-10T12:24:15.613Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/owl-manage/webApps/-/config 200
+[debug] [2026-03-10T12:24:15.613Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/owl-manage/webApps/-/config {"projectId":"owl-manage","appId":"1:971812158:web:42a468ad62bd204365106f","storageBucket":"owl-manage.firebasestorage.app","locationId":"europe-west","apiKey":"AIzaSyCRV9Vh0QSA0RQ50r8SZwt72PIwjhPoL5o","authDomain":"owl-manage.firebaseapp.com","messagingSenderId":"971812158","measurementId":"G-N3SCJV1H6Z","projectNumber":"971812158","version":"2"}
+[debug] [2026-03-10T12:24:15.620Z] Checked if tokens are valid: true, expires at: 1773149052200
+[debug] [2026-03-10T12:24:15.620Z] Checked if tokens are valid: true, expires at: 1773149052200
+[debug] [2026-03-10T12:24:15.621Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/owl-manage [none]
+[debug] [2026-03-10T12:24:15.879Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/owl-manage 200
+[debug] [2026-03-10T12:24:15.879Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/owl-manage {"projectId":"owl-manage","projectNumber":"971812158","displayName":"owl-manage","name":"projects/owl-manage","resources":{"hostingSite":"owl-manage","locationId":"europe-west"},"state":"ACTIVE","etag":"1_75507b31-3d10-4e25-8314-f18c535b2cf8"}
+[info] i  functions: Watching "C:\Users\o001830\owl\owlManage\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\Users\\o001830\\owl\\owlManage\\functions\" for Cloud Functions..."}}
+[info] i  hosting[owl-manage]: Serving hosting files from: public {"metadata":{"emulator":{"name":"hosting"},"message":"Serving hosting files from: \u001b[1mpublic\u001b[22m"}}
+[info] +  hosting[owl-manage]: Local server: http://0.0.0.0:5000 {"metadata":{"emulator":{"name":"hosting"},"message":"Local server: \u001b[4m\u001b[1mhttp://0.0.0.0:5000\u001b[22m\u001b[24m"}}
+[debug] [2026-03-10T12:24:15.903Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] !  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-03-10T12:24:17.634Z] > [functions] package.json contents: {
+  "name": "owlmanage-functions",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^4.9.0"
+  }
+}
+[debug] [2026-03-10T12:24:17.634Z] Building nodejs source
+[debug] [2026-03-10T12:24:17.635Z] Failed to find version of module node: reached end of search path C:\Users\o001830\owl\owlManage\functions\node_modules
+[info] +  functions: Using node@20 from host. 
+[info] i  functions: You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly 
+[debug] [2026-03-10T12:24:17.638Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-03-10T12:24:17.646Z] Found firebase-functions binary at 'C:\Users\o001830\owl\owlManage\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8613
+
+[debug] [2026-03-10T12:24:19.180Z] Got response from /__/functions.yaml {"endpoints":{"createUserWithRole":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"createUserWithRole"}},"specVersion":"v1alpha1","requiredAPIs":[]}
+[info] +  functions: Loaded functions definitions from source: createUserWithRole. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: createUserWithRole."}}
+[info] +  functions[us-central1-createUserWithRole]: http function initialized (http://127.0.0.1:5001/owl-manage/us-central1/createUserWithRole). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/owl-manage/us-central1/createUserWithRole)."}}
