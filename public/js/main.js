@@ -1790,7 +1790,29 @@ on(ui.vacationEditForm, "submit", async (event) => {
 
 
 
+
 // --- Pagos empleados ---
+// Declaración y definición ANTES de cualquier uso
+let employeePayments = [];
+async function renderEmployeePayments() {
+  employeePayments = await loadEmployeePayments();
+  const year = ui.employeePaymentYearSelect.value;
+  const month = ui.employeePaymentMonthSelect.value;
+  const nameFilter = ui.employeePaymentNameFilter.value.toLowerCase();
+  let filtered = employeePayments;
+  if (year) filtered = filtered.filter(p => p.date && p.date.startsWith(year));
+  if (month) filtered = filtered.filter(p => p.date && p.date.slice(5,7) === month.padStart(2,'0'));
+  if (nameFilter) filtered = filtered.filter(p => (p.name||"").toLowerCase().includes(nameFilter));
+  ui.employeePaymentsList.innerHTML = filtered.map(p => `
+    <tr>
+      <td>${p.name}</td>
+      <td>${formatCurrency(Number(p.amount))}</td>
+      <td>${p.method}</td>
+      <td>${p.date}</td>
+    </tr>
+  `).join("") || '<tr><td colspan="4" class="muted">Sin pagos</td></tr>';
+}
+
 // Inicialización de listeners de pagos empleados SIEMPRE al cargar la app
 if (!employeePaymentsListenersInitialized) {
   // Filtros pagos empleados
@@ -1839,26 +1861,6 @@ ui.menuButtons.forEach((button) => {
       renderEmployeePayments();
     }
   });
-
-let employeePayments = [];
-async function renderEmployeePayments() {
-  employeePayments = await loadEmployeePayments();
-  const year = ui.employeePaymentYearSelect.value;
-  const month = ui.employeePaymentMonthSelect.value;
-  const nameFilter = ui.employeePaymentNameFilter.value.toLowerCase();
-  let filtered = employeePayments;
-  if (year) filtered = filtered.filter(p => p.date && p.date.startsWith(year));
-  if (month) filtered = filtered.filter(p => p.date && p.date.slice(5,7) === month.padStart(2,'0'));
-  if (nameFilter) filtered = filtered.filter(p => (p.name||"").toLowerCase().includes(nameFilter));
-  ui.employeePaymentsList.innerHTML = filtered.map(p => `
-    <tr>
-      <td>${p.name}</td>
-      <td>${formatCurrency(Number(p.amount))}</td>
-      <td>${p.method}</td>
-      <td>${p.date}</td>
-    </tr>
-  `).join("") || '<tr><td colspan="4" class="muted">Sin pagos</td></tr>';
-}
 
 // Filtros
 
