@@ -76,6 +76,7 @@ import {
   addEmployeePayment,
   loadEmployeePayments,
 } from "./data.js?v=20250316a";
+
 import { createUserWithRole } from "./admin.js";
 
 // Exponer Firebase globalmente para debugging
