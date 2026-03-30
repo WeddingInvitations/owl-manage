@@ -1,3 +1,4 @@
+let employeePaymentsListenersInitialized = false;
 // OwlManage MVP
 // TODO: Completa firebaseConfig.js con tu configuración real.
 // Estructura modular simple: auth, datos, UI.
@@ -1796,6 +1797,41 @@ ui.menuButtons.forEach((button) => {
       populateVacationWorkers().then(() => renderVacations());
     }
     if (button.dataset.view === "employeePaymentsView") {
+      if (!employeePaymentsListenersInitialized) {
+        // Filtros pagos empleados
+        if (ui.employeePaymentYearSelect && ui.employeePaymentMonthSelect && ui.employeePaymentNameFilter) {
+          ui.employeePaymentYearSelect.innerHTML = `<option value="">Año</option>` + Array.from({length: 6}, (_,i) => {
+            const y = new Date().getFullYear() - i;
+            return `<option value="${y}">${y}</option>`;
+          }).join("");
+          ui.employeePaymentMonthSelect.innerHTML = `<option value="">Mes</option>` + Array.from({length:12},(_,i)=>`<option value="${String(i+1).padStart(2,'0')}">${String(i+1).padStart(2,'0')}</option>`).join("");
+          ui.employeePaymentYearSelect.addEventListener("change", renderEmployeePayments);
+          ui.employeePaymentMonthSelect.addEventListener("change", renderEmployeePayments);
+          ui.employeePaymentNameFilter.addEventListener("input", renderEmployeePayments);
+        }
+        // Modal añadir pago
+        if (ui.employeePaymentAddBtn && ui.employeePaymentModal && ui.employeePaymentForm) {
+          ui.employeePaymentAddBtn.addEventListener("click", () => {
+            ui.employeePaymentModal.classList.remove("hidden");
+            ui.employeePaymentForm.reset();
+          });
+          ui.employeePaymentModalClose.addEventListener("click", () => {
+            ui.employeePaymentModal.classList.add("hidden");
+          });
+          ui.employeePaymentForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = ui.employeePaymentName.value.trim();
+            const amount = ui.employeePaymentAmount.value;
+            const method = ui.employeePaymentMethod.value;
+            const date = ui.employeePaymentDate.value;
+            if (!name || !amount || !method || !date) return;
+            await addEmployeePayment({ name, amount, method, date, userId: (currentUser && currentUser.uid) || null });
+            ui.employeePaymentModal.classList.add("hidden");
+            await renderEmployeePayments();
+          });
+        }
+        employeePaymentsListenersInitialized = true;
+      }
       renderEmployeePayments();
     }
   });
