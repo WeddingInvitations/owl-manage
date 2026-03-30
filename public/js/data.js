@@ -1,20 +1,4 @@
-// --- Pagos empleados ---
 
-export async function addEmployeePayment({ name, amount, method, date, userId }) {
-  await addDoc(collection(db, "employee_payments"), {
-    name,
-    amount: Number(amount),
-    method,
-    date,
-    createdAt: serverTimestamp(),
-    createdBy: userId || null,
-  });
-}
-
-export async function loadEmployeePayments() {
-  const snap = await getDocs(collection(db, "employee_payments"));
-  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-}
 import { db } from "./firebase.js";
 import {
   collection,
@@ -30,6 +14,23 @@ import {
   deleteDoc,
   Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+// --- Pagos empleados ---
+export async function addEmployeePayment({ name, amount, method, date, userId }) {
+  await addDoc(collection(db, "employee_payments"), {
+    name,
+    amount: Number(amount),
+    method,
+    date,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+}
+
+export async function loadEmployeePayments() {
+  const snap = await getDocs(collection(db, "employee_payments"));
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
 
 const monthFormatter = new Intl.DateTimeFormat("es-ES", {
   month: "long",
