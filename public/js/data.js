@@ -1,5 +1,4 @@
 // --- Pagos empleados ---
-import { collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
 
 export async function addEmployeePayment({ name, amount, method, date, userId }) {
   await addDoc(collection(db, "employee_payments"), {
