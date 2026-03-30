@@ -73,6 +73,8 @@ import {
   deletePayment,
   updateExpense,
   deleteExpense,
+  addEmployeePayment,
+  loadEmployeePayments,
 } from "./data.js?v=20250316a";
 import { createUserWithRole } from "./admin.js";
 
