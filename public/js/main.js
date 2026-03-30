@@ -1833,8 +1833,9 @@ if (ui.employeePaymentYearSelect && ui.employeePaymentMonthSelect && ui.employee
   ui.employeePaymentNameFilter.addEventListener("input", renderEmployeePayments);
 }
 
-// Modal añadir pago SOLO se inicializa una vez tras DOMContentLoaded
+// Inicialización única de UI y listeners
 document.addEventListener('DOMContentLoaded', () => {
+  // Modal añadir pago
   if (ui.employeePaymentAddBtn && ui.employeePaymentModal && ui.employeePaymentForm) {
     ui.employeePaymentAddBtn.addEventListener("click", () => {
       ui.employeePaymentModal.classList.remove("hidden");
@@ -1854,6 +1855,12 @@ document.addEventListener('DOMContentLoaded', () => {
       ui.employeePaymentModal.classList.add("hidden");
       await renderEmployeePayments();
     });
+  }
+
+  // Inicialización de clases (mover aquí para evitar doble DOMContentLoaded)
+  const classesViewBtn = document.querySelector('[data-view="classesView"]');
+  if (classesViewBtn) {
+    classesViewBtn.addEventListener('click', initializeClasses);
   }
 });
 });
@@ -4739,10 +4746,4 @@ async function initializeClasses() {
   await refreshClassesView();
 }
 
-// Llamar a la inicialización cuando se carga la vista de clases
-document.addEventListener('DOMContentLoaded', () => {
-  const classesViewBtn = document.querySelector('[data-view="classesView"]');
-  if (classesViewBtn) {
-    classesViewBtn.addEventListener('click', initializeClasses);
-  }
-});
+
