@@ -1833,27 +1833,29 @@ if (ui.employeePaymentYearSelect && ui.employeePaymentMonthSelect && ui.employee
   ui.employeePaymentNameFilter.addEventListener("input", renderEmployeePayments);
 }
 
-// Modal añadir pago
-if (ui.employeePaymentAddBtn && ui.employeePaymentModal && ui.employeePaymentForm) {
-  ui.employeePaymentAddBtn.addEventListener("click", () => {
-    ui.employeePaymentModal.classList.remove("hidden");
-    ui.employeePaymentForm.reset();
-  });
-  ui.employeePaymentModalClose.addEventListener("click", () => {
-    ui.employeePaymentModal.classList.add("hidden");
-  });
-  ui.employeePaymentForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const name = ui.employeePaymentName.value.trim();
-    const amount = ui.employeePaymentAmount.value;
-    const method = ui.employeePaymentMethod.value;
-    const date = ui.employeePaymentDate.value;
-    if (!name || !amount || !method || !date) return;
-    await addEmployeePayment({ name, amount, method, date, userId: (currentUser && currentUser.uid) || null });
-    ui.employeePaymentModal.classList.add("hidden");
-    await renderEmployeePayments();
-  });
-}
+// Modal añadir pago SOLO se inicializa una vez tras DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+  if (ui.employeePaymentAddBtn && ui.employeePaymentModal && ui.employeePaymentForm) {
+    ui.employeePaymentAddBtn.addEventListener("click", () => {
+      ui.employeePaymentModal.classList.remove("hidden");
+      ui.employeePaymentForm.reset();
+    });
+    ui.employeePaymentModalClose.addEventListener("click", () => {
+      ui.employeePaymentModal.classList.add("hidden");
+    });
+    ui.employeePaymentForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = ui.employeePaymentName.value.trim();
+      const amount = ui.employeePaymentAmount.value;
+      const method = ui.employeePaymentMethod.value;
+      const date = ui.employeePaymentDate.value;
+      if (!name || !amount || !method || !date) return;
+      await addEmployeePayment({ name, amount, method, date, userId: (currentUser && currentUser.uid) || null });
+      ui.employeePaymentModal.classList.add("hidden");
+      await renderEmployeePayments();
+    });
+  }
+});
 });
 
 // Mobile navigation buttons
