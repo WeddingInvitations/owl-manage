@@ -1814,7 +1814,10 @@ async function renderEmployeePayments() {
 }
 
 // Inicialización de listeners de pagos empleados SIEMPRE al cargar la app
-if (!employeePaymentsListenersInitialized) {
+
+
+function initEmployeePaymentsListeners() {
+  if (employeePaymentsListenersInitialized) return;
   // Filtros pagos empleados
   if (ui.employeePaymentYearSelect && ui.employeePaymentMonthSelect && ui.employeePaymentNameFilter) {
     ui.employeePaymentYearSelect.innerHTML = `<option value="">Año</option>` + Array.from({length: 6}, (_,i) => {
@@ -1849,6 +1852,21 @@ if (!employeePaymentsListenersInitialized) {
   }
   employeePaymentsListenersInitialized = true;
 }
+
+// Llama a la inicialización de listeners cada vez que se muestra la vista
+ui.menuButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setActiveView(button.dataset.view, ui);
+    updateMobileNavActive(button.dataset.view);
+    if (button.dataset.view === "vacationsView") {
+      populateVacationWorkers().then(() => renderVacations());
+    }
+    if (button.dataset.view === "employeePaymentsView") {
+      initEmployeePaymentsListeners();
+      renderEmployeePayments();
+    }
+  });
+});
 
 ui.menuButtons.forEach((button) => {
   button.addEventListener("click", () => {
