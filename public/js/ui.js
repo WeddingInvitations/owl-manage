@@ -358,6 +358,21 @@ export const ui = {
   moreMenuClose: $("moreMenuClose"),
 };
 
+// Caja
+ui.cajaView = $("cajaView");
+ui.cajaSalesList = $("cajaSalesList");
+ui.cajaAddBtn = $("cajaAddBtn");
+ui.cajaModal = $("cajaModal");
+ui.cajaModalClose = $("cajaModalClose");
+ui.cajaForm = $("cajaForm");
+ui.cajaItem = $("cajaItem");
+ui.cajaAmount = $("cajaAmount");
+ui.cajaDate = $("cajaDate");
+ui.cajaFilterPeriod = $("cajaFilterPeriod");
+ui.cajaFilterDate = $("cajaFilterDate");
+ui.cajaFilterItem = $("cajaFilterItem");
+ui.cajaFilterBtn = $("cajaFilterBtn");
+
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {
     if (currentUi.logoutBtn) {
