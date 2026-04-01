@@ -360,18 +360,19 @@ export const ui = {
 
 // Caja
 ui.cajaView = $("cajaView");
-ui.cajaSalesList = $("cajaSalesList");
+ui.cajaList = $("cajaList");
 ui.cajaAddBtn = $("cajaAddBtn");
 ui.cajaModal = $("cajaModal");
 ui.cajaModalClose = $("cajaModalClose");
 ui.cajaForm = $("cajaForm");
-ui.cajaItem = $("cajaItem");
-ui.cajaAmount = $("cajaAmount");
-ui.cajaDate = $("cajaDate");
-ui.cajaFilterPeriod = $("cajaFilterPeriod");
-ui.cajaFilterDate = $("cajaFilterDate");
-ui.cajaFilterItem = $("cajaFilterItem");
-ui.cajaFilterBtn = $("cajaFilterBtn");
+ui.cajaVentaFecha = $("cajaVentaFecha");
+ui.cajaVentaObjeto = $("cajaVentaObjeto");
+ui.cajaVentaCantidad = $("cajaVentaCantidad");
+ui.cajaVentaImporte = $("cajaVentaImporte");
+ui.cajaVentaVendedor = $("cajaVentaVendedor");
+ui.cajaPeriodFilter = $("cajaPeriodFilter");
+ui.cajaDateFilter = $("cajaDateFilter");
+ui.cajaObjectFilter = $("cajaObjectFilter");
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {

@@ -35,12 +35,20 @@ function getDateRange(period, baseDate) {
   };
 }
 
+// Renderizar listado de ventas (muestra mensaje si está vacío)
 function renderSalesList(sales) {
-  ui.cajaSalesList.innerHTML = "";
+  ui.cajaList.innerHTML = "";
+  if (!sales || sales.length === 0) {
+    const tr = document.createElement("tr");
+    tr.className = "empty-row";
+    tr.innerHTML = '<td colspan="5" style="text-align:center;color:#888;">No hay ventas registradas</td>';
+    ui.cajaList.appendChild(tr);
+    return;
+  }
   sales.forEach(sale => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${sale.date}</td><td>${sale.item}</td><td>${sale.amount}</td>`;
-    ui.cajaSalesList.appendChild(tr);
+    tr.innerHTML = `<td>${sale.date}</td><td>${sale.item}</td><td>${sale.amount}</td><td>${sale.importe?.toFixed(2) ?? ''}</td><td>${sale.vendedor ?? ''}</td>`;
+    ui.cajaList.appendChild(tr);
   });
 }
 
@@ -54,11 +62,13 @@ async function refreshCajaList() {
 }
 
 // Añadir venta
-export async function addSale({ item, amount, date, userId }) {
+export async function addSale({ item, amount, date, importe, vendedor, userId }) {
   await addDoc(collection(db, "sales"), {
     item,
     amount: Number(amount),
     date,
+    importe: Number(importe),
+    vendedor,
     createdAt: serverTimestamp(),
     createdBy: userId || null,
   });
@@ -87,17 +97,22 @@ export async function loadSales({ startDate, endDate, item }) {
 ui.cajaAddBtn?.addEventListener("click", () => {
   ui.cajaModal.classList.remove("hidden");
   ui.cajaForm.reset();
-  ui.cajaDate.value = new Date().toISOString().slice(0, 10);
+  // Al abrir el modal, poner la fecha de hoy por defecto
+  if (ui.cajaVentaFecha) {
+    ui.cajaVentaFecha.value = new Date().toISOString().slice(0, 10);
+  }
 });
 ui.cajaModalClose?.addEventListener("click", () => {
   ui.cajaModal.classList.add("hidden");
 });
 ui.cajaForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const item = ui.cajaItem.value;
-  const amount = ui.cajaAmount.value;
-  const date = ui.cajaDate.value;
-  await addSale({ item, amount, date, userId: auth.currentUser?.uid });
+  const item = ui.cajaVentaObjeto.value;
+  const amount = ui.cajaVentaCantidad.value;
+  const date = ui.cajaVentaFecha.value;
+  const importe = ui.cajaVentaImporte.value;
+  const vendedor = ui.cajaVentaVendedor.value;
+  await addSale({ item, amount, date, importe, vendedor, userId: auth.currentUser?.uid });
   ui.cajaModal.classList.add("hidden");
   await refreshCajaList();
 });
