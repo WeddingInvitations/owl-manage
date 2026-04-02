@@ -370,9 +370,9 @@ ui.cajaVentaObjeto = $("cajaVentaObjeto");
 ui.cajaVentaCantidad = $("cajaVentaCantidad");
 ui.cajaVentaImporte = $("cajaVentaImporte");
 ui.cajaVentaVendedor = $("cajaVentaVendedor");
-ui.cajaPeriodFilter = $("cajaPeriodFilter");
-ui.cajaDateFilter = $("cajaDateFilter");
-ui.cajaObjectFilter = $("cajaObjectFilter");
+ui.cajaFilterPeriod = $("cajaPeriodFilter");
+ui.cajaFilterDate = $("cajaDateFilter");
+ui.cajaFilterItem = $("cajaObjectFilter");
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {
