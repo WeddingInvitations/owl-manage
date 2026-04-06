@@ -94,6 +94,13 @@ div, span, p, li, td, th, label, button, input, select, textarea {
   transition: transform 0.3s ease;
 }
 
+.logo-img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  display: block;
+}
+
 .logo:hover {
   transform: scale(1.1);
 }
@@ -1562,6 +1569,20 @@ select:focus {
   flex: 0 0 auto;
   margin-left: auto;
 }
+
+.athlete-table-mobile tr.row-dirty {
+  background: rgba(245, 158, 11, 0.16) !important;
+  outline: 1px solid rgba(217, 119, 6, 0.45);
+}
+
+.athlete-table-mobile tr.row-dirty td {
+  border-bottom-color: rgba(217, 119, 6, 0.4);
+}
+
+.athlete-table-mobile tr.row-dirty td:nth-child(1) {
+  color: #92400e;
+}
+
 .summary-table-mobile th:nth-child(5),
 .summary-table-mobile td:nth-child(5) {
   display: none !important;
