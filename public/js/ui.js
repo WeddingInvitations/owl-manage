@@ -431,6 +431,9 @@ export function updateMenuVisibility(currentUi, role) {
     COACH: ["usuarios", "equipo"]
   };
 
+  // Vistas específicas que solo puede ver OWNER
+  const ownerOnlyViews = ["employeePaymentsView"];
+
   const sectionsToShow = visibleSections[role] || [];
 
   // Ocultar/mostrar secciones completas del menú
@@ -474,6 +477,19 @@ export function updateMenuVisibility(currentUi, role) {
     if (sectionForView) {
       const shouldHide = !sectionsToShow.includes(sectionForView);
       view.classList.toggle("hidden", shouldHide);
+    }
+    
+    // Ocultar vistas específicas de OWNER
+    if (ownerOnlyViews.includes(viewId) && role !== "OWNER") {
+      view.classList.add("hidden");
+    }
+  });
+  
+  // También ocultar botones de menú para vistas específicas de OWNER
+  currentUi.menuButtons.forEach((button) => {
+    const viewId = button.dataset.view;
+    if (ownerOnlyViews.includes(viewId) && role !== "OWNER") {
+      button.classList.add("hidden");
     }
   });
 }

@@ -174,6 +174,43 @@ div, span, p, li, td, th, label, button, input, select, textarea {
   letter-spacing: 0.5px;
 }
 
+.menu-section-toggle {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.menu-section-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.toggle-icon {
+  font-size: 10px;
+  transition: transform 0.3s ease;
+  display: inline-block;
+}
+
+.menu-section-toggle.expanded .toggle-icon {
+  transform: rotate(90deg);
+}
+
+.menu-section-content {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.menu-section-content.expanded {
+  display: flex;
+}
+
 .menu-btn {
   background: transparent;
   border: 1px solid transparent;

@@ -4783,4 +4783,50 @@ async function initializeClasses() {
   await refreshClassesView();
 }
 
+// Inicialización del menú desplegable
+function initializeMenuToggle() {
+  const menuToggles = document.querySelectorAll('.menu-section-toggle');
+  
+  menuToggles.forEach(toggle => {
+    toggle.addEventListener('click', () => {
+      const sectionName = toggle.dataset.toggle;
+      const content = document.querySelector(`[data-content="${sectionName}"]`);
+      
+      if (content) {
+        const isExpanded = content.classList.contains('expanded');
+        
+        // Toggle expanded class
+        content.classList.toggle('expanded');
+        toggle.classList.toggle('expanded');
+        
+        // Guardar estado en localStorage
+        localStorage.setItem(`menu-${sectionName}`, !isExpanded);
+      }
+    });
+  });
+  
+  // Restaurar estados guardados o expandir por defecto
+  menuToggles.forEach(toggle => {
+    const sectionName = toggle.dataset.toggle;
+    const savedState = localStorage.getItem(`menu-${sectionName}`);
+    const content = document.querySelector(`[data-content="${sectionName}"]`);
+    
+    if (content) {
+      // Si hay estado guardado, usarlo; si no, expandir por defecto
+      const shouldExpand = savedState !== null ? savedState === 'true' : true;
+      
+      if (shouldExpand) {
+        content.classList.add('expanded');
+        toggle.classList.add('expanded');
+      }
+    }
+  });
+}
+
+// Inicializar el menú toggle cuando el DOM esté listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeMenuToggle);
+} else {
+  initializeMenuToggle();
+}
 
