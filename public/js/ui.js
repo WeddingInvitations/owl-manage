@@ -432,12 +432,17 @@ export function updateMenuVisibility(currentUi, role) {
   // Definir qué secciones puede ver cada rol
   const visibleSections = {
     OWNER: ["contabilidad", "usuarios", "equipo", "admin"],
-    RECEPTION: ["usuarios", "equipo"],
-    COACH: ["usuarios", "equipo"]
+    RECEPTION: ["contabilidad", "usuarios", "equipo"],
+    COACH: ["contabilidad", "usuarios", "equipo"]
   };
 
-  // Vistas específicas que solo puede ver OWNER
-  const ownerOnlyViews = ["employeePaymentsView"];
+  // Vistas específicas que solo puede ver OWNER dentro de Contabilidad
+  const ownerOnlyViews = [
+    "summaryView",
+    "paymentsView", 
+    "expensesView",
+    "employeePaymentsView"
+  ];
 
   const sectionsToShow = visibleSections[role] || [];
 
