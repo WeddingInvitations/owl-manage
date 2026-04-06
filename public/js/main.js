@@ -869,6 +869,8 @@ async function refreshAthleteMonthly() {
           : "Anual";
 
     const row = document.createElement("tr");
+    row.dataset.id = athlete.id;
+    row.dataset.name = athlete.name;
     row.innerHTML = `
       <td>${athlete.name}</td>
       <td>
@@ -905,11 +907,6 @@ async function refreshAthleteMonthly() {
       <td>
         <span data-role="status" data-id="${athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
       </td>
-      <td>
-        <button class="btn small" data-role="save" data-id="${athlete.id}" data-name="${athlete.name}">
-          Guardar
-        </button>
-      </td>
     `;
     ui.athleteList.appendChild(row);
   });
@@ -932,6 +929,7 @@ async function refreshAthleteMonthly() {
   if (ui.athleteListCount) {
     ui.athleteListCount.textContent = `Mostrando ${visibleCount} atletas`;
   }
+  updatePendingSaveButtons();
 
   const totalActive = activeNow.size;
   const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
@@ -1266,6 +1264,8 @@ async function refreshAcroMonthly() {
           : "Anual";
 
     const row = document.createElement("tr");
+    row.dataset.id = athlete.id;
+    row.dataset.name = athlete.name || "";
     row.innerHTML = `
       <td>${athlete.name || "(Sin nombre)"}</td>
       <td>
@@ -1302,11 +1302,6 @@ async function refreshAcroMonthly() {
       <td>
         <span data-role="acro-status" data-id="${athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
       </td>
-      <td>
-        <button class="btn small" data-role="acro-save" data-id="${athlete.id}" data-name="${athlete.name || ""}">
-          Guardar
-        </button>
-      </td>
     `;
     ui.acroList.appendChild(row);
   });
@@ -1328,6 +1323,7 @@ async function refreshAcroMonthly() {
   if (ui.acroListCount) {
     ui.acroListCount.textContent = `Mostrando ${visibleCount} atletas`;
   }
+  updatePendingSaveButtons();
 
   const totalActive = activeNow.size;
   const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
@@ -2109,77 +2105,180 @@ if (ui.athleteCsvModal) {
   ui.athleteCsvModal.classList.add("hidden");
 }
 
-// Event delegation for athlete table buttons
-if (ui.athleteList) {
-  ui.athleteList.addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-role='save']");
-    if (button) {
-      event.preventDefault();
-      const athleteId = button.dataset.id;
-      const athleteName = button.dataset.name;
-      
-      // Get current values from the row
-      const row = button.closest("tr");
-      const tariffSelect = row.querySelector("[data-role='tariff']");
-      const paidSelect = row.querySelector("[data-role='paid']");
-      const discountReasonInput = row.querySelector("[data-role='discount-reason']");
-      
-      if (!tariffSelect || !paidSelect) return;
-      
-      const newTariff = tariffSelect.value;
-      const newPaid = paidSelect.value === "SI";
-      const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
-      let newDiscount = 0;
-      if (newDiscountReason === 'Familiar') newDiscount = 10;
-      else if (newDiscountReason === 'Promoción') newDiscount = 5;
-      else if (newDiscountReason === 'Beca') newDiscount = 50;
-      
-      // Calculate price based on tariff and apply discount
-      const plan = tariffPlanMap.get(newTariff) || tariffPlanMap.get("8/mes");
-      const basePrice = plan.priceTotal;
-      const newPrice = basePrice * (1 - newDiscount / 100);
-      
-      try {
-        button.textContent = "Guardando...";
-        button.disabled = true;
+function calculateDiscountFromReason(reason) {
+  if (reason === "Familiar") return 10;
+  if (reason === "Promoción") return 5;
+  if (reason === "Beca") return 50;
+  return 0;
+}
 
-        // Update athlete month data with multi-month logic like in modal
-        const monthKey = selectedAthleteListMonth || selectedAthleteMonth;
-        const duration = plan.durationMonths || 1;
-        
-        // Create payments for all months in the duration (like in modal)
-        for (let i = 0; i < duration; i += 1) {
-          const targetMonth = addMonthsToKey(monthKey, i);
-          await upsertAthleteMonth(
-            athleteId,
-            targetMonth,
-            {
-              athleteName,
-              tariff: newTariff,
-              price: newPrice,
-              basePrice: basePrice,
-              discount: newDiscount,
-              discountReason: newDiscountReason,
-              paid: newPaid,
-              active: newPaid,
-              durationMonths: plan.durationMonths,
-              priceMonthly: plan.priceMonthly,
-              isPaymentMonth: i === 0, // Only first month is payment month
-            },
-            currentUser?.uid
-          );
-        }
-        
-        // Refresh the list
-        await refreshAthleteMonthly();
-        
+function setStatusBadge(statusElement, paid) {
+  if (!statusElement) return;
+  statusElement.textContent = paid ? "Pagado" : "No Pagado";
+  statusElement.classList.toggle("athlete-status-paid", paid);
+  statusElement.classList.toggle("athlete-status-unpaid", !paid);
+}
+
+function updatePendingSaveButtons() {
+  const athletePending = ui.athleteList
+    ? ui.athleteList.querySelectorAll("tr[data-dirty='true']").length
+    : 0;
+  const acroPending = ui.acroList
+    ? ui.acroList.querySelectorAll("tr[data-dirty='true']").length
+    : 0;
+
+  if (ui.athleteSaveAllBtn) {
+    ui.athleteSaveAllBtn.disabled = athletePending === 0;
+    ui.athleteSaveAllBtn.textContent = `Guardar cambios (${athletePending})`;
+  }
+  if (ui.acroSaveAllBtn) {
+    ui.acroSaveAllBtn.disabled = acroPending === 0;
+    ui.acroSaveAllBtn.textContent = `Guardar cambios (${acroPending})`;
+  }
+}
+
+function markDirtyRow(row) {
+  if (!row) return;
+  row.dataset.dirty = "true";
+  row.classList.add("row-dirty");
+  updatePendingSaveButtons();
+}
+
+async function saveAthleteRow(row) {
+  const athleteId = row?.dataset?.id;
+  const athleteName = row?.dataset?.name || "";
+  const tariffSelect = row?.querySelector("[data-role='tariff']");
+  const paidSelect = row?.querySelector("[data-role='paid']");
+  const discountReasonInput = row?.querySelector("[data-role='discount-reason']");
+
+  if (!athleteId || !tariffSelect || !paidSelect) {
+    throw new Error("Fila inválida");
+  }
+
+  const newTariff = tariffSelect.value;
+  const newPaid = paidSelect.value === "SI";
+  const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
+  const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const plan = tariffPlanMap.get(newTariff) || tariffPlanMap.get("8/mes");
+  const basePrice = plan.priceTotal;
+  const newPrice = basePrice * (1 - newDiscount / 100);
+  const monthKey = selectedAthleteListMonth || selectedAthleteMonth;
+  const duration = plan.durationMonths || 1;
+
+  for (let i = 0; i < duration; i += 1) {
+    const targetMonth = addMonthsToKey(monthKey, i);
+    await upsertAthleteMonth(
+      athleteId,
+      targetMonth,
+      {
+        athleteName,
+        tariff: newTariff,
+        price: newPrice,
+        basePrice,
+        discount: newDiscount,
+        discountReason: newDiscountReason,
+        paid: newPaid,
+        active: newPaid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
+      },
+      currentUser?.uid
+    );
+  }
+}
+
+async function saveAcroRow(row) {
+  const athleteId = row?.dataset?.id;
+  const athleteName = row?.dataset?.name || "";
+  const tariffSelect = row?.querySelector("[data-role='acro-tariff']");
+  const paidSelect = row?.querySelector("[data-role='acro-paid']");
+  const discountReasonInput = row?.querySelector("[data-role='acro-discount-reason']");
+
+  if (!athleteId || !tariffSelect || !paidSelect) {
+    throw new Error("Fila inválida");
+  }
+
+  const newTariff = tariffSelect.value;
+  const newPaid = paidSelect.value === "SI";
+  const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
+  const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const plan = acroTariffPlanMap.get(newTariff) || acroTariffPlanMap.get("4/mes");
+  const basePrice = plan.priceTotal;
+  const newPrice = basePrice * (1 - newDiscount / 100);
+  const monthKey = selectedAcroListMonth || selectedAcroMonth;
+  const duration = plan.durationMonths || 1;
+
+  for (let i = 0; i < duration; i += 1) {
+    const targetMonth = addMonthsToKey(monthKey, i);
+    await upsertAcroAthleteMonth(
+      athleteId,
+      targetMonth,
+      {
+        athleteName,
+        tariff: newTariff,
+        price: newPrice,
+        basePrice,
+        discount: newDiscount,
+        discountReason: newDiscountReason,
+        paid: newPaid,
+        active: newPaid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
+      },
+      currentUser?.uid
+    );
+  }
+}
+
+if (ui.athleteList) {
+  ui.athleteList.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!target.matches("[data-role='tariff'], [data-role='discount-reason'], [data-role='paid']")) {
+      return;
+    }
+    const row = target.closest("tr");
+    markDirtyRow(row);
+    if (target.matches("[data-role='paid']")) {
+      const statusElement = row?.querySelector("[data-role='status']");
+      setStatusBadge(statusElement, target.value === "SI");
+    }
+  });
+}
+
+if (ui.athleteSaveAllBtn) {
+  ui.athleteSaveAllBtn.addEventListener("click", async () => {
+    const dirtyRows = ui.athleteList
+      ? Array.from(ui.athleteList.querySelectorAll("tr[data-dirty='true']"))
+      : [];
+    if (!dirtyRows.length) return;
+
+    const originalText = ui.athleteSaveAllBtn.textContent;
+    ui.athleteSaveAllBtn.textContent = "Guardando...";
+    ui.athleteSaveAllBtn.disabled = true;
+
+    let saved = 0;
+    const failedNames = [];
+    for (const row of dirtyRows) {
+      try {
+        await saveAthleteRow(row);
+        saved += 1;
       } catch (error) {
-        console.error("Error updating athlete:", error);
-        alert("Error al guardar: " + (error.message || error));
-        button.textContent = "Guardar";
-        button.disabled = false;
+        failedNames.push(row.dataset.name || row.dataset.id || "(sin nombre)");
+        console.error("Error updating athlete row:", error);
       }
     }
+
+    await refreshAthleteMonthly();
+    updatePendingSaveButtons();
+    ui.athleteSaveAllBtn.textContent = originalText;
+
+    if (failedNames.length) {
+      alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
+      return;
+    }
+    alert(`Guardados ${saved} cambios.`);
   });
 }
 
@@ -2196,79 +2295,57 @@ if (ui.acroCsvModal) {
   ui.acroCsvModal.classList.add("hidden");
 }
 
-// Event delegation for acrobatics table buttons
 if (ui.acroList) {
-  ui.acroList.addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-role='acro-save']");
-    if (button) {
-      event.preventDefault();
-      const athleteId = button.dataset.id;
-      const athleteName = button.dataset.name;
-      
-      // Get current values from the row
-      const row = button.closest("tr");
-      const tariffSelect = row.querySelector("[data-role='acro-tariff']");
-      const paidSelect = row.querySelector("[data-role='acro-paid']");
-      const discountReasonInput = row.querySelector("[data-role='acro-discount-reason']");
-      
-      if (!tariffSelect || !paidSelect) return;
-      
-      const newTariff = tariffSelect.value;
-      const newPaid = paidSelect.value === "SI";
-      const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
-      let newDiscount = 0;
-      if (newDiscountReason === 'Familiar') newDiscount = 10;
-      else if (newDiscountReason === 'Promoción') newDiscount = 5;
-      else if (newDiscountReason === 'Beca') newDiscount = 50;
-      
-      // Calculate price based on tariff and apply discount
-      const plan = acroTariffPlanMap.get(newTariff) || acroTariffPlanMap.get("4/mes");
-      const basePrice = plan.priceTotal;
-      const newPrice = basePrice * (1 - newDiscount / 100);
-      
-      try {
-        button.textContent = "Guardando...";
-        button.disabled = true;
-        
-        // Update acro athlete month data with multi-month logic like in modal
-        const monthKey = selectedAcroListMonth || selectedAcroMonth;
-        const duration = plan.durationMonths || 1;
-        
-        // Create payments for all months in the duration (like in modal)
-        for (let i = 0; i < duration; i += 1) {
-          const targetMonth = addMonthsToKey(monthKey, i);
-          await upsertAcroAthleteMonth(
-            athleteId,
-            targetMonth,
-            {
-              athleteName,
-              tariff: newTariff,
-              price: newPrice,
-              basePrice: basePrice,
-              discount: newDiscount,
-              discountReason: newDiscountReason,
-              paid: newPaid,
-              active: newPaid,
-              durationMonths: plan.durationMonths,
-              priceMonthly: plan.priceMonthly,
-              isPaymentMonth: i === 0, // Only first month is payment month
-            },
-            currentUser?.uid
-          );
-        }
-        
-        // Refresh the list
-        await refreshAcroMonthly();
-        
-      } catch (error) {
-        console.error("Error updating acro athlete:", error);
-        alert("Error al guardar: " + (error.message || error));
-        button.textContent = "Guardar";
-        button.disabled = false;
-      }
+  ui.acroList.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!target.matches("[data-role='acro-tariff'], [data-role='acro-discount-reason'], [data-role='acro-paid']")) {
+      return;
+    }
+    const row = target.closest("tr");
+    markDirtyRow(row);
+    if (target.matches("[data-role='acro-paid']")) {
+      const statusElement = row?.querySelector("[data-role='acro-status']");
+      setStatusBadge(statusElement, target.value === "SI");
     }
   });
 }
+
+if (ui.acroSaveAllBtn) {
+  ui.acroSaveAllBtn.addEventListener("click", async () => {
+    const dirtyRows = ui.acroList
+      ? Array.from(ui.acroList.querySelectorAll("tr[data-dirty='true']"))
+      : [];
+    if (!dirtyRows.length) return;
+
+    const originalText = ui.acroSaveAllBtn.textContent;
+    ui.acroSaveAllBtn.textContent = "Guardando...";
+    ui.acroSaveAllBtn.disabled = true;
+
+    let saved = 0;
+    const failedNames = [];
+    for (const row of dirtyRows) {
+      try {
+        await saveAcroRow(row);
+        saved += 1;
+      } catch (error) {
+        failedNames.push(row.dataset.name || row.dataset.id || "(sin nombre)");
+        console.error("Error updating acro athlete row:", error);
+      }
+    }
+
+    await refreshAcroMonthly();
+    updatePendingSaveButtons();
+    ui.acroSaveAllBtn.textContent = originalText;
+
+    if (failedNames.length) {
+      alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
+      return;
+    }
+    alert(`Guardados ${saved} cambios.`);
+  });
+}
+
+updatePendingSaveButtons();
 
 bindAuth(
   ui,
@@ -5126,8 +5203,6 @@ document.addEventListener('change', (e) => {
       if (priceSpan) {
         priceSpan.textContent = price.toFixed(2);
       }
-      // Update Firebase
-      updateAthlete(id, { discountReason: reason });
     }
   }
 });
@@ -5144,38 +5219,6 @@ document.addEventListener('change', (e) => {
       if (priceSpan) {
         priceSpan.textContent = price.toFixed(2);
       }
-      // Update Firebase
-      updateAcroAthlete(id, { discountReason: reason });
-    }
-  }
-});
-
-document.addEventListener('change', (e) => {
-  if (e.target.matches('[data-role="status"]')) {
-    const id = e.target.getAttribute('data-id');
-    const status = e.target.value;
-    const paid = status === "SI";
-    
-    // Update the athlete month record for the current list month
-    const monthKey = selectedAthleteListMonth || selectedAthleteMonth;
-    if (monthKey) {
-      upsertAthleteMonth(id, monthKey, { paid: paid }, currentUser?.uid);
-      console.log('Status changed for athlete', id, 'to', status, 'paid:', paid, 'month:', monthKey);
-    }
-  }
-});
-
-document.addEventListener('change', (e) => {
-  if (e.target.matches('[data-role="acro-status"]')) {
-    const id = e.target.getAttribute('data-id');
-    const status = e.target.value;
-    const paid = status === "SI";
-    
-    // Update the acro athlete month record for the current list month
-    const monthKey = selectedAcroListMonth || selectedAcroMonth;
-    if (monthKey) {
-      upsertAcroAthleteMonth(id, monthKey, { paid: paid }, currentUser?.uid);
-      console.log('Acro status changed for athlete', id, 'to', status, 'paid:', paid, 'month:', monthKey);
     }
   }
 });

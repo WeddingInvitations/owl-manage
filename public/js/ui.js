@@ -210,6 +210,7 @@ export const ui = {
   athleteSearch: $("athleteSearch"),
   athleteSearchList: $("athleteSearchList"),
   athletePaidFilter: $("athletePaidFilter"),
+  athleteSaveAllBtn: $("athleteSaveAllBtn"),
   athleteList: $("athleteList"),
   athleteListCount: $("athleteListCount"),
   
@@ -343,6 +344,7 @@ export const ui = {
   acroSearch: $("acroSearch"),
   acroSearchList: $("acroSearchList"),
   acroPaidFilter: $("acroPaidFilter"),
+  acroSaveAllBtn: $("acroSaveAllBtn"),
   acroList: $("acroList"),
   acroListCount: $("acroListCount"),
   // Cambio de contraseña inicial
