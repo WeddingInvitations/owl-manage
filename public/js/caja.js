@@ -78,48 +78,32 @@ function populatePeriodSelect(periodType) {
 // Renderizar listado de ventas (muestra mensaje si está vacío)
 function renderSalesList(sales) {
   ui.cajaList.innerHTML = "";
+  const cajaEmpty = document.getElementById("cajaEmpty");
   if (!sales || sales.length === 0) {
-    const tr = document.createElement("tr");
-    tr.className = "empty-row";
-    tr.innerHTML = '<td colspan="5" style="text-align:center;color:#888;">No hay ventas registradas</td>';
-    ui.cajaList.appendChild(tr);
+    if (cajaEmpty) cajaEmpty.classList.remove("hidden");
     return;
+  } else {
+    if (cajaEmpty) cajaEmpty.classList.add("hidden");
   }
   sales.forEach(sale => {
+    // Aseguramos que los campos existen y tienen el nombre correcto
+    const date = sale.date || '';
+    const item = sale.item || sale.objeto || '';
+    const amount = sale.amount ?? sale.cantidad ?? '';
+    const importe = sale.importe !== undefined ? Number(sale.importe).toFixed(2) : '';
+    const vendedor = sale.vendedor || '';
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${sale.date}</td><td>${sale.item}</td><td>${sale.amount}</td><td>${sale.importe?.toFixed(2) ?? ''}</td><td>${sale.vendedor ?? ''}</td>`;
+    tr.innerHTML = `<td>${date}</td><td>${item}</td><td>${amount}</td><td>${importe}</td><td>${vendedor}</td>`;
     ui.cajaList.appendChild(tr);
   });
 }
 
 async function refreshCajaList() {
-  const period = ui.cajaFilterPeriod?.value || "month";
-  const selectedPeriod = ui.cajaPeriodSelect?.value;
-  const filterItem = ui.cajaFilterItem?.value;
-  
-  console.log("🔍 DEBUG Caja Filter:", { period, selectedPeriod, filterItem });
-  
-  let startDate, endDate;
-  
-  if (selectedPeriod) {
-    // Usar el período seleccionado
-    const { start, end } = getDateRange(period, selectedPeriod);
-    startDate = start;
-    endDate = end;
-  } else {
-    // Si no hay selección, usar el período actual
-    const today = new Date().toISOString().slice(0, 10);
-    const { start, end } = getDateRange(period, today);
-    startDate = start;
-    endDate = end;
-  }
-  
-  console.log("📅 Date Range:", { startDate, endDate });
-  
-  const itemFilter = (filterItem === "ALL" || !filterItem) ? "" : filterItem;
-  const sales = await loadSales({ startDate, endDate, item: itemFilter });
-  console.log("💰 Sales found:", sales.length, sales);
-  
+  const period = ui.cajaFilterPeriod.value;
+  const filterDate = ui.cajaFilterDate.value || new Date().toISOString().slice(0, 10);
+  const filterItem = ui.cajaFilterItem.value;
+  const { start, end } = getDateRange(period, filterDate);
+  const sales = await loadSales({ startDate: start, endDate: end, item: filterItem });
   renderSalesList(sales);
 }
 
