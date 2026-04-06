@@ -424,23 +424,57 @@ export function setActiveView(viewId, currentUi) {
 }
 
 export function updateMenuVisibility(currentUi, role) {
-  const ownerOnlyViews = new Set([
-    "summaryView",
-    "paymentsView",
-    "expensesView",
-    "classesView",
-    "rolesView",
-  ]);
+  // Definir qué secciones puede ver cada rol
+  const visibleSections = {
+    OWNER: ["contabilidad", "usuarios", "equipo", "admin"],
+    RECEPTION: ["usuarios", "equipo"],
+    COACH: ["usuarios", "equipo"]
+  };
 
-  currentUi.menuButtons.forEach((button) => {
-    const viewId = button.dataset.view;
-    const shouldHide = role !== "OWNER" && ownerOnlyViews.has(viewId);
-    button.classList.toggle("hidden", shouldHide);
+  const sectionsToShow = visibleSections[role] || [];
+
+  // Ocultar/mostrar secciones completas del menú
+  const menuSections = document.querySelectorAll(".menu-section");
+  menuSections.forEach((section) => {
+    const sectionName = section.dataset.section;
+    const shouldHide = !sectionsToShow.includes(sectionName);
+    section.classList.toggle("hidden", shouldHide);
   });
 
+  // Ocultar/mostrar vistas correspondientes
   currentUi.views.forEach((view) => {
-    const shouldHide = role !== "OWNER" && ownerOnlyViews.has(view.id);
-    view.classList.toggle("hidden", shouldHide || view.classList.contains("hidden"));
+    const viewId = view.id;
+    
+    // profileView siempre visible
+    if (viewId === "profileView") {
+      return;
+    }
+    
+    // Determinar a qué sección pertenece cada vista
+    const viewToSection = {
+      // Contabilidad
+      "summaryView": "contabilidad",
+      "paymentsView": "contabilidad",
+      "expensesView": "contabilidad",
+      "cajaView": "contabilidad",
+      "employeePaymentsView": "contabilidad",
+      // Usuarios
+      "athletesView": "usuarios",
+      "acroView": "usuarios",
+      // Equipo
+      "checkinsView": "equipo",
+      "vacationsView": "equipo",
+      "trainingsView": "equipo",
+      "classesView": "equipo",
+      // Admin
+      "rolesView": "admin"
+    };
+    
+    const sectionForView = viewToSection[viewId];
+    if (sectionForView) {
+      const shouldHide = !sectionsToShow.includes(sectionForView);
+      view.classList.toggle("hidden", shouldHide);
+    }
   });
 }
 

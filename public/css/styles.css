@@ -157,6 +157,23 @@ div, span, p, li, td, th, label, button, input, select, textarea {
   flex-shrink: 0;
 }
 
+.menu-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.menu-section-title {
+  margin: 12px 0 8px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .menu-btn {
   background: transparent;
   border: 1px solid transparent;
