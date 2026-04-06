@@ -16,10 +16,7 @@ import { auth } from "./firebase.js";
 function getDateRange(period, baseDate) {
   const d = new Date(baseDate);
   let start, end;
-  if (period === "day") {
-    start = new Date(d);
-    end = new Date(d);
-  } else if (period === "week") {
+  if (period === "week") {
     const day = d.getDay();
     start = new Date(d);
     start.setDate(d.getDate() - day);
@@ -33,6 +30,49 @@ function getDateRange(period, baseDate) {
     start: start.toISOString().slice(0, 10),
     end: end.toISOString().slice(0, 10),
   };
+}
+
+// Popular el selector de períodos según el tipo (mes o semana)
+function populatePeriodSelect(periodType) {
+  if (!ui.cajaPeriodSelect) return;
+  
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
+  
+  if (periodType === "month") {
+    // Generar últimos 12 meses
+    const months = [];
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(currentYear, currentMonth - i, 1);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const monthName = monthNames[d.getMonth()];
+      months.push({ value: `${year}-${month}`, label: `${monthName} ${year}` });
+    }
+    ui.cajaPeriodSelect.innerHTML = months.map(m => 
+      `<option value="${m.value}">${m.label}</option>`
+    ).join("");
+  } else if (periodType === "week") {
+    // Generar últimas 12 semanas
+    const weeks = [];
+    for (let i = 0; i < 12; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - (i * 7));
+      const day = d.getDay();
+      const startOfWeek = new Date(d);
+      startOfWeek.setDate(d.getDate() - day);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      const startStr = startOfWeek.toISOString().slice(0, 10);
+      const label = `Semana del ${startOfWeek.getDate()}/${startOfWeek.getMonth() + 1} al ${endOfWeek.getDate()}/${endOfWeek.getMonth() + 1}`;
+      weeks.push({ value: startStr, label: label });
+    }
+    ui.cajaPeriodSelect.innerHTML = weeks.map(w => 
+      `<option value="${w.value}">${w.label}</option>`
+    ).join("");
+  }
 }
 
 // Renderizar listado de ventas (muestra mensaje si está vacío)
@@ -54,24 +94,20 @@ function renderSalesList(sales) {
 
 async function refreshCajaList() {
   const period = ui.cajaFilterPeriod?.value || "month";
-  const filterDate = ui.cajaFilterDate?.value;
+  const selectedPeriod = ui.cajaPeriodSelect?.value;
   const filterItem = ui.cajaFilterItem?.value;
   
-  console.log("🔍 DEBUG Caja Filter:", { period, filterDate, filterItem });
+  console.log("🔍 DEBUG Caja Filter:", { period, selectedPeriod, filterItem });
   
   let startDate, endDate;
   
-  if (period === "all") {
-    // Mostrar todas las ventas sin filtro de fecha
-    startDate = null;
-    endDate = null;
-  } else if (filterDate) {
-    // Si hay fecha específica, usar esa fecha con el período seleccionado
-    const { start, end } = getDateRange(period, filterDate);
+  if (selectedPeriod) {
+    // Usar el período seleccionado
+    const { start, end } = getDateRange(period, selectedPeriod);
     startDate = start;
     endDate = end;
   } else {
-    // Si no hay fecha específica, usar fecha actual con el período seleccionado
+    // Si no hay selección, usar el período actual
     const today = new Date().toISOString().slice(0, 10);
     const { start, end } = getDateRange(period, today);
     startDate = start;
@@ -151,8 +187,12 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
 ui.cajaFilterBtn?.addEventListener("click", refreshCajaList);
 
 // Event listeners para filtros automáticos
-ui.cajaFilterPeriod?.addEventListener("change", refreshCajaList);
-ui.cajaFilterDate?.addEventListener("change", refreshCajaList);
+ui.cajaFilterPeriod?.addEventListener("change", () => {
+  const periodType = ui.cajaFilterPeriod.value;
+  populatePeriodSelect(periodType);
+  refreshCajaList();
+});
+ui.cajaPeriodSelect?.addEventListener("change", refreshCajaList);
 ui.cajaFilterItem?.addEventListener("change", refreshCajaList);
 
 // Inicialización
@@ -167,13 +207,8 @@ if (ui.cajaView) {
     console.warn("⚠️ ui.cajaFilterPeriod no encontrado");
   }
   
-  // Dejar el campo de fecha vacío por defecto
-  if (ui.cajaFilterDate) {
-    ui.cajaFilterDate.value = "";
-    console.log("📅 Campo de fecha dejado vacío por defecto");
-  } else {
-    console.warn("⚠️ ui.cajaFilterDate no encontrado");
-  }
+  // Popular el selector de períodos
+  populatePeriodSelect("month");
   
   console.log("🔄 Ejecutando refreshCajaList...");
   refreshCajaList();

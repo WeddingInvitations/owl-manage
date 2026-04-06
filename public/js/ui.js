@@ -371,7 +371,7 @@ ui.cajaVentaCantidad = $("cajaVentaCantidad");
 ui.cajaVentaImporte = $("cajaVentaImporte");
 ui.cajaVentaVendedor = $("cajaVentaVendedor");
 ui.cajaFilterPeriod = $("cajaPeriodFilter");
-ui.cajaFilterDate = $("cajaDateFilter");
+ui.cajaPeriodSelect = $("cajaPeriodSelect");
 ui.cajaFilterItem = $("cajaObjectFilter");
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
