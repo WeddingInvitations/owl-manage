@@ -99,11 +99,35 @@ function renderSalesList(sales) {
 }
 
 async function refreshCajaList() {
-  const period = ui.cajaFilterPeriod.value;
-  const filterDate = ui.cajaFilterDate.value || new Date().toISOString().slice(0, 10);
-  const filterItem = ui.cajaFilterItem.value;
-  const { start, end } = getDateRange(period, filterDate);
-  const sales = await loadSales({ startDate: start, endDate: end, item: filterItem });
+  const periodType = ui.cajaFilterPeriod?.value || 'month';
+  const selectedPeriod = ui.cajaPeriodSelect?.value;
+  const filterItem = ui.cajaFilterItem?.value;
+  
+  if (!selectedPeriod) {
+    console.warn('No hay período seleccionado');
+    return;
+  }
+  
+  let start, end;
+  
+  if (periodType === 'month') {
+    // selectedPeriod viene como "YYYY-MM"
+    const [year, month] = selectedPeriod.split('-');
+    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const endDate = new Date(parseInt(year), parseInt(month), 0);
+    start = startDate.toISOString().slice(0, 10);
+    end = endDate.toISOString().slice(0, 10);
+  } else if (periodType === 'week') {
+    // selectedPeriod viene como "YYYY-MM-DD" (inicio de semana)
+    const startDate = new Date(selectedPeriod);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 6);
+    start = selectedPeriod;
+    end = endDate.toISOString().slice(0, 10);
+  }
+  
+  console.log(`Cargando ventas: ${start} a ${end}`);
+  const sales = await loadSales({ startDate: start, endDate: end, item: filterItem === 'ALL' ? '' : filterItem });
   renderSalesList(sales);
 }
 
@@ -145,6 +169,39 @@ export async function loadSales({ startDate, endDate, item }) {
   return sales;
 }
 
+// Función para obtener todos los objetos únicos
+async function loadUniqueItems() {
+  const snap = await getDocs(collection(db, "sales"));
+  const items = new Set();
+  snap.docs.forEach(doc => {
+    const data = doc.data();
+    if (data.item) {
+      items.add(data.item);
+    }
+  });
+  return Array.from(items).sort();
+}
+
+// Poblar selector de objetos
+async function populateItemFilter() {
+  if (!ui.cajaFilterItem) return;
+  
+  const items = await loadUniqueItems();
+  const currentValue = ui.cajaFilterItem.value;
+  
+  let html = '<option value="ALL">Todos los objetos</option>';
+  items.forEach(item => {
+    html += `<option value="${item}">${item}</option>`;
+  });
+  
+  ui.cajaFilterItem.innerHTML = html;
+  
+  // Restaurar el valor seleccionado si existía
+  if (currentValue && items.includes(currentValue)) {
+    ui.cajaFilterItem.value = currentValue;
+  }
+}
+
 // Modal lógica
 ui.cajaAddBtn?.addEventListener("click", () => {
   ui.cajaModal.classList.remove("hidden");
@@ -166,9 +223,10 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
   const vendedor = ui.cajaVentaVendedor.value;
   await addSale({ item, amount, date, importe, vendedor, userId: auth.currentUser?.uid });
   ui.cajaModal.classList.add("hidden");
+  // Actualizar filtro de objetos y lista
+  await populateItemFilter();
   await refreshCajaList();
 });
-ui.cajaFilterBtn?.addEventListener("click", refreshCajaList);
 
 // Event listeners para filtros automáticos
 ui.cajaFilterPeriod?.addEventListener("change", () => {
@@ -179,21 +237,28 @@ ui.cajaFilterPeriod?.addEventListener("change", () => {
 ui.cajaPeriodSelect?.addEventListener("change", refreshCajaList);
 ui.cajaFilterItem?.addEventListener("change", refreshCajaList);
 
-// Inicialización
-if (ui.cajaView) {
+// Función de inicialización de Caja
+export async function initializeCaja() {
+  if (!ui.cajaView) {
+    console.warn("⚠️ cajaView no encontrado");
+    return;
+  }
+  
   console.log("🚀 Inicializando Caja...");
   
   // Configurar período por defecto como mes
   if (ui.cajaFilterPeriod) {
     ui.cajaFilterPeriod.value = "month";
-    console.log("📊 Período configurado:", ui.cajaFilterPeriod.value);
-  } else {
-    console.warn("⚠️ ui.cajaFilterPeriod no encontrado");
   }
   
   // Popular el selector de períodos
   populatePeriodSelect("month");
   
-  console.log("🔄 Ejecutando refreshCajaList...");
-  refreshCajaList();
+  // Popular el selector de objetos
+  await populateItemFilter();
+  
+  // Cargar datos
+  await refreshCajaList();
+  
+  console.log("✅ Caja inicializada");
 }

@@ -8,7 +8,8 @@ const viewsInitialized = {
   checkinsView: false,
   vacationsView: false,
   classesView: false,
-  employeePaymentsView: false
+  employeePaymentsView: false,
+  cajaView: false
 };
 
 // OwlManage MVP
@@ -25,6 +26,7 @@ import {
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { initializeCaja } from "./caja.js?v=20250401";
 import {
   addPayment,
   addExpense,
@@ -1916,6 +1918,11 @@ async function initializeViewIfNeeded(viewId) {
     case "classesView":
       await initializeClasses();
       viewsInitialized.classesView = true;
+      break;
+      
+    case "cajaView":
+      await initializeCaja();
+      viewsInitialized.cajaView = true;
       break;
   }
 }
