@@ -433,7 +433,8 @@ export function updateMenuVisibility(currentUi, role) {
   const visibleSections = {
     OWNER: ["contabilidad", "usuarios", "equipo", "admin"],
     RECEPTION: ["contabilidad", "usuarios", "equipo"],
-    COACH: ["contabilidad", "usuarios", "equipo"]
+    COACH: ["contabilidad", "usuarios", "equipo"],
+    TEAM_LEADER: ["contabilidad", "usuarios", "equipo"]
   };
 
   // Vistas específicas que solo puede ver OWNER dentro de Contabilidad
@@ -442,6 +443,11 @@ export function updateMenuVisibility(currentUi, role) {
     "paymentsView", 
     "expensesView",
     "employeePaymentsView"
+  ];
+
+  // Vistas que pueden ver OWNER y TEAM_LEADER
+  const teamLeaderViews = [
+    "classesView"
   ];
 
   const sectionsToShow = visibleSections[role] || [];
@@ -493,12 +499,22 @@ export function updateMenuVisibility(currentUi, role) {
     if (ownerOnlyViews.includes(viewId) && role !== "OWNER") {
       view.classList.add("hidden");
     }
+
+    // Ocultar vistas que solo pueden ver OWNER y TEAM_LEADER
+    if (teamLeaderViews.includes(viewId) && role !== "OWNER" && role !== "TEAM_LEADER") {
+      view.classList.add("hidden");
+    }
   });
   
   // También ocultar botones de menú para vistas específicas de OWNER
   currentUi.menuButtons.forEach((button) => {
     const viewId = button.dataset.view;
     if (ownerOnlyViews.includes(viewId) && role !== "OWNER") {
+      button.classList.add("hidden");
+    }
+
+    // Ocultar botones de menú que solo pueden ver OWNER y TEAM_LEADER
+    if (teamLeaderViews.includes(viewId) && role !== "OWNER" && role !== "TEAM_LEADER") {
       button.classList.add("hidden");
     }
   });

@@ -1,4 +1,16 @@
 let employeePaymentsListenersInitialized = false;
+
+// Sistema de lazy loading para vistas
+const viewsInitialized = {
+  summaryView: false,
+  athletesView: false,
+  acroView: false,
+  checkinsView: false,
+  vacationsView: false,
+  classesView: false,
+  employeePaymentsView: false
+};
+
 // OwlManage MVP
 // TODO: Completa firebaseConfig.js con tu configuración real.
 // Estructura modular simple: auth, datos, UI.
@@ -1861,6 +1873,53 @@ function initEmployeePaymentsListeners() {
   employeePaymentsListenersInitialized = true;
 }
 
+// Función para inicializar vista según sea necesario (lazy loading)
+async function initializeViewIfNeeded(viewId) {
+  if (viewsInitialized[viewId]) return;
+  
+  console.log(`Inicializando vista: ${viewId}`);
+  
+  switch(viewId) {
+    case "summaryView":
+      await refreshAll();
+      viewsInitialized.summaryView = true;
+      break;
+      
+    case "athletesView":
+      await refreshAthleteMonthly();
+      viewsInitialized.athletesView = true;
+      break;
+      
+    case "acroView":
+      await refreshAcroMonthly();
+      viewsInitialized.acroView = true;
+      break;
+      
+    case "checkinsView":
+      await refreshCheckinStatus();
+      await refreshCheckinAdmin();
+      viewsInitialized.checkinsView = true;
+      break;
+      
+    case "vacationsView":
+      await populateVacationWorkers();
+      await renderVacations();
+      viewsInitialized.vacationsView = true;
+      break;
+      
+    case "employeePaymentsView":
+      initEmployeePaymentsListeners();
+      await renderEmployeePayments();
+      viewsInitialized.employeePaymentsView = true;
+      break;
+      
+    case "classesView":
+      await initializeClasses();
+      viewsInitialized.classesView = true;
+      break;
+  }
+}
+
 // Llama a la inicialización de listeners cada vez que se muestra la vista
 ui.menuButtons.forEach((button) => {
   button.addEventListener("click", async () => {
@@ -1868,27 +1927,14 @@ ui.menuButtons.forEach((button) => {
     setActiveView(viewId, ui);
     updateMobileNavActive(viewId);
     
-    // Inicializaciones específicas por vista
-    if (viewId === "vacationsView") {
-      await populateVacationWorkers();
-      await renderVacations();
-    }
-    if (viewId === "employeePaymentsView") {
-      initEmployeePaymentsListeners();
-      await renderEmployeePayments();
-    }
-    if (viewId === "summaryView") {
-      await refreshAll();
-    }
-    if (viewId === "classesView") {
-      await initializeClasses();
-    }
+    // Inicializar vista solo si no ha sido inicializada antes
+    await initializeViewIfNeeded(viewId);
   });
 });
 
 // Mobile navigation buttons
 ui.mobileNavButtons.forEach((button) => {
-  button.addEventListener("click", () => {
+  button.addEventListener("click", async () => {
     const viewId = button.dataset.view;
     if (viewId === "moreView") {
       // Open more menu
@@ -1898,9 +1944,8 @@ ui.mobileNavButtons.forEach((button) => {
     } else {
       setActiveView(viewId, ui);
       updateMobileNavActive(viewId);
-      if (viewId === "vacationsView") {
-        populateVacationWorkers().then(() => renderVacations());
-      }
+      // Inicializar vista solo si no ha sido inicializada antes
+      await initializeViewIfNeeded(viewId);
     }
   });
 });
@@ -1914,10 +1959,11 @@ on(ui.moreMenuClose, "click", () => {
 
 // More menu option buttons
 document.querySelectorAll('[data-close-more]').forEach((button) => {
-  button.addEventListener("click", () => {
+  button.addEventListener("click", async () => {
     const viewId = button.dataset.view;
     if (viewId) {
       setActiveView(viewId, ui);
+      await initializeViewIfNeeded(viewId);
       updateMobileNavActive(viewId);
       if (viewId === "vacationsView") {
         populateVacationWorkers().then(() => renderVacations());
@@ -1945,7 +1991,8 @@ setTimeout(() => {
   }
 }, 1000);
 
-setActiveView("summaryView", ui);
+// No establecer vista inicial aquí - se establecerá después de la autenticación
+// setActiveView("summaryView", ui);
 renderAthleteMonthOptions();
 setAthletePriceFromTariff();
 renderAthletePaymentMonthOptions();
@@ -2142,22 +2189,24 @@ bindAuth(
         }
         // Rellenar vista de perfil
         renderProfileView();
-        await refreshAll();
-        await refreshAthleteMonthly();
-        await refreshAcroMonthly();
-        await refreshCheckinStatus();
-        await refreshCheckinAdmin();
-        await populateVacationWorkers();
-        await renderVacations();
 
+        // Actualizar visibilidad del menú según rol
         updateMenuVisibility(ui, currentRole);
         if (ui.mobileNav) {
           ui.mobileNav.classList.toggle("hidden", !user);
         }
+        
+        // Establecer vista inicial según rol y cargar solo sus datos
+        let initialView = "summaryView"; // Default para OWNER
         if (currentRole !== "OWNER") {
-          setActiveView("checkinsView", ui);
-          updateMobileNavActive("checkinsView");
+          initialView = "checkinsView";
         }
+        
+        setActiveView(initialView, ui);
+        updateMobileNavActive(initialView);
+        
+        // Cargar datos solo de la vista inicial (lazy loading)
+        await initializeViewIfNeeded(initialView);
       }
     } else {
       stopCheckinTimer();
