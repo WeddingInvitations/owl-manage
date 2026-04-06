@@ -100,6 +100,33 @@ window.firebase = {
   firestore: () => db
 };
 
+// Utility functions for price calculation
+function calculatePrice(athlete) {
+  const tariff = athlete.tariff || "8/mes";
+  const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
+  const basePrice = plan.priceTotal;
+  let discount = 0;
+  if (athlete.discountReason === 'Familiar') discount = 10;
+  else if (athlete.discountReason === 'Promoción') discount = 5;
+  else if (athlete.discountReason === 'Beca') discount = 50;
+  return basePrice * (1 - discount / 100);
+}
+
+function calculateAcroPrice(athlete) {
+  const tariff = athlete.tariff || "4/mes";
+  const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
+  const basePrice = plan.priceTotal;
+  let discount = 0;
+  if (athlete.discountReason === 'Familiar') discount = 10;
+  else if (athlete.discountReason === 'Promoción') discount = 5;
+  else if (athlete.discountReason === 'Beca') discount = 50;
+  return basePrice * (1 - discount / 100);
+}
+
+// Global variables for current athletes data
+let currentAthletes = [];
+let currentAcroAthletes = [];
+
 window.debugAuth = async function() {
   console.log('🔍 DEBUG: Estado de autenticación avanzado');
   
@@ -697,6 +724,7 @@ async function refreshAthleteMonthly() {
     renderAthleteListMonthOptions();
   }
   const athletes = await getAthletes();
+  currentAthletes = athletes; // Store globally for event listeners
   if (ui.athleteNameList) {
     const names = Array.from(
       new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
@@ -771,7 +799,13 @@ async function refreshAthleteMonthly() {
     const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || fallbackPlan;
-    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
+    const basePrice = plan.priceTotal ?? 0;
+    const discountReason = current?.discountReason || previous?.discountReason || lastPaid?.discountReason || "";
+    let discount = 0;
+    if (discountReason === 'Familiar') discount = 10;
+    else if (discountReason === 'Promoción') discount = 5;
+    else if (discountReason === 'Beca') discount = 50;
+    const price = basePrice * (1 - discount / 100);
     const paid = Boolean(current?.paid);
     const active = paid;
     const planDuration = plan.durationMonths || 1;
@@ -812,6 +846,11 @@ async function refreshAthleteMonthly() {
     const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
     const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
     const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
+    let displayDiscount = discount;
+    if (discountReason === 'Familiar') displayDiscount = 10;
+    else if (discountReason === 'Promoción') displayDiscount = 5;
+    else if (discountReason === 'Beca') displayDiscount = 50;
+    else if (discountReason === 'Ninguno') displayDiscount = 0;
     const paid = Boolean(current?.paid);
     const active = paid;
     if (athletePaidFilter === "SI" && !paid) {
@@ -846,18 +885,30 @@ async function refreshAthleteMonthly() {
       </td>
       <td><span data-role="price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
       <td>
-        <input type="number" data-role="discount" data-id="${athlete.id}" value="${discount}" min="0" max="100" step="0.1" style="width: 60px;" ${paid ? "disabled" : ""} />
+        <span data-role="discount-display" data-id="${athlete.id}">${displayDiscount}%</span>
       </td>
       <td>
-        <input type="text" data-role="discount-reason" data-id="${athlete.id}" value="${discountReason}" placeholder="Motivo" style="width: 120px;" ${paid ? "disabled" : ""} />
+        <select data-role="discount-reason" data-id="${athlete.id}" style="width: 120px;" ${paid ? "disabled" : ""}>
+          <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Promoción" ${discountReason === "Promoción" ? "selected" : ""}>Promoción</option>
+          <option value="Beca" ${discountReason === "Beca" ? "selected" : ""}>Beca</option>
+          <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
+        </select>
       </td>
+      <td><span data-role="final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
       <td>
         <select data-role="paid" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
           <option value="SI" ${paid ? "selected" : ""}>SI</option>
           <option value="NO" ${!paid ? "selected" : ""}>NO</option>
         </select>
       </td>
-      <td>${active ? "Activo" : "Inactivo"}</td>
+      <td>
+        <select data-role="status" data-id="${athlete.id}" style="width: 100px;">
+          <option value="SI" ${paid ? "selected" : ""}>Pagado</option>
+          <option value="NO" ${!paid ? "selected" : ""}>No Pagado</option>
+        </select>
+      </td>
       <td>
         <button class="btn small" data-role="save" data-id="${athlete.id}" data-name="${athlete.name}" ${paid ? "disabled" : ""}>
           Guardar
@@ -865,6 +916,21 @@ async function refreshAthleteMonthly() {
       </td>
     `;
     ui.athleteList.appendChild(row);
+  });
+
+  // Add event listeners for discount reason selects
+  ui.athleteList.querySelectorAll('[data-role="discount-reason"]').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const row = e.target.closest('tr');
+      const discountDisplay = row.querySelector('[data-role="discount-display"]');
+      const reason = e.target.value;
+      let discountValue = 0;
+      if (reason === 'Familiar') discountValue = 10;
+      else if (reason === 'Promoción') discountValue = 5; // example
+      else if (reason === 'Beca') discountValue = 50; // example
+      // For Otro, maybe keep previous or 0
+      discountDisplay.textContent = `${discountValue}%`;
+    });
   });
 
   if (ui.athleteListCount) {
@@ -1058,6 +1124,7 @@ async function refreshAcroMonthly() {
   }
 
   const athletes = await getAcroAthletes();
+  currentAcroAthletes = athletes; // Store globally for event listeners
 
   // Populate name datalists
   if (ui.acroNameList) {
@@ -1138,7 +1205,13 @@ async function refreshAcroMonthly() {
     const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
-    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
+    const basePrice = plan.priceTotal ?? 0;
+    const discountReason = current?.discountReason || previous?.discountReason || lastPaid?.discountReason || "";
+    let discount = 0;
+    if (discountReason === 'Familiar') discount = 10;
+    else if (discountReason === 'Promoción') discount = 5;
+    else if (discountReason === 'Beca') discount = 50;
+    const price = basePrice * (1 - discount / 100);
     const paid = Boolean(current?.paid);
     const active = paid;
 
@@ -1171,6 +1244,11 @@ async function refreshAcroMonthly() {
     const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
     const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
     const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
+    let displayDiscount = discount;
+    if (discountReason === 'Familiar') displayDiscount = 10;
+    else if (discountReason === 'Promoción') displayDiscount = 5;
+    else if (discountReason === 'Beca') displayDiscount = 50;
+    else if (discountReason === 'Ninguno') displayDiscount = 0;
     const paid = Boolean(current?.paid);
     const active = paid;
 
@@ -1207,18 +1285,30 @@ async function refreshAcroMonthly() {
       </td>
       <td><span data-role="acro-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
       <td>
-        <input type="number" data-role="acro-discount" data-id="${athlete.id}" value="${discount}" min="0" max="100" step="0.1" style="width: 60px;" ${paid ? "disabled" : ""} />
+        <span data-role="acro-discount-display" data-id="${athlete.id}">${displayDiscount}%</span>
       </td>
       <td>
-        <input type="text" data-role="acro-discount-reason" data-id="${athlete.id}" value="${discountReason}" placeholder="Motivo" style="width: 120px;" ${paid ? "disabled" : ""} />
+        <select data-role="acro-discount-reason" data-id="${athlete.id}" style="width: 120px;" ${paid ? "disabled" : ""}>
+          <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Promoción" ${discountReason === "Promoción" ? "selected" : ""}>Promoción</option>
+          <option value="Beca" ${discountReason === "Beca" ? "selected" : ""}>Beca</option>
+          <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
+        </select>
       </td>
+      <td><span data-role="acro-final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
       <td>
         <select data-role="acro-paid" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
           <option value="SI" ${paid ? "selected" : ""}>SI</option>
           <option value="NO" ${!paid ? "selected" : ""}>NO</option>
         </select>
       </td>
-      <td>${active ? "Activo" : "Inactivo"}</td>
+      <td>
+        <select data-role="acro-status" data-id="${athlete.id}" style="width: 100px;">
+          <option value="SI" ${paid ? "selected" : ""}>Pagado</option>
+          <option value="NO" ${!paid ? "selected" : ""}>No Pagado</option>
+        </select>
+      </td>
       <td>
         <button class="btn small" data-role="acro-save" data-id="${athlete.id}" data-name="${athlete.name || ""}" ${paid ? "disabled" : ""}>
           Guardar
@@ -1226,6 +1316,20 @@ async function refreshAcroMonthly() {
       </td>
     `;
     ui.acroList.appendChild(row);
+  });
+
+  // Add event listeners for acro discount reason selects
+  ui.acroList.querySelectorAll('[data-role="acro-discount-reason"]').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const row = e.target.closest('tr');
+      const discountDisplay = row.querySelector('[data-role="acro-discount-display"]');
+      const reason = e.target.value;
+      let discountValue = 0;
+      if (reason === 'Familiar') discountValue = 10;
+      else if (reason === 'Promoción') discountValue = 5;
+      else if (reason === 'Beca') discountValue = 50;
+      discountDisplay.textContent = `${discountValue}%`;
+    });
   });
 
   if (ui.acroListCount) {
@@ -2024,16 +2128,18 @@ if (ui.athleteList) {
       // Get current values from the row
       const row = button.closest("tr");
       const tariffSelect = row.querySelector("[data-role='tariff']");
-      const paidSelect = row.querySelector("[data-role='paid']");
-      const discountInput = row.querySelector("[data-role='discount']");
+      const statusSelect = row.querySelector("[data-role='status']");
       const discountReasonInput = row.querySelector("[data-role='discount-reason']");
       
-      if (!tariffSelect || !paidSelect) return;
+      if (!tariffSelect || !statusSelect) return;
       
       const newTariff = tariffSelect.value;
-      const newPaid = paidSelect.value === "SI";
-      const newDiscount = discountInput ? Number(discountInput.value) || 0 : 0;
+      const newPaid = statusSelect.value === "SI";
       const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
+      let newDiscount = 0;
+      if (newDiscountReason === 'Familiar') newDiscount = 10;
+      else if (newDiscountReason === 'Promoción') newDiscount = 5;
+      else if (newDiscountReason === 'Beca') newDiscount = 50;
       
       // Calculate price based on tariff and apply discount
       const plan = tariffPlanMap.get(newTariff) || tariffPlanMap.get("8/mes");
@@ -2109,16 +2215,18 @@ if (ui.acroList) {
       // Get current values from the row
       const row = button.closest("tr");
       const tariffSelect = row.querySelector("[data-role='acro-tariff']");
-      const paidSelect = row.querySelector("[data-role='acro-paid']");
-      const discountInput = row.querySelector("[data-role='acro-discount']");
+      const statusSelect = row.querySelector("[data-role='acro-status']");
       const discountReasonInput = row.querySelector("[data-role='acro-discount-reason']");
       
-      if (!tariffSelect || !paidSelect) return;
+      if (!tariffSelect || !statusSelect) return;
       
       const newTariff = tariffSelect.value;
-      const newPaid = paidSelect.value === "SI";
-      const newDiscount = discountInput ? Number(discountInput.value) || 0 : 0;
+      const newPaid = statusSelect.value === "SI";
       const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
+      let newDiscount = 0;
+      if (newDiscountReason === 'Familiar') newDiscount = 10;
+      else if (newDiscountReason === 'Promoción') newDiscount = 5;
+      else if (newDiscountReason === 'Beca') newDiscount = 50;
       
       // Calculate price based on tariff and apply discount
       const plan = acroTariffPlanMap.get(newTariff) || acroTariffPlanMap.get("4/mes");
@@ -5011,4 +5119,71 @@ if (document.readyState === 'loading') {
 } else {
   initializeMobileMenuAndSearch();
 }
+
+// Global event listeners for discount changes
+document.addEventListener('change', (e) => {
+  if (e.target.matches('[data-role="discount-reason"]')) {
+    const id = e.target.getAttribute('data-id');
+    const reason = e.target.value;
+    const athlete = currentAthletes.find(a => a.id === id);
+    if (athlete) {
+      athlete.discountReason = reason;
+      const price = calculatePrice(athlete);
+      const priceSpan = document.querySelector(`[data-role="final-price"][data-id="${id}"]`);
+      if (priceSpan) {
+        priceSpan.textContent = price.toFixed(2);
+      }
+      // Update Firebase
+      updateAthlete(id, { discountReason: reason });
+    }
+  }
+});
+
+document.addEventListener('change', (e) => {
+  if (e.target.matches('[data-role="acro-discount-reason"]')) {
+    const id = e.target.getAttribute('data-id');
+    const reason = e.target.value;
+    const athlete = currentAcroAthletes.find(a => a.id === id);
+    if (athlete) {
+      athlete.discountReason = reason;
+      const price = calculateAcroPrice(athlete);
+      const priceSpan = document.querySelector(`[data-role="acro-final-price"][data-id="${id}"]`);
+      if (priceSpan) {
+        priceSpan.textContent = price.toFixed(2);
+      }
+      // Update Firebase
+      updateAcroAthlete(id, { discountReason: reason });
+    }
+  }
+});
+
+document.addEventListener('change', (e) => {
+  if (e.target.matches('[data-role="status"]')) {
+    const id = e.target.getAttribute('data-id');
+    const status = e.target.value;
+    const paid = status === "SI";
+    
+    // Update the athlete month record for the current list month
+    const monthKey = selectedAthleteListMonth || selectedAthleteMonth;
+    if (monthKey) {
+      upsertAthleteMonth(id, monthKey, { paid: paid }, currentUser?.uid);
+      console.log('Status changed for athlete', id, 'to', status, 'paid:', paid, 'month:', monthKey);
+    }
+  }
+});
+
+document.addEventListener('change', (e) => {
+  if (e.target.matches('[data-role="acro-status"]')) {
+    const id = e.target.getAttribute('data-id');
+    const status = e.target.value;
+    const paid = status === "SI";
+    
+    // Update the acro athlete month record for the current list month
+    const monthKey = selectedAcroListMonth || selectedAcroMonth;
+    if (monthKey) {
+      upsertAcroAthleteMonth(id, monthKey, { paid: paid }, currentUser?.uid);
+      console.log('Acro status changed for athlete', id, 'to', status, 'paid:', paid, 'month:', monthKey);
+    }
+  }
+});
 
