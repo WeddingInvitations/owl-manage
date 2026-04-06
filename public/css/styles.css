@@ -1,34 +1,34 @@
 :root {
   /* Tema Oscuro (por defecto) - Colores mejorados */
-  --bg: #0a0b0f;
-  --card: #1a1d29;
-  --primary: #818cf8;
-  --text: #f1f5f9;
-  --muted: #94a3b8;
-  --border: #334155;
-  --accent: #1e293b;
-  --shadow: rgba(0, 0, 0, 0.4);
-  --input-bg: #1e293b;
-  --hover-bg: #334155;
+  --bg: #0f1419;
+  --card: #1e2530;
+  --primary: #3b82f6;
+  --text: #f8fafc;
+  --muted: #a1a1aa;
+  --border: #374151;
+  --accent: #1f2937;
+  --shadow: rgba(0, 0, 0, 0.5);
+  --input-bg: #374151;
+  --hover-bg: #4b5563;
   --danger: #ef4444;
   --danger-hover: #dc2626;
   --warning: #fbbf24;
-  --success: #22c55e;
+  --success: #10b981;
   --error: #ef4444;
 }
 
 /* Tema Claro - Colores mejorados */
 .light {
-  --bg: #f8fafc;
+  --bg: #f9fafb;
   --card: #ffffff;
-  --primary: #4f46e5;
-  --text: #0f172a;
-  --muted: #475569;
-  --border: #cbd5e1;
-  --accent: #f1f5f9;
+  --primary: #2563eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #d1d5db;
+  --accent: #f3f4f6;
   --shadow: rgba(0, 0, 0, 0.1);
   --input-bg: #ffffff;
-  --hover-bg: #f8fafc;
+  --hover-bg: #f9fafb;
   --danger: #dc2626;
   --danger-hover: #b91c1c;
   --warning: #d97706;
@@ -48,7 +48,7 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: linear-gradient(180deg, var(--bg) 0%, #0d1117 100%);
   color: var(--text);
 }
 
@@ -68,16 +68,42 @@ div, span, p, li, td, th, label, button, input, select, textarea {
 }
 
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 24px 32px;
   border-bottom: 1px solid var(--border);
-  background: var(--card);
+  background: linear-gradient(135deg, var(--card) 0%, var(--accent) 100%);
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 2px 10px var(--shadow);
 }
 
 .header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   flex: 1;
+}
+
+.logo {
+  color: var(--primary);
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.logo:hover {
+  transform: scale(1.1);
+}
+
+.title-section h1 {
+  margin: 0 0 4px;
+}
+
+.title-section .muted {
+  margin: 0;
 }
 
 .header-right {
@@ -225,6 +251,7 @@ div, span, p, li, td, th, label, button, input, select, textarea {
   height: 44px;
   display: flex;
   align-items: center;
+  gap: 8px;
   flex-shrink: 0;
   flex-grow: 0;
   box-sizing: border-box;
@@ -2977,6 +3004,31 @@ select:focus {
   .selected-class-item {
     font-size: 0.7rem;
     padding: 0.2rem 0.5rem;
+  }
+}
+
+/* Responsividad y animaciones */
+@media (max-width: 768px) {
+  .main-shell {
+    grid-template-columns: 1fr;
+  }
+  .side-menu {
+    display: none; /* O usa un toggle JS para mostrar/ocultar */
+  }
+}
+
+.view {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
