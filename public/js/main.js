@@ -1863,36 +1863,27 @@ function initEmployeePaymentsListeners() {
 
 // Llama a la inicialización de listeners cada vez que se muestra la vista
 ui.menuButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    setActiveView(button.dataset.view, ui);
-    updateMobileNavActive(button.dataset.view);
-    if (button.dataset.view === "vacationsView") {
-      populateVacationWorkers().then(() => renderVacations());
-    }
-    if (button.dataset.view === "employeePaymentsView") {
-      initEmployeePaymentsListeners();
-      renderEmployeePayments();
-    }
-  });
-});
-
-ui.menuButtons.forEach((button) => {
   button.addEventListener("click", async () => {
-    setActiveView(button.dataset.view, ui);
-    updateMobileNavActive(button.dataset.view);
-    if (button.dataset.view === "vacationsView") {
-      populateVacationWorkers().then(() => renderVacations());
+    const viewId = button.dataset.view;
+    setActiveView(viewId, ui);
+    updateMobileNavActive(viewId);
+    
+    // Inicializaciones específicas por vista
+    if (viewId === "vacationsView") {
+      await populateVacationWorkers();
+      await renderVacations();
     }
-    if (button.dataset.view === "employeePaymentsView") {
-      renderEmployeePayments();
+    if (viewId === "employeePaymentsView") {
+      initEmployeePaymentsListeners();
+      await renderEmployeePayments();
     }
-    if (button.dataset.view === "summaryView") {
+    if (viewId === "summaryView") {
       await refreshAll();
     }
+    if (viewId === "classesView") {
+      await initializeClasses();
+    }
   });
-
-// Filtros
-
 });
 
 // Mobile navigation buttons
@@ -3911,6 +3902,15 @@ function formatDate(date) {
 }
 
 function formatDateForDisplay(date) {
+  // Formato compacto para el select: "6 abr"
+  return new Intl.DateTimeFormat('es-ES', {
+    day: 'numeric',
+    month: 'short'
+  }).format(date);
+}
+
+function formatDateForDisplayLong(date) {
+  // Formato largo si se necesita
   return new Intl.DateTimeFormat('es-ES', {
     weekday: 'long',
     day: 'numeric',
@@ -3930,50 +3930,91 @@ function getWeekDates(weekStart) {
 
 // Renderizado de opciones de semana
 function renderWeekOptions() {
-  if (!ui.weekSelect) return;
+  if (!ui.weekSelect) {
+    console.warn('weekSelect element not found');
+    return;
+  }
+  
+  console.log('renderWeekOptions called. weekSelect exists:', !!ui.weekSelect);
   
   const today = new Date();
   const options = [];
   
-  // Generar opciones de semana (4 semanas atrás a 8 semanas adelante)
-  for (let offset = -4; offset <= 8; offset++) {
+  // Generar opciones de semana centradas en el offset actual
+  // Esto asegura que siempre haya opciones válidas
+  const minOffset = selectedWeekOffset - 4;
+  const maxOffset = selectedWeekOffset + 8;
+  
+  for (let offset = minOffset; offset <= maxOffset; offset++) {
     const weekDate = new Date(today);
     weekDate.setDate(today.getDate() + (offset * 7));
     const weekStart = getWeekStart(weekDate);
     const weekEnd = getWeekEnd(weekDate);
     
-    const label = `${formatDateForDisplay(weekStart)} - ${formatDateForDisplay(weekEnd)}`;
+    // Formato compacto: "6 abr - 12 abr"
+    const startStr = formatDateForDisplay(weekStart);
+    const endStr = formatDateForDisplay(weekEnd);
+    const label = `${startStr} - ${endStr}`;
     options.push({ offset, label, weekStart, weekEnd });
   }
+  
+  console.log(`Generated ${options.length} week options. First option:`, options[0]?.label);
   
   ui.weekSelect.innerHTML = "";
   options.forEach(option => {
     const optionElement = document.createElement("option");
     optionElement.value = option.offset;
     optionElement.textContent = option.label;
+    if (option.offset === selectedWeekOffset) {
+      optionElement.selected = true;
+    }
     ui.weekSelect.appendChild(optionElement);
   });
   
-  // Seleccionar semana actual por defecto
-  selectedWeekOffset = 0;
-  ui.weekSelect.value = selectedWeekOffset;
-  
-  // Establecer fechas actuales
-  const currentOption = options.find(opt => opt.offset === selectedWeekOffset);
-  if (currentOption) {
-    currentWeekStart = currentOption.weekStart;
-    currentWeekEnd = currentOption.weekEnd;
+  console.log('Options added to select. Select has', ui.weekSelect.options.length, 'options');
+  console.log('Selected option index:', ui.weekSelect.selectedIndex);
+  if (ui.weekSelect.selectedIndex >= 0) {
+    console.log('Selected option text:', ui.weekSelect.options[ui.weekSelect.selectedIndex].text);
   }
+  
+  // Establecer fechas basadas en el offset seleccionado
+  const selectedOption = options.find(opt => opt.offset === selectedWeekOffset);
+  if (selectedOption) {
+    currentWeekStart = selectedOption.weekStart;
+    currentWeekEnd = selectedOption.weekEnd;
+  } else {
+    // Fallback: calcular fechas basadas en el offset
+    const weekDate = new Date(today);
+    weekDate.setDate(today.getDate() + (selectedWeekOffset * 7));
+    currentWeekStart = getWeekStart(weekDate);
+    currentWeekEnd = getWeekEnd(weekDate);
+  }
+  
+  console.log('Week options rendered. Offset:', selectedWeekOffset, 'Week:', currentWeekStart, 'to', currentWeekEnd);
 }
 
 // Cargar datos de clases
 async function loadClassesData() {
   try {
+    // Asegurarse de que las fechas estén inicializadas
+    if (!currentWeekStart || !currentWeekEnd) {
+      const today = new Date();
+      currentWeekStart = getWeekStart(today);
+      currentWeekEnd = getWeekEnd(today);
+      console.log('Initialized week dates in loadClassesData');
+    }
+    
     [classesData, teachersData, assignmentsData] = await Promise.all([
       getClasses(),
       getTeachers(),
       getClassAssignments(formatDate(currentWeekStart), formatDate(currentWeekEnd))
     ]);
+    
+    console.log('Classes data loaded:', { 
+      classes: classesData.length, 
+      teachers: teachersData.length, 
+      assignments: assignmentsData.length 
+    });
   } catch (error) {
     console.error("Error loading classes data:", error);
   }
@@ -4003,7 +4044,12 @@ function normalizeClassType(className) {
 
 // Renderizar tabla de horarios
 function renderScheduleTable() {
-  if (!ui.scheduleTableBody) return;
+  if (!ui.scheduleTableBody) {
+    console.warn('scheduleTableBody element not found');
+    return;
+  }
+  
+  console.log('Rendering schedule table. Classes:', classesData.length, 'Teachers:', teachersData.length, 'Assignments:', assignmentsData.length);
   
   // Horarios típicos del gimnasio
   const timeSlots = [
@@ -4087,6 +4133,8 @@ function renderScheduleTable() {
     
     ui.scheduleTableBody.appendChild(row);
   });
+  
+  console.log('Schedule table rendered with', timeSlots.length, 'time slots');
 }
 
 // Abrir modal de asignación
@@ -4429,15 +4477,18 @@ window.deleteTeacherConfirm = async function(teacherId) {
 
 // Refrescar vista de clases
 async function refreshClassesView() {
+  console.log('Refreshing classes view...');
   await loadClassesData(); // Esta función ya carga classes, teachers y assignments
   renderScheduleTable();
   renderTeachersList();
+  console.log('Classes view refreshed');
 }
 
 // Event listeners para clases
 
 on(ui.weekSelect, "change", async (event) => {
   selectedWeekOffset = parseInt(event.target.value);
+  console.log('Week select changed to offset:', selectedWeekOffset);
   const today = new Date();
   const weekDate = new Date(today);
   weekDate.setDate(today.getDate() + (selectedWeekOffset * 7));
@@ -4448,7 +4499,8 @@ on(ui.weekSelect, "change", async (event) => {
 
 on(ui.prevWeekBtn, "click", async () => {
   selectedWeekOffset--;
-  ui.weekSelect.value = selectedWeekOffset;
+  console.log('Previous week clicked. New offset:', selectedWeekOffset);
+  renderWeekOptions(); // Regenerar opciones para que incluyan el nuevo offset
   const today = new Date();
   const weekDate = new Date(today);
   weekDate.setDate(today.getDate() + (selectedWeekOffset * 7));
@@ -4459,7 +4511,8 @@ on(ui.prevWeekBtn, "click", async () => {
 
 on(ui.nextWeekBtn, "click", async () => {
   selectedWeekOffset++;
-  ui.weekSelect.value = selectedWeekOffset;
+  console.log('Next week clicked. New offset:', selectedWeekOffset);
+  renderWeekOptions(); // Regenerar opciones para que incluyan el nuevo offset
   const today = new Date();
   const weekDate = new Date(today);
   weekDate.setDate(today.getDate() + (selectedWeekOffset * 7));
@@ -4470,7 +4523,8 @@ on(ui.nextWeekBtn, "click", async () => {
 
 on(ui.currentWeekBtn, "click", async () => {
   selectedWeekOffset = 0;
-  ui.weekSelect.value = selectedWeekOffset;
+  console.log('Current week clicked. Offset reset to:', selectedWeekOffset);
+  renderWeekOptions(); // Regenerar opciones
   const today = new Date();
   currentWeekStart = getWeekStart(today);
   currentWeekEnd = getWeekEnd(today);
@@ -4782,8 +4836,31 @@ on(ui.bulkAssignExecute, "click", () => {
 
 // Inicialización de clases
 async function initializeClasses() {
+  if (!ui.weekSelect || !ui.scheduleTableBody) {
+    console.log('Elementos de clases no encontrados, saltando inicialización');
+    return;
+  }
+  
+  console.log('Inicializando vista de clases...');
+  console.log('weekSelect element:', ui.weekSelect);
+  console.log('weekSelect visible:', ui.weekSelect.offsetParent !== null);
+  
+  // Inicializar offset a 0 si no está definido
+  if (selectedWeekOffset === undefined || selectedWeekOffset === null) {
+    selectedWeekOffset = 0;
+  }
+  
+  // Renderizar opciones y cargar datos
   renderWeekOptions();
+  
+  console.log('After renderWeekOptions:');
+  console.log('  weekSelect options count:', ui.weekSelect.options.length);
+  console.log('  weekSelect innerHTML length:', ui.weekSelect.innerHTML.length);
+  console.log('  weekSelect value:', ui.weekSelect.value);
+  
   await refreshClassesView();
+  
+  console.log('Vista de clases inicializada');
 }
 
 // Inicialización del menú desplegable

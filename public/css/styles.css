@@ -1423,6 +1423,18 @@ select:focus {
   min-width: 120px;
 }
 
+.filter-row .week-select {
+  min-width: 250px;
+  max-width: 350px;
+  flex: 1;
+}
+
+.filter-row label[for="weekSelect"] {
+  font-weight: 600;
+  color: var(--text);
+  margin-right: 8px;
+}
+
 .athlete-list-header {
   flex-wrap: wrap;
   gap: 12px;

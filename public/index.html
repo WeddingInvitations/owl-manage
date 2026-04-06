@@ -586,6 +586,291 @@
           </div>
         </section>
 
+        <section id="checkinsView" class="view hidden">
+          <div class="card">
+            <h2>Control de Fichajes</h2>
+            <div class="checkin-info">
+              <div class="checkin-user">
+                <label>Usuario</label>
+                <div class="value" id="checkinUserName">-</div>
+                <button id="checkinEditProfileBtn" class="btn ghost small">Editar perfil</button>
+              </div>
+              <div class="checkin-datetime">
+                <label>Fecha y hora</label>
+                <div class="value" id="checkinDateTime">-</div>
+              </div>
+            </div>
+            
+            <div id="checkinStatus">
+              <div id="checkinTimer">
+                <p>Tiempo trabajado hoy: <strong id="checkinInTime">00:00</strong></p>
+                <button id="checkinOpenBtn" class="btn">Abrir fichaje</button>
+                <button id="checkinCloseBtn" class="btn danger hidden">Cerrar fichaje</button>
+              </div>
+              <div id="checkinClosedStatus" class="hidden">
+                <p><strong>Entrada:</strong> <span id="checkinClosedInTime">-</span></p>
+                <p><strong>Salida:</strong> <span id="checkinClosedOutTime">-</span></p>
+                <p><strong>Duración:</strong> <span id="checkinClosedDuration">-</span></p>
+              </div>
+            </div>
+            
+            <div id="checkinProfileEdit" class="checkin-profile-edit hidden">
+              <h3>Editar perfil</h3>
+              <form id="checkinProfileForm">
+                <label>
+                  Nombre
+                  <input id="checkinProfileFirstName" type="text" placeholder="Tu nombre" />
+                </label>
+                <label>
+                  Apellidos
+                  <input id="checkinProfileLastName" type="text" placeholder="Tus apellidos" />
+                </label>
+                <div class="btn-group">
+                  <button type="submit" class="btn">Guardar</button>
+                  <button id="checkinProfileCancel" type="button" class="btn ghost">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="checkinAdminSection" class="card hidden">
+            <div class="detail-header">
+              <h3>Administración de Fichajes</h3>
+              <div class="filter-row">
+                <select id="checkinAdminMonthSelect"></select>
+                <button id="checkinDownloadBtn" class="btn ghost small">📥 Exportar</button>
+              </div>
+            </div>
+            <div class="summary">
+              <div>
+                <p class="label">Horas totales</p>
+                <p id="checkinAdminTotalHours" class="value">0:00</p>
+              </div>
+              <div>
+                <p class="label">Fichajes</p>
+                <p id="checkinAdminTotalCount" class="value">0</p>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <h4>Fichajes del mes</h4>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Usuarios</th>
+                    <th>Entrada</th>
+                    <th>Salida</th>
+                    <th>Duración</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="checkinAdminList"></tbody>
+              </table>
+            </div>
+            <div class="table-responsive">
+              <h4>Resumen por trabajador</h4>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Trabajador</th>
+                    <th>Fichajes</th>
+                    <th>Horas totales</th>
+                    <th>Media por día</th>
+                  </tr>
+                </thead>
+                <tbody id="checkinAdminSummaryList"></tbody>
+              </table>
+            </div>
+          </div>
+          
+          <div id="checkinEditModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Editar fichaje</h3>
+                <button id="checkinEditClose" class="btn ghost small">Cerrar</button>
+              </div>
+              <form id="checkinEditForm" class="stack">
+                <input id="checkinEditId" type="hidden" />
+                <div class="checkin-edit-info">
+                  <p><strong>Trabajador:</strong> <span id="checkinEditWorker">-</span></p>
+                  <p><strong>Fecha original:</strong> <span id="checkinEditOriginalDate">-</span></p>
+                </div>
+                <label>
+                  Hora de entrada
+                  <input id="checkinEditIn" type="datetime-local" required />
+                </label>
+                <label>
+                  Hora de salida
+                  <input id="checkinEditOut" type="datetime-local" />
+                </label>
+                <label>
+                  Motivo de la modificación
+                  <textarea id="checkinEditReason" rows="3" placeholder="Explica por qué modificas este fichaje..." required></textarea>
+                </label>
+                <div class="btn-group">
+                  <button type="submit" class="btn">Guardar cambios</button>
+                  <button id="checkinEditCancelBtn" type="button" class="btn ghost">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          
+          <div id="checkinHistoryModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Historial de modificaciones</h3>
+                <button id="checkinHistoryClose" class="btn ghost small">Cerrar</button>
+              </div>
+              <div class="checkin-history-info">
+                <div><strong>Trabajador:</strong> <span id="checkinHistoryWorker">-</span></div>
+                <div><strong>Entrada original:</strong> <span id="checkinHistoryOriginal">-</span></div>
+                <div><strong>Entrada actual:</strong> <span id="checkinHistoryCurrent">-</span></div>
+                <div><strong>Salida:</strong> <span id="checkinHistoryOut">-</span></div>
+              </div>
+              <div id="checkinHistoryDevice" class="checkin-device-info">
+                <h4>Información del dispositivo</h4>
+                <div id="checkinHistoryDeviceDetails"></div>
+              </div>
+              <h4>Modificaciones</h4>
+              <ul id="checkinHistoryList" class="list"></ul>
+              <p id="checkinHistoryEmpty" class="muted hidden">No hay modificaciones registradas</p>
+            </div>
+          </div>
+          
+          <div id="checkinDownloadModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Exportar fichajes</h3>
+                <button id="checkinDownloadClose" class="btn ghost small">Cerrar</button>
+              </div>
+              <div class="stack">
+                <label>
+                  Tipo de exportación
+                  <select id="checkinDownloadType">
+                    <option value="monthly">Mensual</option>
+                    <option value="yearly">Anual</option>
+                  </select>
+                </label>
+                <div id="checkinDownloadMonthly">
+                  <label>
+                    Mes
+                    <input id="checkinDownloadMonth" type="month" />
+                  </label>
+                </div>
+                <div id="checkinDownloadYearly" class="hidden">
+                  <label>
+                    Año
+                    <input id="checkinDownloadYear" type="number" min="2020" max="2030" />
+                  </label>
+                </div>
+                <label>
+                  Trabajador (opcional)
+                  <select id="checkinDownloadWorker">
+                    <option value="">Todos</option>
+                  </select>
+                </label>
+                <label>
+                  Formato
+                  <select id="checkinDownloadFormat">
+                    <option value="csv">CSV</option>
+                    <option value="xlsx">Excel (XLSX)</option>
+                  </select>
+                </label>
+                <button id="checkinDownloadConfirm" class="btn">Descargar</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="vacationsView" class="view hidden">
+          <div class="card">
+            <div class="detail-header">
+              <h2>Calendario de Vacaciones</h2>
+              <div class="filter-row">
+                <button id="vacationMonthPrev" class="btn ghost small">◀</button>
+                <input id="vacationMonth" type="month" />
+                <button id="vacationMonthNext" class="btn ghost small">▶</button>
+                <select id="vacationWorkerSelect">
+                  <option value="">Yo</option>
+                </select>
+                <button id="vacationAddBtn" class="btn">Añadir vacaciones</button>
+              </div>
+            </div>
+            <div id="vacationCalendar"></div>
+            <div id="vacationLegend"></div>
+            <div id="vacationSummary" class="summary">
+              <div>
+                <p class="label">Días totales</p>
+                <p id="vacationTotalDays" class="value">0</p>
+              </div>
+              <div>
+                <p class="label">Períodos</p>
+                <p id="vacationTotalPeriods" class="value">0</p>
+              </div>
+              <div>
+                <p class="label">Año</p>
+                <p id="vacationCurrentYear" class="value">2026</p>
+              </div>
+            </div>
+            <h3>Lista de vacaciones</h3>
+            <ul id="vacationList" class="list"></ul>
+          </div>
+          
+          <div id="vacationModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Añadir vacaciones</h3>
+                <button id="vacationModalClose" class="btn ghost small">Cerrar</button>
+              </div>
+              <form id="vacationForm" class="stack">
+                <input id="vacationDisplayName" type="hidden" />
+                <label>
+                  Fecha inicio
+                  <input id="vacationStart" type="date" required />
+                </label>
+                <label>
+                  Fecha fin
+                  <input id="vacationEnd" type="date" required />
+                </label>
+                <label>
+                  Motivo (opcional)
+                  <input id="vacationReason" type="text" placeholder="Ej: Vacaciones de verano" />
+                </label>
+                <div class="btn-group">
+                  <button type="submit" class="btn">Guardar</button>
+                  <button id="vacationCancelBtn" type="button" class="btn ghost">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          
+          <div id="vacationEditModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Editar vacaciones</h3>
+                <button id="vacationEditModalClose" class="btn ghost small">Cerrar</button>
+              </div>
+              <form id="vacationEditForm" class="stack">
+                <input id="vacationEditId" type="hidden" />
+                <input id="vacationEditUserId" type="hidden" />
+                <input id="vacationEditDisplayName" type="hidden" />
+                <label>
+                  Fecha inicio
+                  <input id="vacationEditStart" type="date" required />
+                </label>
+                <label>
+                  Fecha fin
+                  <input id="vacationEditEnd" type="date" required />
+                </label>
+                <label>
+                  Motivo (opcional)
+                  <input id="vacationEditReason" type="text" />
+                </label>
+                <button type="submit" class="btn">Guardar cambios</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
         <section id="trainingsView" class="view hidden">
           <div class="card">
             <h2>Entrenamientos planificados</h2>
@@ -950,10 +1235,8 @@
 
             <!-- Selector de semana -->
             <div class="filter-row">
-              <label>
-                Semana:
-                <select id="weekSelect"></select>
-              </label>
+              <label for="weekSelect">Semana:</label>
+              <select id="weekSelect" class="week-select"></select>
               <button id="prevWeekBtn" class="btn ghost small">← Anterior</button>
               <button id="nextWeekBtn" class="btn ghost small">Siguiente →</button>
               <button id="currentWeekBtn" class="btn ghost small">Semana actual</button>
