@@ -1551,6 +1551,47 @@ select:focus {
   width: 100%;
   text-align: center;
 }
+
+/* En escritorio mostramos tabla clásica con cabeceras visibles */
+@media (min-width: 769px) {
+  .athlete-table-mobile {
+    display: table !important;
+    width: 100%;
+  }
+
+  .athlete-table-mobile thead {
+    display: table-header-group !important;
+  }
+
+  .athlete-table-mobile tbody {
+    display: table-row-group !important;
+  }
+
+  .athlete-table-mobile tr {
+    display: table-row !important;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    gap: 0;
+    min-height: 0;
+  }
+
+  .athlete-table-mobile td,
+  .athlete-table-mobile th {
+    display: table-cell;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+  }
+
+  .athlete-table-mobile td:nth-child(7) {
+    display: table-cell;
+  }
+
+  .athlete-table-mobile td:nth-child(8) {
+    margin-left: 0;
+  }
+}
+
 /* Fin forzado layout tipo tarjeta */
 
 @media (max-width: 768px) {
