@@ -1877,7 +1877,7 @@ ui.menuButtons.forEach((button) => {
 });
 
 ui.menuButtons.forEach((button) => {
-  button.addEventListener("click", () => {
+  button.addEventListener("click", async () => {
     setActiveView(button.dataset.view, ui);
     updateMobileNavActive(button.dataset.view);
     if (button.dataset.view === "vacationsView") {
@@ -1885,6 +1885,9 @@ ui.menuButtons.forEach((button) => {
     }
     if (button.dataset.view === "employeePaymentsView") {
       renderEmployeePayments();
+    }
+    if (button.dataset.view === "summaryView") {
+      await refreshAll();
     }
   });
 
