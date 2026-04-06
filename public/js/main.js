@@ -5164,7 +5164,7 @@ function initializeMobileMenuAndSearch() {
 
   // Global search
   const performSearch = () => {
-    const query = ui.globalSearch.value.toLowerCase().trim();
+    const query = (ui.globalSearch?.value || "").toLowerCase().trim();
     // For now, filter the current view's table if it exists
     const currentView = document.querySelector('.view:not(.hidden)');
     if (currentView) {
