@@ -831,8 +831,12 @@ async function refreshAthleteMonthly() {
         </select>
       </td>
       <td><span data-role="price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
-      <td>${discount > 0 ? `${discount}%` : "-"}</td>
-      <td><span title="${discountReason}">${discountReason || "-"}</span></td>
+      <td>
+        <input type="number" data-role="discount" data-id="${athlete.id}" value="${discount}" min="0" max="100" step="0.1" style="width: 60px;" ${paid ? "disabled" : ""} />
+      </td>
+      <td>
+        <input type="text" data-role="discount-reason" data-id="${athlete.id}" value="${discountReason}" placeholder="Motivo" style="width: 120px;" ${paid ? "disabled" : ""} />
+      </td>
       <td>
         <select data-role="paid" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
           <option value="SI" ${paid ? "selected" : ""}>SI</option>
@@ -1188,8 +1192,12 @@ async function refreshAcroMonthly() {
         </select>
       </td>
       <td><span data-role="acro-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
-      <td>${discount > 0 ? `${discount}%` : "-"}</td>
-      <td><span title="${discountReason}">${discountReason || "-"}</span></td>
+      <td>
+        <input type="number" data-role="acro-discount" data-id="${athlete.id}" value="${discount}" min="0" max="100" step="0.1" style="width: 60px;" ${paid ? "disabled" : ""} />
+      </td>
+      <td>
+        <input type="text" data-role="acro-discount-reason" data-id="${athlete.id}" value="${discountReason}" placeholder="Motivo" style="width: 120px;" ${paid ? "disabled" : ""} />
+      </td>
       <td>
         <select data-role="acro-paid" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
           <option value="SI" ${paid ? "selected" : ""}>SI</option>
@@ -1969,15 +1977,20 @@ if (ui.athleteList) {
       const row = button.closest("tr");
       const tariffSelect = row.querySelector("[data-role='tariff']");
       const paidSelect = row.querySelector("[data-role='paid']");
+      const discountInput = row.querySelector("[data-role='discount']");
+      const discountReasonInput = row.querySelector("[data-role='discount-reason']");
       
       if (!tariffSelect || !paidSelect) return;
       
       const newTariff = tariffSelect.value;
       const newPaid = paidSelect.value === "SI";
+      const newDiscount = discountInput ? Number(discountInput.value) || 0 : 0;
+      const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
       
-      // Calculate new price based on tariff
+      // Calculate price based on tariff and apply discount
       const plan = tariffPlanMap.get(newTariff) || tariffPlanMap.get("8/mes");
-      const newPrice = plan.priceTotal;
+      const basePrice = plan.priceTotal;
+      const newPrice = basePrice * (1 - newDiscount / 100);
       
       try {
         button.textContent = "Guardando...";
@@ -1997,9 +2010,9 @@ if (ui.athleteList) {
               athleteName,
               tariff: newTariff,
               price: newPrice,
-              basePrice: newPrice,
-              discount: 0,
-              discountReason: "",
+              basePrice: basePrice,
+              discount: newDiscount,
+              discountReason: newDiscountReason,
               paid: newPaid,
               active: newPaid,
               durationMonths: plan.durationMonths,
@@ -2049,15 +2062,20 @@ if (ui.acroList) {
       const row = button.closest("tr");
       const tariffSelect = row.querySelector("[data-role='acro-tariff']");
       const paidSelect = row.querySelector("[data-role='acro-paid']");
+      const discountInput = row.querySelector("[data-role='acro-discount']");
+      const discountReasonInput = row.querySelector("[data-role='acro-discount-reason']");
       
       if (!tariffSelect || !paidSelect) return;
       
       const newTariff = tariffSelect.value;
       const newPaid = paidSelect.value === "SI";
+      const newDiscount = discountInput ? Number(discountInput.value) || 0 : 0;
+      const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
       
-      // Calculate new price based on tariff
+      // Calculate price based on tariff and apply discount
       const plan = acroTariffPlanMap.get(newTariff) || acroTariffPlanMap.get("4/mes");
-      const newPrice = plan.priceTotal;
+      const basePrice = plan.priceTotal;
+      const newPrice = basePrice * (1 - newDiscount / 100);
       
       try {
         button.textContent = "Guardando...";
@@ -2077,9 +2095,9 @@ if (ui.acroList) {
               athleteName,
               tariff: newTariff,
               price: newPrice,
-              basePrice: newPrice,
-              discount: 0,
-              discountReason: "",
+              basePrice: basePrice,
+              discount: newDiscount,
+              discountReason: newDiscountReason,
               paid: newPaid,
               active: newPaid,
               durationMonths: plan.durationMonths,
