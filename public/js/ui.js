@@ -356,6 +356,11 @@ export const ui = {
   mobileNavButtons: Array.from(document.querySelectorAll(".mobile-nav-btn")),
   moreMenu: $("moreMenu"),
   moreMenuClose: $("moreMenuClose"),
+  // Menu toggle and search
+  menuToggle: $("menuToggle"),
+  menuOverlay: $("menuOverlay"),
+  globalSearch: $("globalSearch"),
+  searchBtn: $("searchBtn"),
 };
 
 // Caja

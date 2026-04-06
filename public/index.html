@@ -29,9 +29,20 @@
       </div>
       <div class="header-right">
         <div class="header-controls">
+          <button id="menuToggle" class="btn ghost" title="Menú">
+            <span>☰</span>
+          </button>
           <button id="themeToggle" class="btn ghost theme-btn" title="Cambiar tema">
             <span class="theme-icon">🌙</span>
           </button>
+          <div class="search-container">
+            <input id="globalSearch" type="text" placeholder="Buscar..." />
+            <button id="searchBtn" class="btn ghost" title="Buscar">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="auth-status">
           <div class="user-badge">
@@ -42,6 +53,8 @@
         </div>
       </div>
     </header>
+
+    <div class="overlay" id="menuOverlay"></div>
 
     <section id="mainShell" class="main-shell hidden">
       <nav class="side-menu">

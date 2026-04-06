@@ -4830,3 +4830,49 @@ if (document.readyState === 'loading') {
   initializeMenuToggle();
 }
 
+// Inicialización del menú móvil y búsqueda
+function initializeMobileMenuAndSearch() {
+  // Menu toggle
+  ui.menuToggle?.addEventListener('click', () => {
+    const sideMenu = document.querySelector('.side-menu');
+    const overlay = ui.menuOverlay;
+    sideMenu.classList.toggle('open');
+    overlay.classList.toggle('show');
+  });
+
+  // Close menu on overlay click
+  ui.menuOverlay?.addEventListener('click', () => {
+    const sideMenu = document.querySelector('.side-menu');
+    const overlay = ui.menuOverlay;
+    sideMenu.classList.remove('open');
+    overlay.classList.remove('show');
+  });
+
+  // Global search
+  const performSearch = () => {
+    const query = ui.globalSearch.value.toLowerCase().trim();
+    // For now, filter the current view's table if it exists
+    const currentView = document.querySelector('.view:not(.hidden)');
+    if (currentView) {
+      const table = currentView.querySelector('table');
+      if (table) {
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+          const text = row.textContent.toLowerCase();
+          row.style.display = text.includes(query) ? '' : 'none';
+        });
+      }
+    }
+  };
+
+  ui.globalSearch?.addEventListener('input', performSearch);
+  ui.searchBtn?.addEventListener('click', performSearch);
+}
+
+// Inicializar menú móvil y búsqueda
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeMobileMenuAndSearch);
+} else {
+  initializeMobileMenuAndSearch();
+}
+

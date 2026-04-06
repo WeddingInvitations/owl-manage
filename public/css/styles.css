@@ -118,6 +118,38 @@ div, span, p, li, td, th, label, button, input, select, textarea {
   gap: 8px;
 }
 
+#menuToggle {
+  display: none; /* Hidden on desktop */
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 8px;
+  transition: border-color 0.3s;
+}
+
+.search-container:focus-within {
+  border-color: var(--primary);
+}
+
+#globalSearch {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+  padding: 4px;
+  width: 150px;
+}
+
+#globalSearch::placeholder {
+  color: var(--muted);
+}
+
 .auth-status {
   display: flex;
   align-items: center;
@@ -2982,6 +3014,47 @@ select:focus {
   white-space: nowrap;
 }
 
+/* Menu toggle and mobile styles */
+@media (max-width: 768px) {
+  #menuToggle {
+    display: flex;
+  }
+
+  .side-menu {
+    position: fixed;
+    top: 0;
+    left: -240px;
+    width: 240px;
+    height: 100vh;
+    z-index: 1001;
+    transition: left 0.3s ease;
+    box-shadow: 2px 0 10px var(--shadow);
+  }
+
+  .side-menu.open {
+    left: 0;
+  }
+
+  .main-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+  }
+
+  .overlay.show {
+    display: block;
+  }
+}
+
 /* Responsive para asignación masiva */
 @media (max-width: 768px) {
   .bulk-assign-modal .modal-content {
@@ -3018,17 +3091,17 @@ select:focus {
 }
 
 .view {
-  animation: fadeIn 0.3s ease-in-out;
+  animation: slideIn 0.3s ease-in-out;
 }
 
-@keyframes fadeIn {
+@keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateX(20px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
 }
 
