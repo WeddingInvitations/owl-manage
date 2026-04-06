@@ -128,85 +128,84 @@ let currentAthletes = [];
 let currentAcroAthletes = [];
 
 window.debugAuth = async function() {
-  console.log('🔍 DEBUG: Estado de autenticación avanzado');
-  
+  console.log('DEBUG: Estado de autenticacion avanzado');
+
   try {
     const currentUser = auth.currentUser;
-    console.log('👤 Usuario Firebase:', currentUser);
-    
+    console.log('Usuario Firebase:', currentUser);
+
     if (currentUser) {
-      console.log('📧 Email:', currentUser.email);
-      console.log('🆔 UID:', currentUser.uid);
-      
+      console.log('Email:', currentUser.email);
+      console.log('UID:', currentUser.uid);
+
       // Verificar documento de usuario en Firestore
       const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
-      
+
       try {
         const userDocRef = doc(db, 'users', currentUser.uid);
         const userDocSnap = await getDoc(userDocRef);
-        
+
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
-          console.log('👑 Datos del usuario:', userData);
-          console.log('🎭 Role:', userData.role);
-          console.log('📅 Creado:', userData.createdAt);
+          console.log('Datos del usuario:', userData);
+          console.log('Role:', userData.role);
+          console.log('Creado:', userData.createdAt);
         } else {
-          console.log('❌ No se encontró documento de usuario en Firestore');
-          console.log('🔧 Creando documento de usuario...');
-          
+          console.log('No se encontro documento de usuario en Firestore');
+          console.log('Creando documento de usuario...');
+
           // Crear documento de usuario
           const { setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
-          
+
           await setDoc(userDocRef, {
             email: currentUser.email,
             displayName: currentUser.displayName || '',
-            role: 'OWNER', // Asignar rol OWNER por defecto
+            role: 'OWNER',
             createdAt: serverTimestamp(),
             mustChangePassword: false
           });
-          
-          console.log('✅ Documento de usuario creado con rol OWNER');
+
+          console.log('Documento de usuario creado con rol OWNER');
         }
       } catch (error) {
-        console.log('❌ Error con documento de usuario:', error);
+        console.log('Error con documento de usuario:', error);
       }
-      
+
       // Test de acceso a colecciones
       try {
-        console.log('🧪 Probando acceso a datos...');
-        
+        console.log('Probando acceso a datos...');
+
         const { collection, getDocs, limit, query } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
-        
+
         const paymentsQuery = query(collection(db, 'payments'), limit(5));
         const paymentsSnapshot = await getDocs(paymentsQuery);
-        console.log('💰 Payments encontrados:', paymentsSnapshot.size);
-        paymentsSnapshot.forEach(doc => {
-          console.log('💰 Payment:', doc.id, doc.data());
+        console.log('Payments encontrados:', paymentsSnapshot.size);
+        paymentsSnapshot.forEach((docItem) => {
+          console.log('Payment:', docItem.id, docItem.data());
         });
-        
+
         const expensesQuery = query(collection(db, 'expenses'), limit(5));
         const expensesSnapshot = await getDocs(expensesQuery);
-        console.log('💸 Expenses encontrados:', expensesSnapshot.size);
-        expensesSnapshot.forEach(doc => {
-          console.log('💸 Expense:', doc.id, doc.data());
+        console.log('Expenses encontrados:', expensesSnapshot.size);
+        expensesSnapshot.forEach((docItem) => {
+          console.log('Expense:', docItem.id, docItem.data());
         });
-        
+
         const athletesQuery = query(collection(db, 'athletes'), limit(5));
         const athletesSnapshot = await getDocs(athletesQuery);
-        console.log('🏃 Athletes encontrados:', athletesSnapshot.size);
-        athletesSnapshot.forEach(doc => {
-          console.log('🏃 Athlete:', doc.id, doc.data());
+        console.log('Athletes encontrados:', athletesSnapshot.size);
+        athletesSnapshot.forEach((docItem) => {
+          console.log('Athlete:', docItem.id, docItem.data());
         });
-        
       } catch (error) {
-        console.log('❌ Error accediendo a datos:', error);
-        console.log('📝 Detalles del error:', error.code, error.message);
+        console.log('Error accediendo a datos:', error);
+        console.log('Detalles del error:', error.code, error.message);
       }
     } else {
-      console.log('❌ No hay usuario autenticado');
+      console.log('No hay usuario autenticado');
     }
   } catch (error) {
-    console.log('❌ Error general en debug:', error);
+    console.log('Error general en debug:', error);
   }
 };
 
@@ -874,7 +873,7 @@ async function refreshAthleteMonthly() {
       <td>${athlete.name}</td>
       <td>
         <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
-        <select data-role="tariff" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
+        <select data-role="tariff" data-id="${athlete.id}">
           ${tariffPlans
             .map(
               (option) =>
@@ -888,7 +887,7 @@ async function refreshAthleteMonthly() {
         <span data-role="discount-display" data-id="${athlete.id}">${displayDiscount}%</span>
       </td>
       <td>
-        <select data-role="discount-reason" data-id="${athlete.id}" style="width: 120px;" ${paid ? "disabled" : ""}>
+        <select data-role="discount-reason" data-id="${athlete.id}" style="width: 120px;">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
           <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
           <option value="Promoción" ${discountReason === "Promoción" ? "selected" : ""}>Promoción</option>
@@ -898,19 +897,16 @@ async function refreshAthleteMonthly() {
       </td>
       <td><span data-role="final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
       <td>
-        <select data-role="paid" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
+        <select data-role="paid" data-id="${athlete.id}">
           <option value="SI" ${paid ? "selected" : ""}>SI</option>
           <option value="NO" ${!paid ? "selected" : ""}>NO</option>
         </select>
       </td>
       <td>
-        <select data-role="status" data-id="${athlete.id}" style="width: 100px;">
-          <option value="SI" ${paid ? "selected" : ""}>Pagado</option>
-          <option value="NO" ${!paid ? "selected" : ""}>No Pagado</option>
-        </select>
+        <span data-role="status" data-id="${athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
       </td>
       <td>
-        <button class="btn small" data-role="save" data-id="${athlete.id}" data-name="${athlete.name}" ${paid ? "disabled" : ""}>
+        <button class="btn small" data-role="save" data-id="${athlete.id}" data-name="${athlete.name}">
           Guardar
         </button>
       </td>
@@ -1274,7 +1270,7 @@ async function refreshAcroMonthly() {
       <td>${athlete.name || "(Sin nombre)"}</td>
       <td>
         <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
-        <select data-role="acro-tariff" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
+        <select data-role="acro-tariff" data-id="${athlete.id}">
           ${acroTariffPlans
             .map(
               (option) =>
@@ -1288,7 +1284,7 @@ async function refreshAcroMonthly() {
         <span data-role="acro-discount-display" data-id="${athlete.id}">${displayDiscount}%</span>
       </td>
       <td>
-        <select data-role="acro-discount-reason" data-id="${athlete.id}" style="width: 120px;" ${paid ? "disabled" : ""}>
+        <select data-role="acro-discount-reason" data-id="${athlete.id}" style="width: 120px;">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
           <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
           <option value="Promoción" ${discountReason === "Promoción" ? "selected" : ""}>Promoción</option>
@@ -1298,19 +1294,16 @@ async function refreshAcroMonthly() {
       </td>
       <td><span data-role="acro-final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
       <td>
-        <select data-role="acro-paid" data-id="${athlete.id}" ${paid ? "disabled" : ""}>
+        <select data-role="acro-paid" data-id="${athlete.id}">
           <option value="SI" ${paid ? "selected" : ""}>SI</option>
           <option value="NO" ${!paid ? "selected" : ""}>NO</option>
         </select>
       </td>
       <td>
-        <select data-role="acro-status" data-id="${athlete.id}" style="width: 100px;">
-          <option value="SI" ${paid ? "selected" : ""}>Pagado</option>
-          <option value="NO" ${!paid ? "selected" : ""}>No Pagado</option>
-        </select>
+        <span data-role="acro-status" data-id="${athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
       </td>
       <td>
-        <button class="btn small" data-role="acro-save" data-id="${athlete.id}" data-name="${athlete.name || ""}" ${paid ? "disabled" : ""}>
+        <button class="btn small" data-role="acro-save" data-id="${athlete.id}" data-name="${athlete.name || ""}">
           Guardar
         </button>
       </td>
@@ -2128,13 +2121,13 @@ if (ui.athleteList) {
       // Get current values from the row
       const row = button.closest("tr");
       const tariffSelect = row.querySelector("[data-role='tariff']");
-      const statusSelect = row.querySelector("[data-role='status']");
+      const paidSelect = row.querySelector("[data-role='paid']");
       const discountReasonInput = row.querySelector("[data-role='discount-reason']");
       
-      if (!tariffSelect || !statusSelect) return;
+      if (!tariffSelect || !paidSelect) return;
       
       const newTariff = tariffSelect.value;
-      const newPaid = statusSelect.value === "SI";
+      const newPaid = paidSelect.value === "SI";
       const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
       let newDiscount = 0;
       if (newDiscountReason === 'Familiar') newDiscount = 10;
@@ -2149,7 +2142,7 @@ if (ui.athleteList) {
       try {
         button.textContent = "Guardando...";
         button.disabled = true;
-        
+
         // Update athlete month data with multi-month logic like in modal
         const monthKey = selectedAthleteListMonth || selectedAthleteMonth;
         const duration = plan.durationMonths || 1;
@@ -2215,13 +2208,13 @@ if (ui.acroList) {
       // Get current values from the row
       const row = button.closest("tr");
       const tariffSelect = row.querySelector("[data-role='acro-tariff']");
-      const statusSelect = row.querySelector("[data-role='acro-status']");
+      const paidSelect = row.querySelector("[data-role='acro-paid']");
       const discountReasonInput = row.querySelector("[data-role='acro-discount-reason']");
       
-      if (!tariffSelect || !statusSelect) return;
+      if (!tariffSelect || !paidSelect) return;
       
       const newTariff = tariffSelect.value;
-      const newPaid = statusSelect.value === "SI";
+      const newPaid = paidSelect.value === "SI";
       const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
       let newDiscount = 0;
       if (newDiscountReason === 'Familiar') newDiscount = 10;
