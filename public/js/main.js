@@ -3016,6 +3016,23 @@ function downloadAcroTemplate() {
   URL.revokeObjectURL(url);
 }
 
+function downloadHalteTemplate() {
+  const headers = ["nombre", "tarifa", "pagado", "precio", "descuento", "motivo_descuento"];
+  const exampleRow = ["Juan Pérez", "Pequeña", "NO", "30", "15", "Familiar"];
+  
+  const csv = [headers, exampleRow]
+    .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+  
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "plantilla-halterofilia.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function parsePaymentExpenseCsvRows(content) {
   const lines = content
     .split(/\r?\n/)
@@ -4688,6 +4705,116 @@ on(ui.acroCsvForm, "submit", async (event) => {
   }
 });
 
+// ========== HALTEROFILIA EVENT LISTENERS ==========
+
+on(ui.halteForm, "submit", async (event) => {
+  event.preventDefault();
+  const rawName = ui.halteName.value.trim();
+  if (!rawName) return;
+  
+  const athletes = await getHalteAthletes();
+  const existing = athletes.find(
+    (athlete) => athlete.name?.toLowerCase() === rawName.toLowerCase()
+  );
+  const athleteId = existing
+    ? existing.id
+    : await createHalteAthlete(rawName, currentUser?.uid);
+  const athleteName = existing?.name || rawName;
+  const tariff = ui.halteTariff.value;
+  const plan = halteTariffPlanMap.get(tariff) || halteTariffPlanMap.get("Pequeña");
+  const basePrice = plan.priceTotal;
+  const discountReason = ui.halteDiscountReason.value;
+  let discount = parseFloat(ui.halteDiscount.value) || 0;
+  const finalPrice = parseFloat(ui.halteFinalPrice.value) || basePrice;
+  const paid = ui.haltePaid.value;
+  const monthKey = ui.haltePaymentMonth.value || selectedHaltePaymentMonth || getMonthKey(new Date());
+
+  if (athleteId) {
+    await upsertHalteAthleteMonth(
+      athleteId,
+      monthKey,
+      {
+        name: athleteName,
+        tariff,
+        price: basePrice,
+        discount,
+        discountReason,
+        finalPrice,
+        paid,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      currentUser?.uid
+    );
+  }
+  
+  ui.halteForm.reset();
+  ui.halteDiscount.value = 0;
+  ui.halteDiscountReason.value = "Ninguno";
+  setHaltePriceFromTariff();
+  renderHaltePaymentMonthOptions();
+  if (ui.halteModal) {
+    ui.halteModal.classList.add("hidden");
+  }
+  await refreshHalteMonthly();
+});
+
+on(ui.halteTariff, "change", () => {
+  setHaltePriceFromTariff();
+});
+
+on(ui.halteDiscountReason, "change", () => {
+  const reason = ui.halteDiscountReason.value;
+  let discountValue = 0;
+  if (reason === 'Familiar') discountValue = 15;
+  else if (reason === 'Funcionario') discountValue = 10;
+  else if (reason === 'Mañanas') discountValue = 10;
+  ui.halteDiscount.value = discountValue;
+  calculateHalteFinalPrice();
+});
+
+on(ui.halteDiscount, "input", () => {
+  calculateHalteFinalPrice();
+});
+
+on(ui.halteModalOpen, "click", () => {
+  ui.halteModal?.classList.remove("hidden");
+});
+
+on(ui.halteModalClose, "click", () => {
+  ui.halteModal?.classList.add("hidden");
+});
+
+on(ui.halteCsvOpen, "click", () => {
+  renderHalteCsvMonthOptions();
+  ui.halteCsvModal?.classList.remove("hidden");
+});
+
+on(ui.halteCsvClose, "click", () => {
+  ui.halteCsvModal?.classList.add("hidden");
+});
+
+on(ui.halteCsvMonth, "change", (event) => {
+  selectedHalteCsvMonth = event.target.value;
+});
+
+on(ui.halteCsvForm, "submit", async (event) => {
+  event.preventDefault();
+  if (!ui.halteCsvFile?.files?.length) return;
+  ui.halteCsvStatus.textContent = "Importando...";
+  const monthKey = ui.halteCsvMonth?.value || selectedHalteCsvMonth || getMonthKey(new Date());
+  try {
+    const processed = await importHalteAthletesFromCsv(ui.halteCsvFile.files[0], monthKey);
+    ui.halteCsvStatus.textContent = `Importados ${processed} atletas.`;
+    ui.halteCsvForm.reset();
+    renderHalteCsvMonthOptions();
+    ui.halteCsvModal?.classList.add("hidden");
+    await refreshHalteMonthly();
+  } catch (error) {
+    ui.halteCsvStatus.textContent = `Error: ${error.message || error}`;
+  }
+});
+
 // ========== MONTH FILTER EVENT LISTENERS ==========
 
 // Athletes - Month filters
@@ -4734,6 +4861,28 @@ on(ui.acroPaidFilter, "change", async (event) => {
   await refreshAcroMonthly();
 });
 
+// Halterofilia - Month filters  
+on(ui.halteMonthSelect, "change", async (event) => {
+  selectedHalteMonth = event.target.value;
+  await refreshHalteMonthly();
+});
+
+on(ui.halteListMonthSelect, "change", async (event) => {
+  selectedHalteListMonth = event.target.value;
+  await refreshHalteMonthly();
+});
+
+// Halterofilia - Search and paid filter
+on(ui.halteSearch, "input", async (event) => {
+  halteSearchTerm = event.target.value;
+  await refreshHalteMonthly();
+});
+
+on(ui.haltePaidFilter, "change", async (event) => {
+  haltePaidFilter = event.target.value;
+  await refreshHalteMonthly();
+});
+
 // Payment and expense month filters
 on(ui.paymentMonthSelect, "change", async (event) => {
   selectedPaymentMonth = event.target.value;
@@ -4759,6 +4908,10 @@ on(ui.downloadAthleteTemplate, "click", () => {
 
 on(ui.downloadAcroTemplate, "click", () => {
   downloadAcroTemplate();
+});
+
+on(ui.downloadHalteTemplate, "click", () => {
+  downloadHalteTemplate();
 });
 
 // ========== CLASES Y TURNOS ==========
