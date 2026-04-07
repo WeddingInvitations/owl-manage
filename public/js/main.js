@@ -2108,6 +2108,8 @@ async function refreshTelasMonthly() {
       : `${e.discount}%`;
     const finalPrice = e.price * (1 - e.discount / 100);
     const paid = e.paid;
+    row.dataset.id = e.athlete.id;
+    row.dataset.name = e.athlete.name || "";
     row.innerHTML = `
       <td>${e.athlete.name}</td>
       <td>
@@ -2115,12 +2117,19 @@ async function refreshTelasMonthly() {
           ${tariffOptionsHtml}
         </select>
       </td>
+      <td><span data-role="telas-price" data-id="${e.athlete.id}">${e.price.toFixed(2)}</span> €</td>
       <td>
-        <select data-role="telas-discount-reason" data-id="${e.athlete.id}">
-          ${reasonOptionsHtml}
+        <span data-role="telas-discount-display" data-id="${e.athlete.id}">${discountDisplay}</span>
+      </td>
+      <td>
+        <select data-role="telas-discount-reason" data-id="${e.athlete.id}" style="width: 120px;">
+          <option value="" ${!e.discountReason ? "selected" : ""}>Ninguno</option>
+          <option value="Familiar" ${e.discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Funcionario" ${e.discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
+          <option value="Mañanas" ${e.discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
+          <option value="Otro" ${e.discountReason === "Otro" ? "selected" : ""}>Otro</option>
         </select>
       </td>
-      <td><span data-role="telas-discount-display" data-id="${e.athlete.id}">${discountDisplay}</span></td>
       <td><span data-role="telas-final-price" data-id="${e.athlete.id}">${finalPrice.toFixed(2)}</span> €</td>
       <td>
         <select data-role="telas-paid" data-id="${e.athlete.id}">
