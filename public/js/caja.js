@@ -91,9 +91,8 @@ function renderSalesList(sales) {
     const item = sale.item || sale.objeto || '';
     const amount = sale.amount ?? sale.cantidad ?? '';
     const importe = sale.importe !== undefined ? Number(sale.importe).toFixed(2) : '';
-    const vendedor = sale.vendedor || '';
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${date}</td><td>${item}</td><td>${amount}</td><td>${importe}</td><td>${vendedor}</td>`;
+    tr.innerHTML = `<td>${date}</td><td>${item}</td><td>${amount}</td><td>${importe}</td>`;
     ui.cajaList.appendChild(tr);
   });
 }
@@ -132,13 +131,12 @@ async function refreshCajaList() {
 }
 
 // Añadir venta
-export async function addSale({ item, amount, date, importe, vendedor, userId }) {
+export async function addSale({ item, amount, date, importe, userId }) {
   await addDoc(collection(db, "sales"), {
     item,
     amount: Number(amount),
     date,
     importe: Number(importe),
-    vendedor,
     createdAt: serverTimestamp(),
     createdBy: userId || null,
   });
@@ -202,6 +200,21 @@ async function populateItemFilter() {
   }
 }
 
+// Función para calcular el importe basado en producto y cantidad
+function calculateImporte() {
+  const selectElement = ui.cajaVentaObjeto;
+  const cantidad = parseFloat(ui.cajaVentaCantidad.value) || 0;
+  
+  if (selectElement && selectElement.selectedIndex > 0) {
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const price = parseFloat(selectedOption.dataset.price) || 0;
+    const total = price * cantidad;
+    ui.cajaVentaImporte.value = total.toFixed(2);
+  } else {
+    ui.cajaVentaImporte.value = "0.00";
+  }
+}
+
 // Modal lógica
 ui.cajaAddBtn?.addEventListener("click", () => {
   ui.cajaModal.classList.remove("hidden");
@@ -210,18 +223,23 @@ ui.cajaAddBtn?.addEventListener("click", () => {
   if (ui.cajaVentaFecha) {
     ui.cajaVentaFecha.value = new Date().toISOString().slice(0, 10);
   }
+  calculateImporte();
 });
 ui.cajaModalClose?.addEventListener("click", () => {
   ui.cajaModal.classList.add("hidden");
 });
+
+// Event listeners para calcular automáticamente el importe
+ui.cajaVentaObjeto?.addEventListener("change", calculateImporte);
+ui.cajaVentaCantidad?.addEventListener("input", calculateImporte);
+
 ui.cajaForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const item = ui.cajaVentaObjeto.value;
   const amount = ui.cajaVentaCantidad.value;
   const date = ui.cajaVentaFecha.value;
   const importe = ui.cajaVentaImporte.value;
-  const vendedor = ui.cajaVentaVendedor.value;
-  await addSale({ item, amount, date, importe, vendedor, userId: auth.currentUser?.uid });
+  await addSale({ item, amount, date, importe, userId: auth.currentUser?.uid });
   ui.cajaModal.classList.add("hidden");
   // Actualizar filtro de objetos y lista
   await populateItemFilter();

@@ -3821,8 +3821,13 @@ on(ui.athleteForm, "submit", async (event) => {
   const tariff = ui.athleteTariff.value;
   const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
   const basePrice = plan.priceTotal;
-  const discount = parseFloat(ui.athleteDiscount.value) || 0;
-  const discountReason = ui.athleteDiscountReason.value.trim();
+  const discountReason = ui.athleteDiscountReason.value;
+  let discount = parseFloat(ui.athleteDiscount.value) || 0;
+  // Apply predefined discounts
+  if (discountReason === 'Familiar') discount = 15;
+  else if (discountReason === 'Funcionario') discount = 10;
+  else if (discountReason === 'Mañanas') discount = 10;
+  else if (discountReason === 'Ninguno') discount = 0;
   const finalPrice = basePrice * (1 - discount / 100);
   const price = finalPrice; // Use final price with discount applied
   const paid = ui.athletePaid.value === "SI";
@@ -3851,7 +3856,7 @@ on(ui.athleteForm, "submit", async (event) => {
   }
   ui.athleteForm.reset();
   ui.athleteDiscount.value = 0;
-  ui.athleteDiscountReason.value = "";
+  ui.athleteDiscountReason.value = "Ninguno";
   setAthletePriceFromTariff();
   renderAthletePaymentMonthOptions();
   if (ui.athleteModal) {
@@ -3886,6 +3891,16 @@ on(ui.createUserForm, "submit", async (event) => {
 
 on(ui.athleteTariff, "change", () => {
   setAthletePriceFromTariff();
+});
+
+on(ui.athleteDiscountReason, "change", () => {
+  const reason = ui.athleteDiscountReason.value;
+  let discountValue = 0;
+  if (reason === 'Familiar') discountValue = 15;
+  else if (reason === 'Funcionario') discountValue = 10;
+  else if (reason === 'Mañanas') discountValue = 10;
+  ui.athleteDiscount.value = discountValue;
+  calculateAthleteFinalPrice();
 });
 
 on(ui.athleteDiscount, "input", () => {
@@ -3947,8 +3962,13 @@ on(ui.acroForm, "submit", async (event) => {
   const tariff = ui.acroTariff.value;
   const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
   const basePrice = plan.priceTotal;
-  const discount = parseFloat(ui.acroDiscount.value) || 0;
-  const discountReason = ui.acroDiscountReason.value.trim();
+  const discountReason = ui.acroDiscountReason.value;
+  let discount = parseFloat(ui.acroDiscount.value) || 0;
+  // Apply predefined discounts
+  if (discountReason === 'Familiar') discount = 15;
+  else if (discountReason === 'Funcionario') discount = 10;
+  else if (discountReason === 'Mañanas') discount = 10;
+  else if (discountReason === 'Ninguno') discount = 0;
   const finalPrice = basePrice * (1 - discount / 100);
   const price = finalPrice; // Use final price with discount applied
   const paid = ui.acroPaid.value === "SI";
@@ -3979,7 +3999,7 @@ on(ui.acroForm, "submit", async (event) => {
   
   ui.acroForm.reset();
   ui.acroDiscount.value = 0;
-  ui.acroDiscountReason.value = "";
+  ui.acroDiscountReason.value = "Ninguno";
   setAcroPriceFromTariff();
   renderAcroPaymentMonthOptions();
   if (ui.acroModal) {
@@ -3990,6 +4010,16 @@ on(ui.acroForm, "submit", async (event) => {
 
 on(ui.acroTariff, "change", () => {
   setAcroPriceFromTariff();
+});
+
+on(ui.acroDiscountReason, "change", () => {
+  const reason = ui.acroDiscountReason.value;
+  let discountValue = 0;
+  if (reason === 'Familiar') discountValue = 15;
+  else if (reason === 'Funcionario') discountValue = 10;
+  else if (reason === 'Mañanas') discountValue = 10;
+  ui.acroDiscount.value = discountValue;
+  calculateAcroFinalPrice();
 });
 
 on(ui.acroDiscount, "input", () => {

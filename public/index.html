@@ -529,10 +529,9 @@
                 <thead>
                   <tr>
                     <th>Fecha</th>
-                    <th>Objeto</th>
+                    <th>Producto</th>
                     <th>Cantidad</th>
                     <th>Importe (€)</th>
-                    <th>Vendedor</th>
                   </tr>
                 </thead>
                 <tbody id="cajaList"></tbody>
@@ -554,21 +553,25 @@
                   <input id="cajaVentaFecha" type="date" required />
                 </label>
                 <label>
-                  Objeto
-                  <input id="cajaVentaObjeto" type="text" list="cajaObjetoList" required />
-                  <datalist id="cajaObjetoList"></datalist>
+                  Producto
+                  <select id="cajaVentaObjeto" required>
+                    <option value="">Seleccionar producto...</option>
+                    <option value="AGUA" data-price="0.50">AGUA - 0,50€</option>
+                    <option value="MONSTER" data-price="2">MONSTER - 2,00€</option>
+                    <option value="BANGS" data-price="1">BANGS - 1,00€</option>
+                    <option value="TAPES" data-price="2">TAPES - 2,00€</option>
+                    <option value="BONO AGUA" data-price="10">BONO AGUA (24 uds) - 10,00€</option>
+                    <option value="BONO TAPES" data-price="18">BONO TAPES (10 uds) - 18,00€</option>
+                    <option value="BONO MONSTER" data-price="18">BONO MONSTER (10 uds) - 18,00€</option>
+                  </select>
                 </label>
                 <label>
                   Cantidad
                   <input id="cajaVentaCantidad" type="number" min="1" step="1" value="1" required />
                 </label>
                 <label>
-                  Importe (€)
-                  <input id="cajaVentaImporte" type="number" min="0" step="0.01" required />
-                </label>
-                <label>
-                  Vendedor
-                  <input id="cajaVentaVendedor" type="text" required />
+                  Importe Total (€)
+                  <input id="cajaVentaImporte" type="number" min="0" step="0.01" readonly />
                 </label>
                 <button class="btn" type="submit">Guardar venta</button>
               </form>
@@ -937,12 +940,18 @@
                   <input id="athletePrice" type="number" min="0" step="0.01" readonly />
                 </label>
                 <label>
-                  Descuento (%)
-                  <input id="athleteDiscount" type="number" min="0" max="100" step="0.1" value="0" />
+                  Motivo del descuento
+                  <select id="athleteDiscountReason">
+                    <option value="Ninguno">Ninguno (0%)</option>
+                    <option value="Familiar">Familiar (15%)</option>
+                    <option value="Funcionario">Funcionario (10%)</option>
+                    <option value="Mañanas">Mañanas (10%)</option>
+                    <option value="Otro">Otro</option>
+                  </select>
                 </label>
                 <label>
-                  Motivo del descuento
-                  <input id="athleteDiscountReason" type="text" placeholder="Ej: Estudiante, hermano/a, etc." />
+                  Descuento (%)
+                  <input id="athleteDiscount" type="number" min="0" max="100" step="0.1" value="0" />
                 </label>
                 <label>
                   Precio final (€)
@@ -1100,12 +1109,18 @@
                   <input id="acroPrice" type="number" min="0" step="0.01" readonly />
                 </label>
                 <label>
-                  Descuento (%)
-                  <input id="acroDiscount" type="number" min="0" max="100" step="0.1" value="0" />
+                  Motivo del descuento
+                  <select id="acroDiscountReason">
+                    <option value="Ninguno">Ninguno (0%)</option>
+                    <option value="Familiar">Familiar (15%)</option>
+                    <option value="Funcionario">Funcionario (10%)</option>
+                    <option value="Mañanas">Mañanas (10%)</option>
+                    <option value="Otro">Otro</option>
+                  </select>
                 </label>
                 <label>
-                  Motivo del descuento
-                  <input id="acroDiscountReason" type="text" placeholder="Ej: Estudiante, hermano/a, etc." />
+                  Descuento (%)
+                  <input id="acroDiscount" type="number" min="0" max="100" step="0.1" value="0" />
                 </label>
                 <label>
                   Precio final (€)
