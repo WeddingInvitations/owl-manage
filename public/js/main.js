@@ -987,7 +987,7 @@ async function refreshAthleteMonthly() {
           ${tariffPlans
             .map(
               (option) =>
-                `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`
+                `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key} - ${option.priceTotal}€</option>`
             )
             .join("")}
         </select>
