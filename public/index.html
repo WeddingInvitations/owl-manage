@@ -563,7 +563,16 @@
                     <option value="BONO AGUA" data-price="10">BONO AGUA (24 uds) - 10,00€</option>
                     <option value="BONO TAPES" data-price="18">BONO TAPES (10 uds) - 18,00€</option>
                     <option value="BONO MONSTER" data-price="18">BONO MONSTER (10 uds) - 18,00€</option>
+                    <option value="OTRO" data-price="0">Otro (personalizado)</option>
                   </select>
+                </label>
+                <label id="cajaVentaObjetoOtroLabel" class="hidden">
+                  Nombre del producto
+                  <input id="cajaVentaObjetoOtro" type="text" placeholder="Ej: Proteína, Snack, etc." />
+                </label>
+                <label id="cajaVentaPrecioUnitarioLabel" class="hidden">
+                  Precio unitario (€)
+                  <input id="cajaVentaPrecioUnitario" type="number" min="0" step="0.01" placeholder="0.00" />
                 </label>
                 <label>
                   Cantidad

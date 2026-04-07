@@ -11,6 +11,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { ui } from "./ui.js";
 import { auth } from "./firebase.js";
+import { addPayment } from "./data.js";
 
 // Helpers para fechas
 function getDateRange(period, baseDate) {
@@ -203,9 +204,16 @@ async function populateItemFilter() {
 // Función para calcular el importe basado en producto y cantidad
 function calculateImporte() {
   const selectElement = ui.cajaVentaObjeto;
+  const selectedValue = selectElement.value;
   const cantidad = parseFloat(ui.cajaVentaCantidad.value) || 0;
   
-  if (selectElement && selectElement.selectedIndex > 0) {
+  if (selectedValue === "OTRO") {
+    // Para producto personalizado, usar el precio unitario manual
+    const precioUnitario = parseFloat(ui.cajaVentaPrecioUnitario.value) || 0;
+    const total = precioUnitario * cantidad;
+    ui.cajaVentaImporte.value = total.toFixed(2);
+  } else if (selectElement.selectedIndex > 0) {
+    // Para productos predefinidos
     const selectedOption = selectElement.options[selectElement.selectedIndex];
     const price = parseFloat(selectedOption.dataset.price) || 0;
     const total = price * cantidad;
@@ -213,6 +221,28 @@ function calculateImporte() {
   } else {
     ui.cajaVentaImporte.value = "0.00";
   }
+}
+
+// Función para mostrar/ocultar campos según el producto seleccionado
+function toggleProductFields() {
+  const selectedValue = ui.cajaVentaObjeto.value;
+  const isOtro = selectedValue === "OTRO";
+  
+  // Mostrar/ocultar campos de producto y precio personalizado
+  if (ui.cajaVentaObjetoOtroLabel) {
+    ui.cajaVentaObjetoOtroLabel.classList.toggle("hidden", !isOtro);
+  }
+  if (ui.cajaVentaPrecioUnitarioLabel) {
+    ui.cajaVentaPrecioUnitarioLabel.classList.toggle("hidden", !isOtro);
+  }
+  
+  // Limpiar campos si se cambia de OTRO a otro producto
+  if (!isOtro) {
+    if (ui.cajaVentaObjetoOtro) ui.cajaVentaObjetoOtro.value = "";
+    if (ui.cajaVentaPrecioUnitario) ui.cajaVentaPrecioUnitario.value = "";
+  }
+  
+  calculateImporte();
 }
 
 // Modal lógica
@@ -223,6 +253,13 @@ ui.cajaAddBtn?.addEventListener("click", () => {
   if (ui.cajaVentaFecha) {
     ui.cajaVentaFecha.value = new Date().toISOString().slice(0, 10);
   }
+  // Ocultar campos de producto personalizado por defecto
+  if (ui.cajaVentaObjetoOtroLabel) {
+    ui.cajaVentaObjetoOtroLabel.classList.add("hidden");
+  }
+  if (ui.cajaVentaPrecioUnitarioLabel) {
+    ui.cajaVentaPrecioUnitarioLabel.classList.add("hidden");
+  }
   calculateImporte();
 });
 ui.cajaModalClose?.addEventListener("click", () => {
@@ -230,16 +267,41 @@ ui.cajaModalClose?.addEventListener("click", () => {
 });
 
 // Event listeners para calcular automáticamente el importe
-ui.cajaVentaObjeto?.addEventListener("change", calculateImporte);
+ui.cajaVentaObjeto?.addEventListener("change", toggleProductFields);
 ui.cajaVentaCantidad?.addEventListener("input", calculateImporte);
+ui.cajaVentaPrecioUnitario?.addEventListener("input", calculateImporte);
 
 ui.cajaForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const item = ui.cajaVentaObjeto.value;
+  
+  const selectedValue = ui.cajaVentaObjeto.value;
+  let item = selectedValue;
+  
+  // Si es OTRO, usar el nombre personalizado
+  if (selectedValue === "OTRO") {
+    const customItem = ui.cajaVentaObjetoOtro.value.trim();
+    if (!customItem) {
+      alert("Por favor, ingresa el nombre del producto");
+      return;
+    }
+    const customPrice = parseFloat(ui.cajaVentaPrecioUnitario.value);
+    if (!customPrice || customPrice <= 0) {
+      alert("Por favor, ingresa un precio válido");
+      return;
+    }
+    item = customItem;
+  }
+  
   const amount = ui.cajaVentaCantidad.value;
   const date = ui.cajaVentaFecha.value;
-  const importe = ui.cajaVentaImporte.value;
+  const importe = parseFloat(ui.cajaVentaImporte.value);
+  
+  // Guardar la venta
   await addSale({ item, amount, date, importe, userId: auth.currentUser?.uid });
+  
+  // Crear automáticamente un ingreso con el concepto "Ventas Caja"
+  await addPayment("Ventas Caja", importe, date, auth.currentUser?.uid);
+  
   ui.cajaModal.classList.add("hidden");
   // Actualizar filtro de objetos y lista
   await populateItemFilter();
