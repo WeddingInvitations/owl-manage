@@ -1978,15 +1978,23 @@ async function importTelasAthletesFromCsv(file, monthKey) {
             const paid = paidStr.toUpperCase() === "SI" || paidStr.toUpperCase() === "YES";
             const price = parseFloat(priceStr) || 0;
             const discount = parseFloat(discStr) || 0;
+            const plan = telasTariffPlanMap.get(tariff) || telasTariffPlanMap.get("4/mes");
+            const basePrice = plan.priceTotal;
             await upsertTelasAthleteMonth(
               athleteId,
               monthKey,
-              tariff,
-              paid,
-              discount,
-              reason,
-              price,
-              true
+              {
+                name,
+                tariff,
+                price: basePrice,
+                discount,
+                discountReason: reason,
+                paid,
+                durationMonths: 1,
+                priceMonthly: basePrice,
+                isPaymentMonth: true,
+              },
+              currentUserId
             );
             success++;
           } catch (err) {
@@ -3142,12 +3150,20 @@ async function saveTelasRow(row) {
     await upsertTelasAthleteMonth(
       athleteId,
       targetMonth,
-      newTariff,
-      newPaid,
-      newDiscount,
-      newDiscountReason,
-      basePrice,
-      i === 0
+      {
+        name: athleteName,
+        tariff: newTariff,
+        price: newPrice,
+        basePrice,
+        discount: newDiscount,
+        discountReason: newDiscountReason,
+        paid: newPaid,
+        active: newPaid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
+      },
+      currentUser?.uid
     );
   }
 }
@@ -5420,12 +5436,21 @@ on(ui.telasForm, "submit", async (event) => {
     await upsertTelasAthleteMonth(
       athleteId,
       monthKey,
-      tariff,
-      paid,
-      discount,
-      discountReason,
-      basePrice,
-      true
+      {
+        name: athleteName,
+        tariff,
+        price: basePrice,
+        discount,
+        discountReason,
+        finalPrice,
+        paid,
+        durationMonths: 1,
+        priceMonthly: basePrice,
+        isPaymentMonth: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      currentUser?.uid
     );
   }
   
