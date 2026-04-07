@@ -123,6 +123,40 @@ export async function getExpense(expenseId) {
   return null;
 }
 
+export async function addOrder(supplier, price, date, document, userId) {
+  await addDoc(collection(db, "orders"), {
+    supplier,
+    price,
+    date,
+    document: document || "",
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+}
+
+export async function updateOrder(orderId, supplier, price, date, document, userId) {
+  await updateDoc(doc(db, "orders", orderId), {
+    supplier,
+    price,
+    date,
+    document: document || "",
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  });
+}
+
+export async function deleteOrder(orderId) {
+  await deleteDoc(doc(db, "orders", orderId));
+}
+
+export async function getOrder(orderId) {
+  const docSnap = await getDoc(doc(db, "orders", orderId));
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() };
+  }
+  return null;
+}
+
 export async function openCheckin(userId, userEmail, userName = "", deviceInfo = {}) {
   const docRef = await addDoc(collection(db, "checkins"), {
     userId,
@@ -739,6 +773,84 @@ export async function loadExpensesForMonth(target, formatCurrency, monthKey = ""
     }
     
     target.appendChild(li);
+  });
+}
+
+export async function loadOrdersForMonth(target, formatCurrency, monthKey = "", onEdit = null, onDelete = null) {
+  if (!target) return;
+  const orderSnap = await getDocs(collection(db, "orders"));
+  const items = [];
+
+  orderSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    const date = parseRecordDate(data);
+    items.push({ id: docSnap.id, data, date });
+  });
+
+  const filtered = monthKey
+    ? items.filter((item) => getMonthKey(item.date) === monthKey)
+    : items;
+
+  filtered.sort((a, b) => {
+    const aTime = a.date ? a.date.getTime() : 0;
+    const bTime = b.date ? b.date.getTime() : 0;
+    return bTime - aTime;
+  });
+
+  target.innerHTML = "";
+  
+  filtered.forEach((item) => {
+    const tr = document.createElement("tr");
+    
+    const dateCell = document.createElement("td");
+    dateCell.textContent = item.data.date || (item.date ? item.date.toLocaleDateString("es-ES") : "");
+    tr.appendChild(dateCell);
+    
+    const supplierCell = document.createElement("td");
+    supplierCell.textContent = item.data.supplier || "";
+    tr.appendChild(supplierCell);
+    
+    const priceCell = document.createElement("td");
+    priceCell.textContent = formatCurrency(Number(item.data.price || 0));
+    tr.appendChild(priceCell);
+    
+    const documentCell = document.createElement("td");
+    if (item.data.document) {
+      const link = document.createElement("a");
+      link.href = item.data.document;
+      link.target = "_blank";
+      link.textContent = "Ver documento";
+      link.className = "btn ghost small";
+      documentCell.appendChild(link);
+    } else {
+      documentCell.textContent = "-";
+    }
+    tr.appendChild(documentCell);
+    
+    const actionsCell = document.createElement("td");
+    if (item.id) {
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "record-actions";
+      
+      const editBtn = document.createElement("button");
+      editBtn.className = "btn-icon btn-edit";
+      editBtn.innerHTML = "✏️";
+      editBtn.title = "Editar";
+      editBtn.onclick = () => onEdit && onEdit(item.id, item.data);
+      
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "btn-icon btn-delete";
+      deleteBtn.innerHTML = "🗑️";
+      deleteBtn.title = "Eliminar";
+      deleteBtn.onclick = () => onDelete && onDelete(item.id, item.data);
+      
+      actionsDiv.appendChild(editBtn);
+      actionsDiv.appendChild(deleteBtn);
+      actionsCell.appendChild(actionsDiv);
+    }
+    tr.appendChild(actionsCell);
+    
+    target.appendChild(tr);
   });
 }
 

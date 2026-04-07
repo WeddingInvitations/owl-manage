@@ -92,6 +92,12 @@
               </svg>
               Pagos empleados
             </button>
+            <button class="menu-btn" data-view="ordersView">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>
+              </svg>
+              Pedidos
+            </button>
           </div>
         </div>
         
@@ -503,6 +509,123 @@
               <div class="btn-group">
                 <button id="expenseDeleteConfirm" class="btn danger" type="button">Eliminar</button>
                 <button id="expenseDeleteCancel" class="btn ghost" type="button">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="ordersView" class="view hidden">
+          <div class="card">
+            <div class="detail-header">
+              <h2>Pedidos</h2>
+              <div class="filter-row">
+                <select id="orderMonthSelect"></select>
+                <button id="orderAddBtn" class="btn" type="button">Añadir pedido</button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Proveedor</th>
+                    <th>Precio (€)</th>
+                    <th>Documento</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="orderList"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="orderModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Añadir pedido</h3>
+                <button id="orderModalClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="orderForm" class="stack">
+                <label>
+                  Fecha
+                  <input id="orderDate" type="date" required />
+                </label>
+                <label>
+                  Proveedor
+                  <select id="orderSupplier" required>
+                    <option value="">Seleccionar proveedor...</option>
+                    <option value="Velites">Velites</option>
+                    <option value="Prozis">Prozis</option>
+                    <option value="Picsil">Picsil</option>
+                    <option value="Ramrage">Ramrage</option>
+                    <option value="Otros">Otros</option>
+                  </select>
+                </label>
+                <label id="orderSupplierOtherLabel" class="hidden">
+                  Nombre del proveedor
+                  <input id="orderSupplierOther" type="text" placeholder="Introduce el nombre del proveedor" />
+                </label>
+                <label>
+                  Precio (€)
+                  <input id="orderPrice" type="number" min="0" step="0.01" required />
+                </label>
+                <label>
+                  Documento (URL de Drive)
+                  <input id="orderDocument" type="url" placeholder="https://drive.google.com/..." />
+                </label>
+                <button class="btn" type="submit">Guardar pedido</button>
+              </form>
+            </div>
+          </div>
+          <div id="orderEditModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Editar pedido</h3>
+                <button id="orderEditClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="orderEditForm" class="stack">
+                <input id="orderEditId" type="hidden" />
+                <label>
+                  Fecha
+                  <input id="orderEditDate" type="date" required />
+                </label>
+                <label>
+                  Proveedor
+                  <select id="orderEditSupplier" required>
+                    <option value="">Seleccionar proveedor...</option>
+                    <option value="Velites">Velites</option>
+                    <option value="Prozis">Prozis</option>
+                    <option value="Picsil">Picsil</option>
+                    <option value="Ramrage">Ramrage</option>
+                    <option value="Otros">Otros</option>
+                  </select>
+                </label>
+                <label id="orderEditSupplierOtherLabel" class="hidden">
+                  Nombre del proveedor
+                  <input id="orderEditSupplierOther" type="text" placeholder="Introduce el nombre del proveedor" />
+                </label>
+                <label>
+                  Precio (€)
+                  <input id="orderEditPrice" type="number" min="0" step="0.01" required />
+                </label>
+                <label>
+                  Documento (URL de Drive)
+                  <input id="orderEditDocument" type="url" placeholder="https://drive.google.com/..." />
+                </label>
+                <button class="btn" type="submit">Guardar cambios</button>
+              </form>
+            </div>
+          </div>
+          <div id="orderDeleteModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Eliminar pedido</h3>
+              </div>
+              <p>¿Estás seguro de que quieres eliminar este pedido?</p>
+              <p id="orderDeleteInfo" class="muted"></p>
+              <input id="orderDeleteId" type="hidden" />
+              <div class="btn-group">
+                <button id="orderDeleteConfirm" class="btn danger" type="button">Eliminar</button>
+                <button id="orderDeleteCancel" class="btn ghost" type="button">Cancelar</button>
               </div>
             </div>
           </div>

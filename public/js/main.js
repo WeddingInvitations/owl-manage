@@ -88,6 +88,10 @@ import {
   deletePayment,
   updateExpense,
   deleteExpense,
+  addOrder,
+  updateOrder,
+  deleteOrder,
+  loadOrdersForMonth,
   addEmployeePayment,
   loadEmployeePayments,
 } from "./data.js?v=20250316a";
@@ -222,6 +226,8 @@ let availablePaymentMonths = [];
 let selectedPaymentMonth = "";
 let availableExpenseMonths = [];
 let selectedExpenseMonth = "";
+let availableOrderMonths = [];
+let selectedOrderMonth = "";
 let athleteSearchTerm = "";
 let selectedAthletePaymentMonth = "";
 let athletePaidFilter = "ALL";
@@ -423,6 +429,7 @@ async function refreshAll() {
   renderMonthlySummary();
   await refreshPaymentList();
   await refreshExpenseList();
+  await refreshOrderList();
   await loadList("checkins", ui.checkinList, (data) =>
     `${data.name} · ${data.type}`
   );
@@ -507,6 +514,38 @@ async function refreshExpenseList() {
     selectedExpenseMonth,
     handleEditExpense,
     handleDeleteExpense
+  );
+}
+
+function renderOrderMonthOptions() {
+  if (!ui.orderMonthSelect) return;
+  ui.orderMonthSelect.innerHTML = "";
+  availableOrderMonths.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    if (key === selectedOrderMonth) {
+      option.selected = true;
+    }
+    ui.orderMonthSelect.appendChild(option);
+  });
+}
+
+async function refreshOrderList() {
+  availableOrderMonths = getCurrentYearMonths();
+  const currentKey = getMonthKey(new Date());
+  if (!selectedOrderMonth || !availableOrderMonths.includes(selectedOrderMonth)) {
+    selectedOrderMonth = availableOrderMonths.includes(currentKey)
+      ? currentKey
+      : (availableOrderMonths[0] || "");
+  }
+  renderOrderMonthOptions();
+  await loadOrdersForMonth(
+    ui.orderList,
+    formatCurrency,
+    selectedOrderMonth,
+    handleEditOrder,
+    handleDeleteOrder
   );
 }
 
@@ -2827,6 +2866,153 @@ on(ui.expenseCsvForm, "submit", async (event) => {
 
 on(ui.expenseTemplateDownload, "click", () => {
   downloadCsvTemplate("plantilla-gastos.csv", "expense");
+});
+
+// ========== ORDERS SYSTEM ==========
+
+// Toggle supplier other field
+function toggleSupplierOtherField() {
+  const isOther = ui.orderSupplier?.value === "Otros";
+  ui.orderSupplierOtherLabel?.classList.toggle("hidden", !isOther);
+  if (!isOther && ui.orderSupplierOther) {
+    ui.orderSupplierOther.value = "";
+  }
+}
+
+function toggleEditSupplierOtherField() {
+  const isOther = ui.orderEditSupplier?.value === "Otros";
+  ui.orderEditSupplierOtherLabel?.classList.toggle("hidden", !isOther);
+  if (!isOther && ui.orderEditSupplierOther) {
+    ui.orderEditSupplierOther.value = "";
+  }
+}
+
+on(ui.orderSupplier, "change", toggleSupplierOtherField);
+on(ui.orderEditSupplier, "change", toggleEditSupplierOtherField);
+
+// Order form submit
+on(ui.orderForm, "submit", async (event) => {
+  event.preventDefault();
+  
+  let supplier = ui.orderSupplier.value;
+  if (supplier === "Otros") {
+    const otherSupplier = ui.orderSupplierOther?.value?.trim();
+    if (!otherSupplier) {
+      alert("Por favor, introduce el nombre del proveedor");
+      return;
+    }
+    supplier = otherSupplier;
+  }
+  
+  await addOrder(
+    supplier,
+    Number(ui.orderPrice.value),
+    ui.orderDate.value,
+    ui.orderDocument.value,
+    currentUser?.uid
+  );
+  
+  ui.orderForm.reset();
+  toggleSupplierOtherField();
+  ui.orderModal?.classList.add("hidden");
+  await refreshAll();
+});
+
+// Order modal handlers
+on(ui.orderAddBtn, "click", () => {
+  ui.orderForm.reset();
+  toggleSupplierOtherField();
+  ui.orderModal?.classList.remove("hidden");
+});
+
+on(ui.orderModalClose, "click", () => {
+  ui.orderModal?.classList.add("hidden");
+});
+
+// Order month select
+on(ui.orderMonthSelect, "change", async () => {
+  selectedOrderMonth = ui.orderMonthSelect.value;
+  await refreshOrderList();
+});
+
+// Order Edit/Delete handlers
+function handleEditOrder(orderId, orderData) {
+  ui.orderEditId.value = orderId;
+  ui.orderEditDate.value = orderData.date || "";
+  ui.orderEditPrice.value = orderData.price || 0;
+  ui.orderEditDocument.value = orderData.document || "";
+  
+  // Check if supplier is one of the predefined ones
+  const predefinedSuppliers = ["Velites", "Prozis", "Picsil", "Ramrage"];
+  if (predefinedSuppliers.includes(orderData.supplier)) {
+    ui.orderEditSupplier.value = orderData.supplier;
+    ui.orderEditSupplierOther.value = "";
+  } else {
+    ui.orderEditSupplier.value = "Otros";
+    ui.orderEditSupplierOther.value = orderData.supplier || "";
+  }
+  
+  toggleEditSupplierOtherField();
+  ui.orderEditModal?.classList.remove("hidden");
+}
+
+function handleDeleteOrder(orderId, orderData) {
+  ui.orderDeleteId.value = orderId;
+  ui.orderDeleteInfo.textContent = `${orderData.supplier || ""} · ${orderData.date || ""} · ${formatCurrency(Number(orderData.price || 0))}`;
+  ui.orderDeleteModal?.classList.remove("hidden");
+}
+
+on(ui.orderEditClose, "click", () => {
+  ui.orderEditModal?.classList.add("hidden");
+});
+
+on(ui.orderEditForm, "submit", async (event) => {
+  event.preventDefault();
+  const orderId = ui.orderEditId.value;
+  if (!orderId) return;
+  
+  let supplier = ui.orderEditSupplier.value;
+  if (supplier === "Otros") {
+    const otherSupplier = ui.orderEditSupplierOther?.value?.trim();
+    if (!otherSupplier) {
+      alert("Por favor, introduce el nombre del proveedor");
+      return;
+    }
+    supplier = otherSupplier;
+  }
+  
+  try {
+    await updateOrder(
+      orderId,
+      supplier,
+      Number(ui.orderEditPrice.value),
+      ui.orderEditDate.value,
+      ui.orderEditDocument.value,
+      currentUser?.uid
+    );
+    ui.orderEditModal?.classList.add("hidden");
+    await refreshAll();
+  } catch (error) {
+    console.error("Error updating order:", error);
+    alert("Error al actualizar el pedido: " + (error.message || error));
+  }
+});
+
+on(ui.orderDeleteConfirm, "click", async () => {
+  const orderId = ui.orderDeleteId.value;
+  if (!orderId) return;
+  try {
+    await deleteOrder(orderId);
+    ui.orderDeleteModal?.classList.add("hidden");
+    await refreshAll();
+  } catch (error) {
+    console.error("Error deleting order:", error);
+    alert("Error al eliminar el pedido: " + (error.message || error));
+  }
+});
+
+on(ui.orderDeleteCancel, "click", () => {
+  ui.orderDeleteModal?.classList.add("hidden");
 });
 
 // ========== CHECKIN SYSTEM ==========
