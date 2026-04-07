@@ -106,9 +106,9 @@ function calculatePrice(athlete) {
   const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
   const basePrice = plan.priceTotal;
   let discount = 0;
-  if (athlete.discountReason === 'Familiar') discount = 10;
-  else if (athlete.discountReason === 'Promoción') discount = 5;
-  else if (athlete.discountReason === 'Beca') discount = 50;
+  if (athlete.discountReason === 'Familiar') discount = 15;
+  else if (athlete.discountReason === 'Funcionario') discount = 10;
+  else if (athlete.discountReason === 'Mañanas') discount = 10;
   return basePrice * (1 - discount / 100);
 }
 
@@ -117,9 +117,9 @@ function calculateAcroPrice(athlete) {
   const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes");
   const basePrice = plan.priceTotal;
   let discount = 0;
-  if (athlete.discountReason === 'Familiar') discount = 10;
-  else if (athlete.discountReason === 'Promoción') discount = 5;
-  else if (athlete.discountReason === 'Beca') discount = 50;
+  if (athlete.discountReason === 'Familiar') discount = 15;
+  else if (athlete.discountReason === 'Funcionario') discount = 10;
+  else if (athlete.discountReason === 'Mañanas') discount = 10;
   return basePrice * (1 - discount / 100);
 }
 
@@ -801,9 +801,9 @@ async function refreshAthleteMonthly() {
     const basePrice = plan.priceTotal ?? 0;
     const discountReason = current?.discountReason || previous?.discountReason || lastPaid?.discountReason || "";
     let discount = 0;
-    if (discountReason === 'Familiar') discount = 10;
-    else if (discountReason === 'Promoción') discount = 5;
-    else if (discountReason === 'Beca') discount = 50;
+    if (discountReason === 'Familiar') discount = 15;
+    else if (discountReason === 'Funcionario') discount = 10;
+    else if (discountReason === 'Mañanas') discount = 10;
     const price = basePrice * (1 - discount / 100);
     const paid = Boolean(current?.paid);
     const active = paid;
@@ -846,9 +846,9 @@ async function refreshAthleteMonthly() {
     const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
     const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
     let displayDiscount = discount;
-    if (discountReason === 'Familiar') displayDiscount = 10;
-    else if (discountReason === 'Promoción') displayDiscount = 5;
-    else if (discountReason === 'Beca') displayDiscount = 50;
+    if (discountReason === 'Familiar') displayDiscount = 15;
+    else if (discountReason === 'Funcionario') displayDiscount = 10;
+    else if (discountReason === 'Mañanas') displayDiscount = 10;
     else if (discountReason === 'Ninguno') displayDiscount = 0;
     const paid = Boolean(current?.paid);
     const active = paid;
@@ -892,8 +892,8 @@ async function refreshAthleteMonthly() {
         <select data-role="discount-reason" data-id="${athlete.id}" style="width: 120px;">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
           <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
-          <option value="Promoción" ${discountReason === "Promoción" ? "selected" : ""}>Promoción</option>
-          <option value="Beca" ${discountReason === "Beca" ? "selected" : ""}>Beca</option>
+          <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
+          <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
           <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
         </select>
       </td>
@@ -918,9 +918,9 @@ async function refreshAthleteMonthly() {
       const discountDisplay = row.querySelector('[data-role="discount-display"]');
       const reason = e.target.value;
       let discountValue = 0;
-      if (reason === 'Familiar') discountValue = 10;
-      else if (reason === 'Promoción') discountValue = 5; // example
-      else if (reason === 'Beca') discountValue = 50; // example
+      if (reason === 'Familiar') discountValue = 15;
+      else if (reason === 'Funcionario') discountValue = 10; // example
+      else if (reason === 'Mañanas') discountValue = 10; // example
       // For Otro, maybe keep previous or 0
       discountDisplay.textContent = `${discountValue}%`;
     });
@@ -1202,9 +1202,9 @@ async function refreshAcroMonthly() {
     const basePrice = plan.priceTotal ?? 0;
     const discountReason = current?.discountReason || previous?.discountReason || lastPaid?.discountReason || "";
     let discount = 0;
-    if (discountReason === 'Familiar') discount = 10;
-    else if (discountReason === 'Promoción') discount = 5;
-    else if (discountReason === 'Beca') discount = 50;
+    if (discountReason === 'Familiar') discount = 15;
+    else if (discountReason === 'Funcionario') discount = 10;
+    else if (discountReason === 'Mañanas') discount = 10;
     const price = basePrice * (1 - discount / 100);
     const paid = Boolean(current?.paid);
     const active = paid;
@@ -1239,9 +1239,9 @@ async function refreshAcroMonthly() {
     const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
     const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
     let displayDiscount = discount;
-    if (discountReason === 'Familiar') displayDiscount = 10;
-    else if (discountReason === 'Promoción') displayDiscount = 5;
-    else if (discountReason === 'Beca') displayDiscount = 50;
+    if (discountReason === 'Familiar') displayDiscount = 15;
+    else if (discountReason === 'Funcionario') displayDiscount = 10;
+    else if (discountReason === 'Mañanas') displayDiscount = 10;
     else if (discountReason === 'Ninguno') displayDiscount = 0;
     const paid = Boolean(current?.paid);
     const active = paid;
@@ -1287,8 +1287,8 @@ async function refreshAcroMonthly() {
         <select data-role="acro-discount-reason" data-id="${athlete.id}" style="width: 120px;">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
           <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
-          <option value="Promoción" ${discountReason === "Promoción" ? "selected" : ""}>Promoción</option>
-          <option value="Beca" ${discountReason === "Beca" ? "selected" : ""}>Beca</option>
+          <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
+          <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
           <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
         </select>
       </td>
@@ -1313,9 +1313,9 @@ async function refreshAcroMonthly() {
       const discountDisplay = row.querySelector('[data-role="acro-discount-display"]');
       const reason = e.target.value;
       let discountValue = 0;
-      if (reason === 'Familiar') discountValue = 10;
-      else if (reason === 'Promoción') discountValue = 5;
-      else if (reason === 'Beca') discountValue = 50;
+      if (reason === 'Familiar') discountValue = 15;
+      else if (reason === 'Funcionario') discountValue = 10;
+      else if (reason === 'Mañanas') discountValue = 10;
       discountDisplay.textContent = `${discountValue}%`;
     });
   });
@@ -2106,9 +2106,9 @@ if (ui.athleteCsvModal) {
 }
 
 function calculateDiscountFromReason(reason) {
-  if (reason === "Familiar") return 10;
-  if (reason === "Promoción") return 5;
-  if (reason === "Beca") return 50;
+  if (reason === "Familiar") return 15;
+  if (reason === "Funcionario") return 10;
+  if (reason === "Mañanas") return 10;
   return 0;
 }
 
