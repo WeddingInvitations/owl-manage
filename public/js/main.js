@@ -421,7 +421,9 @@ on(ui.passwordChangeForm, "submit", async (event) => {
 });
 
 const tariffPlans = [
+  { key: "Open Box", durationMonths: 1, priceTotal: 50 },
   { key: "8/mes", durationMonths: 1, priceTotal: 70 },
+  { key: "Fundador", durationMonths: 1, priceTotal: 70 },
   { key: "12/mes", durationMonths: 1, priceTotal: 80 },
   { key: "Ilimitado", durationMonths: 1, priceTotal: 100 },
   { key: "Trimestre 8/mes", durationMonths: 3, priceTotal: 200 },
