@@ -83,6 +83,16 @@ service cloud.firestore {
       allow create, update, delete: if isOwner() || isReception();
     }
 
+    match /athletes_halterofilia/{docId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isOwner() || isReception();
+    }
+
+    match /athlete_halterofilia_months/{docId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isOwner() || isReception();
+    }
+
     match /vacations/{docId} {
       allow read: if request.auth != null;
       allow create, update, delete: if isOwner() || isReception();
@@ -105,6 +115,11 @@ service cloud.firestore {
 
     // Permitir a cualquier usuario autenticado leer y escribir ventas en la colección sales
     match /sales/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Permitir a cualquier usuario autenticado leer y escribir pedidos en la colección orders
+    match /orders/{docId} {
       allow read, write: if request.auth != null;
     }
 

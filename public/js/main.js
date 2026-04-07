@@ -5,6 +5,7 @@ const viewsInitialized = {
   summaryView: false,
   athletesView: false,
   acroView: false,
+  halteView: false,
   checkinsView: false,
   vacationsView: false,
   classesView: false,
@@ -84,6 +85,11 @@ import {
   getAllAcroAthleteMonths,
   getAcroAthleteMonthsForMonth,
   upsertAcroAthleteMonth,
+  createHalteAthlete,
+  getHalteAthletes,
+  getAllHalteAthleteMonths,
+  getHalteAthleteMonthsForMonth,
+  upsertHalteAthleteMonth,
   updatePayment,
   deletePayment,
   updateExpense,
@@ -127,9 +133,21 @@ function calculateAcroPrice(athlete) {
   return basePrice * (1 - discount / 100);
 }
 
+function calculateHaltePrice(athlete) {
+  const tariff = athlete.tariff || "Pequeña";
+  const plan = halteTariffPlanMap.get(tariff) || halteTariffPlanMap.get("Pequeña");
+  const basePrice = plan.priceTotal;
+  let discount = 0;
+  if (athlete.discountReason === 'Familiar') discount = 15;
+  else if (athlete.discountReason === 'Funcionario') discount = 10;
+  else if (athlete.discountReason === 'Mañanas') discount = 10;
+  return basePrice * (1 - discount / 100);
+}
+
 // Global variables for current athletes data
 let currentAthletes = [];
 let currentAcroAthletes = [];
+let currentHalteAthletes = [];
 
 window.debugAuth = async function() {
   console.log('DEBUG: Estado de autenticacion avanzado');
@@ -240,6 +258,14 @@ let selectedAcroPaymentMonth = "";
 let acroPaidFilter = "ALL";
 let acroSearchTerm = "";
 let selectedAcroCsvMonth = "";
+
+// Halterofilia state
+let selectedHalteMonth = "";
+let selectedHalteListMonth = "";
+let selectedHaltePaymentMonth = "";
+let haltePaidFilter = "ALL";
+let halteSearchTerm = "";
+let selectedHalteCsvMonth = "";
 
 // Checkin state
 let currentOpenCheckin = null;
@@ -412,6 +438,19 @@ const acroTariffPlans = [
 
 const acroTariffPlanMap = new Map(
   acroTariffPlans.map((plan) => [plan.key, {
+    ...plan,
+    priceMonthly: plan.priceTotal / plan.durationMonths,
+  }])
+);
+
+// Tarifas específicas para Halterofilia
+const halteTariffPlans = [
+  { key: "Pequeña", durationMonths: 1, priceTotal: 30 },
+  { key: "Grande", durationMonths: 1, priceTotal: 50 },
+];
+
+const halteTariffPlanMap = new Map(
+  halteTariffPlans.map((plan) => [plan.key, {
     ...plan,
     priceMonthly: plan.priceTotal / plan.durationMonths,
   }])
@@ -1375,6 +1414,400 @@ async function refreshAcroMonthly() {
   if (ui.acroSummaryDrop) ui.acroSummaryDrop.textContent = String(totalDrop);
 }
 
+// ========== HALTEROFILIA ==========
+
+function renderHalteMonthOptions() {
+  if (!ui.halteMonthSelect) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.halteMonthSelect.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.halteMonthSelect.appendChild(option);
+  });
+  selectedHalteMonth = options[0];
+  ui.halteMonthSelect.value = selectedHalteMonth;
+}
+
+function renderHalteListMonthOptions() {
+  if (!ui.halteListMonthSelect) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 12; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  for (let i = 1; i <= 6; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.halteListMonthSelect.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.halteListMonthSelect.appendChild(option);
+  });
+  selectedHalteListMonth = getMonthKey(now);
+  ui.halteListMonthSelect.value = selectedHalteListMonth;
+}
+
+function renderHaltePaymentMonthOptions() {
+  if (!ui.haltePaymentMonth) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.haltePaymentMonth.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.haltePaymentMonth.appendChild(option);
+  });
+  selectedHaltePaymentMonth = options[0];
+  ui.haltePaymentMonth.value = selectedHaltePaymentMonth;
+}
+
+function renderHalteCsvMonthOptions() {
+  if (!ui.halteCsvMonth) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 12; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  for (let i = 1; i <= 6; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.halteCsvMonth.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.halteCsvMonth.appendChild(option);
+  });
+  selectedHalteCsvMonth = getMonthKey(now);
+  ui.halteCsvMonth.value = selectedHalteCsvMonth;
+}
+
+function setHaltePriceFromTariff() {
+  if (!ui.halteTariff || !ui.haltePrice) return;
+  const tariff = ui.halteTariff.value;
+  const plan = halteTariffPlanMap.get(tariff);
+  const basePrice = plan ? plan.priceTotal : 0;
+  ui.haltePrice.value = basePrice;
+  
+  // Calculate final price with discount
+  calculateHalteFinalPrice();
+}
+
+function calculateHalteFinalPrice() {
+  const basePrice = parseFloat(ui.haltePrice.value) || 0;
+  const discount = parseFloat(ui.halteDiscount.value) || 0;
+  const finalPrice = basePrice * (1 - discount / 100);
+  ui.halteFinalPrice.value = finalPrice.toFixed(2);
+}
+
+async function importHalteAthletesFromCsv(file, monthKey) {
+  const text = await file.text();
+  const rows = parseCsvRows(text);
+  if (rows.length === 0) {
+    throw new Error("CSV vacío o sin datos");
+  }
+  const athletes = await getHalteAthletes();
+  const athleteMap = new Map(
+    athletes.map((athlete) => [athlete.name?.toLowerCase(), athlete])
+  );
+  let processed = 0;
+
+  for (const row of rows) {
+    const name = row.nombre || row.name || "";
+    if (!name) continue;
+    const paidValue = (row.pagado || row.paid || "").toString().trim().toUpperCase();
+    const paid = paidValue === "SI" || paidValue === "TRUE" || paidValue === "1" || paidValue === "YES";
+    const tariff = normalizeTariff(row.tarifa || row.plan || "", halteTariffPlans, "4/mes");
+    const plan = halteTariffPlanMap.get(tariff) || halteTariffPlanMap.get("4/mes");
+    const basePrice = row.precio ? Number(row.precio) : plan.priceTotal;
+    const discount = row.descuento || row.discount || 0;
+    const discountReason = row.motivo_descuento || row.discount_reason || "";
+    const finalPrice = basePrice * (1 - discount / 100);
+    const price = finalPrice; // Use final price with discount applied
+    const duration = plan.durationMonths || 1;
+
+    let athlete = athleteMap.get(name.toLowerCase());
+    if (!athlete) {
+      const id = await createHalteAthlete(name, currentUser?.uid);
+      athlete = { id, name };
+      athleteMap.set(name.toLowerCase(), athlete);
+    }
+
+    for (let i = 0; i < duration; i += 1) {
+      const targetMonth = addMonthsToKey(monthKey, i);
+      await upsertHalteAthleteMonth(
+        athlete.id,
+        targetMonth,
+        {
+          athleteName: athlete.name,
+          tariff,
+          price,
+          basePrice,
+          discount: Number(discount),
+          discountReason,
+          paid,
+          active: paid,
+          durationMonths: plan.durationMonths,
+          priceMonthly: plan.priceMonthly,
+          isPaymentMonth: i === 0,
+        },
+        currentUser?.uid
+      );
+    }
+
+    processed += 1;
+  }
+
+  return processed;
+}
+
+async function refreshHalteMonthly() {
+  if (!ui.halteList) return;
+  
+  if (!selectedHalteMonth) {
+    renderHalteMonthOptions();
+  }
+  if (!selectedHalteListMonth) {
+    renderHalteListMonthOptions();
+  }
+
+  const athletes = await getHalteAthletes();
+  currentHalteAthletes = athletes; // Store globally for event listeners
+
+  // Populate name datalists
+  if (ui.halteNameList) {
+    const names = Array.from(
+      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    ui.halteNameList.innerHTML = "";
+    names.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      ui.halteNameList.appendChild(option);
+    });
+  }
+
+  if (ui.halteSearchList) {
+    const names = Array.from(
+      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+    ui.halteSearchList.innerHTML = "";
+    names.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      ui.halteSearchList.appendChild(option);
+    });
+  }
+
+  const searchValue = halteSearchTerm.trim().toLowerCase();
+  const visibleAthletes = searchValue
+    ? athletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    : athletes;
+
+  const allMonthRecords = await getAllHalteAthleteMonths();
+  const summaryMonthRecords = await getHalteAthleteMonthsForMonth(selectedHalteMonth);
+  const summaryPreviousMonth = getPreviousMonthKey(selectedHalteMonth);
+  const summaryPreviousRecords = summaryPreviousMonth
+    ? await getHalteAthleteMonthsForMonth(summaryPreviousMonth)
+    : [];
+
+  const listMonthRecords = await getHalteAthleteMonthsForMonth(selectedHalteListMonth);
+  const listPreviousMonth = getPreviousMonthKey(selectedHalteListMonth);
+  const listPreviousRecords = listPreviousMonth
+    ? await getHalteAthleteMonthsForMonth(listPreviousMonth)
+    : [];
+
+  const summaryMonthMap = new Map();
+  summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
+  const summaryPreviousMap = new Map();
+  summaryPreviousRecords.forEach((record) => summaryPreviousMap.set(record.athleteId, record));
+
+  const listMonthMap = new Map();
+  listMonthRecords.forEach((record) => listMonthMap.set(record.athleteId, record));
+  const listPreviousMap = new Map();
+  listPreviousRecords.forEach((record) => listPreviousMap.set(record.athleteId, record));
+
+  const athleteHistory = new Map();
+  allMonthRecords.forEach((record) => {
+    if (!athleteHistory.has(record.athleteId)) {
+      athleteHistory.set(record.athleteId, []);
+    }
+    athleteHistory.get(record.athleteId).push(record);
+  });
+  athleteHistory.forEach((records) =>
+    records.sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0))
+  );
+
+  ui.halteList.innerHTML = "";
+
+  const activeNow = new Set();
+  const activePrev = new Set();
+  let totalIncome = 0;
+
+  athletes.forEach((athlete) => {
+    const current = summaryMonthMap.get(athlete.id);
+    const previous = summaryPreviousMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const lastPaid = history.find((record) => record.paid);
+
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
+    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
+    const plan = halteTariffPlanMap.get(tariff) || halteTariffPlanMap.get("4/mes") || fallbackPlan;
+    const basePrice = plan.priceTotal ?? 0;
+    const discountReason = current?.discountReason || previous?.discountReason || lastPaid?.discountReason || "";
+    let discount = 0;
+    if (discountReason === 'Familiar') discount = 15;
+    else if (discountReason === 'Funcionario') discount = 10;
+    else if (discountReason === 'Mañanas') discount = 10;
+    const price = basePrice * (1 - discount / 100);
+    const paid = Boolean(current?.paid);
+    const active = paid;
+
+    if (paid) {
+      activeNow.add(athlete.id);
+      const divisor = current?.durationMonths || plan.durationMonths || 1;
+      totalIncome += Number((current?.price ?? plan.priceTotal) || 0) / divisor;
+    }
+    if (previous?.paid) {
+      activePrev.add(athlete.id);
+    }
+  });
+
+  let visibleCount = 0;
+  const listAthletes = visibleAthletes.length > 0
+    ? visibleAthletes
+    : Array.from(new Map(listMonthRecords.map((record) => [
+        record.athleteId,
+        { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
+      ])).values());
+
+  listAthletes.forEach((athlete) => {
+    const current = listMonthMap.get(athlete.id);
+    const previous = listPreviousMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const lastPaid = history.find((record) => record.paid);
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
+    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
+    const plan = halteTariffPlanMap.get(tariff) || halteTariffPlanMap.get("4/mes") || fallbackPlan;
+    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
+    const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
+    const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
+    let displayDiscount = discount;
+    if (discountReason === 'Familiar') displayDiscount = 15;
+    else if (discountReason === 'Funcionario') displayDiscount = 10;
+    else if (discountReason === 'Mañanas') displayDiscount = 10;
+    else if (discountReason === 'Ninguno') displayDiscount = 0;
+    const paid = Boolean(current?.paid);
+    const active = paid;
+
+    if (haltePaidFilter === "SI" && !paid) {
+      return;
+    }
+    if (haltePaidFilter === "NO" && paid) {
+      return;
+    }
+
+    visibleCount += 1;
+    const planDuration = plan.durationMonths || 1;
+    const planLabel = planDuration === 1
+      ? "Mensual"
+      : planDuration === 3
+        ? "Trimestral"
+        : planDuration === 6
+          ? "Semestral"
+          : "Anual";
+
+    const row = document.createElement("tr");
+    row.dataset.id = athlete.id;
+    row.dataset.name = athlete.name || "";
+    row.innerHTML = `
+      <td>${athlete.name || "(Sin nombre)"}</td>
+      <td>
+        <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
+        <select data-role="halte-tariff" data-id="${athlete.id}">
+          ${halteTariffPlans
+            .map(
+              (option) =>
+                `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`
+            )
+            .join("")}
+        </select>
+      </td>
+      <td><span data-role="halte-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
+      <td>
+        <span data-role="halte-discount-display" data-id="${athlete.id}">${displayDiscount}%</span>
+      </td>
+      <td>
+        <select data-role="halte-discount-reason" data-id="${athlete.id}" style="width: 120px;">
+          <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
+          <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
+          <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
+        </select>
+      </td>
+      <td><span data-role="halte-final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
+      <td>
+        <select data-role="halte-paid" data-id="${athlete.id}">
+          <option value="SI" ${paid ? "selected" : ""}>SI</option>
+          <option value="NO" ${!paid ? "selected" : ""}>NO</option>
+        </select>
+      </td>
+      <td>
+        <span data-role="halte-status" data-id="${athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
+      </td>
+    `;
+    ui.halteList.appendChild(row);
+  });
+
+  // Add event listeners for halte discount reason selects
+  ui.halteList.querySelectorAll('[data-role="halte-discount-reason"]').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const row = e.target.closest('tr');
+      const discountDisplay = row.querySelector('[data-role="halte-discount-display"]');
+      const reason = e.target.value;
+      let discountValue = 0;
+      if (reason === 'Familiar') discountValue = 15;
+      else if (reason === 'Funcionario') discountValue = 10;
+      else if (reason === 'Mañanas') discountValue = 10;
+      discountDisplay.textContent = `${discountValue}%`;
+    });
+  });
+
+  if (ui.halteListCount) {
+    ui.halteListCount.textContent = `Mostrando ${visibleCount} atletas`;
+  }
+  updatePendingSaveButtons();
+
+  const totalActive = activeNow.size;
+  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
+  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
+  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+
+  if (ui.halteSummaryActive) ui.halteSummaryActive.textContent = String(totalActive);
+  if (ui.halteSummaryAverage) ui.halteSummaryAverage.textContent = formatCurrency(averageTariff);
+  if (ui.halteSummaryNew) ui.halteSummaryNew.textContent = String(totalNew);
+  if (ui.halteSummaryDrop) ui.halteSummaryDrop.textContent = String(totalDrop);
+}
+
 function renderYearOptions() {
   if (!ui.monthlyYearSelect) return;
   ui.monthlyYearSelect.innerHTML = "";
@@ -2027,6 +2460,11 @@ async function initializeViewIfNeeded(viewId) {
     case "acroView":
       await refreshAcroMonthly();
       viewsInitialized.acroView = true;
+      break;
+      
+    case "halteView":
+      await refreshHalteMonthly();
+      viewsInitialized.halteView = true;
       break;
       
     case "checkinsView":

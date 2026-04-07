@@ -119,6 +119,12 @@
               </svg>
               Atletas Acrobacias
             </button>
+            <button class="menu-btn" data-view="halteView">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M3 10a1 1 0 011-1h1V6a1 1 0 112 0v3h2V6a1 1 0 112 0v3h2V6a1 1 0 112 0v3h1a1 1 0 110 2h-1v3a1 1 0 11-2 0v-3h-2v3a1 1 0 11-2 0v-3H7v3a1 1 0 11-2 0v-3H4a1 1 0 01-1-1z"/>
+              </svg>
+              Halterofilia
+            </button>
           </div>
         </div>
         
@@ -1361,6 +1367,173 @@
               </table>
             </div>
             <p id="acroListCount" class="muted"></p>
+          </div>
+        </section>
+
+        <section id="halteView" class="view hidden">
+          <div class="card">
+            <h2>Control de pagos · Halterofilia</h2>
+            <div class="detail-header">
+              <div class="table-actions">
+                <button id="halteCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
+                  📄 CSV
+                </button>
+                <button id="halteModalOpen" class="btn" type="button">
+                  Alta de usuario
+                </button>
+              </div>
+            </div>
+          </div>
+          <div id="halteModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Alta de usuario</h3>
+                <button id="halteModalClose" class="btn ghost small" type="button">
+                  Cerrar
+                </button>
+              </div>
+              <form id="halteForm" class="stack">
+                <label>
+                  Nombre
+                  <input id="halteName" type="text" list="halteNameList" required />
+                </label>
+                <datalist id="halteNameList"></datalist>
+                <label>
+                  Mes de pago
+                  <select id="haltePaymentMonth"></select>
+                </label>
+                <label>
+                  Tarifa
+                  <select id="halteTariff">
+                    <option value="Pequeña">Pequeña - 30€</option>
+                    <option value="Grande">Grande - 50€</option>
+                  </select>
+                </label>
+                <label>
+                  Precio (€)
+                  <input id="haltePrice" type="number" min="0" step="0.01" readonly />
+                </label>
+                <label>
+                  Motivo del descuento
+                  <select id="halteDiscountReason">
+                    <option value="Ninguno">Ninguno (0%)</option>
+                    <option value="Familiar">Familiar (15%)</option>
+                    <option value="Funcionario">Funcionario (10%)</option>
+                    <option value="Mañanas">Mañanas (10%)</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </label>
+                <label>
+                  Descuento (%)
+                  <input id="halteDiscount" type="number" min="0" max="100" step="0.1" value="0" />
+                </label>
+                <label>
+                  Precio final (€)
+                  <input id="halteFinalPrice" type="number" min="0" step="0.01" readonly />
+                </label>
+                <label>
+                  Pagado
+                  <select id="haltePaid">
+                    <option value="SI">SI</option>
+                    <option value="NO">NO</option>
+                  </select>
+                </label>
+                <button class="btn" type="submit">Añadir atleta</button>
+              </form>
+            </div>
+          </div>
+          <div id="halteCsvModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Carga masiva de atletas</h3>
+                <button id="halteCsvClose" class="btn ghost small" type="button">
+                  Cerrar
+                </button>
+              </div>
+              <form id="halteCsvForm" class="stack">
+                <p class="muted">El CSV debe tener las columnas: nombre, tarifa, pagado, precio (opcional), descuento (opcional), motivo_descuento (opcional). Formatos aceptados: nombre/name, tarifa/plan, pagado/paid, precio/price, descuento/discount, motivo_descuento/discount_reason.</p>
+                <div class="flex gap-2 mb-3">
+                  <button id="downloadHalteTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
+                    📥 Descargar plantilla
+                  </button>
+                </div>
+                <label>
+                  Archivo CSV
+                  <input id="halteCsvFile" type="file" accept=".csv,text/csv" required />
+                </label>
+                <label>
+                  Mes de pago
+                  <select id="halteCsvMonth"></select>
+                </label>
+                <button class="btn" type="submit">Importar</button>
+                <p id="halteCsvStatus" class="muted"></p>
+              </form>
+            </div>
+          </div>
+          <div class="card">
+            <div class="detail-header">
+              <h3>Resumen mensual</h3>
+              <select id="halteMonthSelect"></select>
+            </div>
+            <div class="summary">
+              <div>
+                <p class="label">Activos</p>
+                <p id="halteSummaryActive" class="value">0</p>
+              </div>
+              <div>
+                <p class="label">Tarifa media</p>
+                <p id="halteSummaryAverage" class="value">0 €</p>
+              </div>
+              <div>
+                <p class="label">Altas nuevas</p>
+                <p id="halteSummaryNew" class="value">0</p>
+              </div>
+              <div>
+                <p class="label">Bajas</p>
+                <p id="halteSummaryDrop" class="value">0</p>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="detail-header athlete-list-header">
+              <h3>Listado mensual</h3>
+              <div class="filter-row">
+                <select id="halteListMonthSelect"></select>
+                <input
+                  id="halteSearch"
+                  type="search"
+                  list="halteSearchList"
+                  placeholder="Buscar..."
+                />
+                <select id="haltePaidFilter">
+                  <option value="ALL">Todos</option>
+                  <option value="SI">Pagado</option>
+                  <option value="NO">No pagado</option>
+                </select>
+                <button id="halteSaveAllBtn" class="btn" type="button" disabled>
+                  Guardar cambios (0)
+                </button>
+              </div>
+            </div>
+            <datalist id="halteSearchList"></datalist>
+            <div class="table-container">
+              <table class="table athlete-table-mobile">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Tarifa</th>
+                    <th>Precio</th>
+                    <th>Descuento</th>
+                    <th>Motivo</th>
+                    <th>Precio Final</th>
+                    <th>Pagado</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="halteList"></tbody>
+              </table>
+            </div>
+            <p id="halteListCount" class="muted"></p>
           </div>
         </section>
 

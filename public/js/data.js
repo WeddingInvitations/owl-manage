@@ -1107,6 +1107,76 @@ export async function getAllAcroAthleteMonths() {
   return records;
 }
 
+export async function createHalteAthlete(name, userId) {
+  const docRef = await addDoc(collection(db, "athletes_halterofilia"), {
+    name,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function getHalteAthletes() {
+  const snap = await getDocs(collection(db, "athletes_halterofilia"));
+  const athletes = [];
+  snap.forEach((docSnap) => {
+    athletes.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return athletes;
+}
+
+export async function upsertHalteAthleteMonth(athleteId, month, payload, userId) {
+  const snap = await getDocs(
+    query(
+      collection(db, "athlete_halterofilia_months"),
+      where("athleteId", "==", athleteId),
+      where("month", "==", month)
+    )
+  );
+  let docId = null;
+  snap.forEach((docSnap) => {
+    docId = docSnap.id;
+  });
+
+  if (docId) {
+    await updateDoc(doc(db, "athlete_halterofilia_months", docId), {
+      ...payload,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+    return docId;
+  }
+
+  const docRef = await addDoc(collection(db, "athlete_halterofilia_months"), {
+    athleteId,
+    month,
+    ...payload,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function getHalteAthleteMonthsForMonth(month) {
+  const snap = await getDocs(
+    query(collection(db, "athlete_halterofilia_months"), where("month", "==", month))
+  );
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
+export async function getAllHalteAthleteMonths() {
+  const snap = await getDocs(collection(db, "athlete_halterofilia_months"));
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
 // ========== CLASES Y PROFESORES ==========
 
 export async function getTeachers() {
