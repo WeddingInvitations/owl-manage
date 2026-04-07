@@ -584,6 +584,8 @@ export async function loadPaymentsWithAthleteTotals(
   const paymentSnap = await getDocs(collection(db, "payments"));
   const athleteSnap = await getDocs(collection(db, "athlete_months"));
   const acroSnap = await getDocs(collection(db, "athlete_acrobacias_months"));
+  const halteSnap = await getDocs(collection(db, "athlete_halterofilia_months"));
+  const telasSnap = await getDocs(collection(db, "athlete_telas_months"));
   const items = [];
 
   paymentSnap.forEach((docSnap) => {
@@ -622,6 +624,21 @@ export async function loadPaymentsWithAthleteTotals(
     acroTotals.set(key, current + amount);
   });
 
+  const halteTotals = new Map();
+  halteSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    // Solo contar si es el mes de pago
+    const isMultiMonth = data.durationMonths && data.durationMonths > 1;
+    const shouldCountIncome = isMultiMonth ? data.isPaymentMonth === true : true;
+    if (!shouldCountIncome) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    const current = halteTotals.get(key) || 0;
+    halteTotals.set(key, current + amount);
+  });
+
   athleteTotals.forEach((total, key) => {
     const date = key === "sin-fecha" ? null : new Date(`${key}-01T00:00:00`);
     items.push({
@@ -642,6 +659,49 @@ export async function loadPaymentsWithAthleteTotals(
       id: null,
       data: {
         concept: "Cuotas acrobacias (total)",
+        date: key === "sin-fecha" ? "" : `${key}-01`,
+        amount: total,
+      },
+      date,
+      editable: false,
+    });
+  });
+
+  halteTotals.forEach((total, key) => {
+    const date = key === "sin-fecha" ? null : new Date(`${key}-01T00:00:00`);
+    items.push({
+      id: null,
+      data: {
+        concept: "Cuotas halterofilia (total)",
+        date: key === "sin-fecha" ? "" : `${key}-01`,
+        amount: total,
+      },
+      date,
+      editable: false,
+    });
+  });
+
+  const telasTotals = new Map();
+  telasSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    // Solo contar si es el mes de pago
+    const isMultiMonth = data.durationMonths && data.durationMonths > 1;
+    const shouldCountIncome = isMultiMonth ? data.isPaymentMonth === true : true;
+    if (!shouldCountIncome) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    const current = telasTotals.get(key) || 0;
+    telasTotals.set(key, current + amount);
+  });
+
+  telasTotals.forEach((total, key) => {
+    const date = key === "sin-fecha" ? null : new Date(`${key}-01T00:00:00`);
+    items.push({
+      id: null,
+      data: {
+        concept: "Cuotas telas (total)",
         date: key === "sin-fecha" ? "" : `${key}-01`,
         amount: total,
       },
@@ -859,6 +919,8 @@ export async function loadSummary(ui, formatCurrency) {
   const expenseSnap = await getDocs(collection(db, "expenses"));
   const athleteSnap = await getDocs(collection(db, "athlete_months"));
   const acroSnap = await getDocs(collection(db, "athlete_acrobacias_months"));
+  const halteSnap = await getDocs(collection(db, "athlete_halterofilia_months"));
+  const telasSnap = await getDocs(collection(db, "athlete_telas_months"));
 
   let income = 0;
   let expenses = 0;
@@ -938,6 +1000,40 @@ export async function loadSummary(ui, formatCurrency) {
     monthly.set(key, current);
   });
 
+  // Halterofilia income
+  halteSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    // Solo contar el ingreso si es el mes de pago (isPaymentMonth)
+    const isMultiMonth = data.durationMonths && data.durationMonths > 1;
+    const shouldCountIncome = isMultiMonth ? data.isPaymentMonth === true : true;
+    if (!shouldCountIncome) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    income += amount;
+    const current = monthly.get(key) || { income: 0, expenses: 0 };
+    current.income += amount;
+    monthly.set(key, current);
+  });
+
+  // Telas income
+  telasSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    // Solo contar el ingreso si es el mes de pago (isPaymentMonth)
+    const isMultiMonth = data.durationMonths && data.durationMonths > 1;
+    const shouldCountIncome = isMultiMonth ? data.isPaymentMonth === true : true;
+    if (!shouldCountIncome) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    income += amount;
+    const current = monthly.get(key) || { income: 0, expenses: 0 };
+    current.income += amount;
+    monthly.set(key, current);
+  });
+
   const athleteTotals = new Map();
   athleteSnap.forEach((docSnap) => {
     const data = docSnap.data();
@@ -968,6 +1064,36 @@ export async function loadSummary(ui, formatCurrency) {
     acroTotals.set(key, current + amount);
   });
 
+  const halteTotals = new Map();
+  halteSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    // Solo contar para totales si es el mes de pago
+    const isMultiMonth = data.durationMonths && data.durationMonths > 1;
+    const shouldCountIncome = isMultiMonth ? data.isPaymentMonth === true : true;
+    if (!shouldCountIncome) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    const current = halteTotals.get(key) || 0;
+    halteTotals.set(key, current + amount);
+  });
+
+  const telasTotals = new Map();
+  telasSnap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (!data.paid) return;
+    // Solo contar para totales si es el mes de pago
+    const isMultiMonth = data.durationMonths && data.durationMonths > 1;
+    const shouldCountIncome = isMultiMonth ? data.isPaymentMonth === true : true;
+    if (!shouldCountIncome) return;
+    const amount = Number(data.price || 0);
+    if (!amount) return;
+    const key = data.month || "sin-fecha";
+    const current = telasTotals.get(key) || 0;
+    telasTotals.set(key, current + amount);
+  });
+
   athleteTotals.forEach((total, key) => {
     const bucket = details.get(key) || { payments: [], expenses: [] };
     bucket.payments.push({
@@ -983,6 +1109,26 @@ export async function loadSummary(ui, formatCurrency) {
     bucket.payments.push({
       date: key === "sin-fecha" ? "" : `${key}-01`,
       concept: "Cuotas acrobacias (total)",
+      amount: total,
+    });
+    details.set(key, bucket);
+  });
+
+  halteTotals.forEach((total, key) => {
+    const bucket = details.get(key) || { payments: [], expenses: [] };
+    bucket.payments.push({
+      date: key === "sin-fecha" ? "" : `${key}-01`,
+      concept: "Cuotas halterofilia (total)",
+      amount: total,
+    });
+    details.set(key, bucket);
+  });
+
+  telasTotals.forEach((total, key) => {
+    const bucket = details.get(key) || { payments: [], expenses: [] };
+    bucket.payments.push({
+      date: key === "sin-fecha" ? "" : `${key}-01`,
+      concept: "Cuotas telas (total)",
       amount: total,
     });
     details.set(key, bucket);
@@ -1170,6 +1316,76 @@ export async function getHalteAthleteMonthsForMonth(month) {
 
 export async function getAllHalteAthleteMonths() {
   const snap = await getDocs(collection(db, "athlete_halterofilia_months"));
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
+export async function createTelasAthlete(name, userId) {
+  const docRef = await addDoc(collection(db, "athletes_telas"), {
+    name,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function getTelasAthletes() {
+  const snap = await getDocs(collection(db, "athletes_telas"));
+  const athletes = [];
+  snap.forEach((docSnap) => {
+    athletes.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return athletes;
+}
+
+export async function upsertTelasAthleteMonth(athleteId, month, payload, userId) {
+  const snap = await getDocs(
+    query(
+      collection(db, "athlete_telas_months"),
+      where("athleteId", "==", athleteId),
+      where("month", "==", month)
+    )
+  );
+  let docId = null;
+  snap.forEach((docSnap) => {
+    docId = docSnap.id;
+  });
+
+  if (docId) {
+    await updateDoc(doc(db, "athlete_telas_months", docId), {
+      ...payload,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+    return docId;
+  }
+
+  const docRef = await addDoc(collection(db, "athlete_telas_months"), {
+    athleteId,
+    month,
+    ...payload,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function getTelasAthleteMonthsForMonth(month) {
+  const snap = await getDocs(
+    query(collection(db, "athlete_telas_months"), where("month", "==", month))
+  );
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
+export async function getAllTelasAthleteMonths() {
+  const snap = await getDocs(collection(db, "athlete_telas_months"));
   const records = [];
   snap.forEach((docSnap) => {
     records.push({ id: docSnap.id, ...docSnap.data() });

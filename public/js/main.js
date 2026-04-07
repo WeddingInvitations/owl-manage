@@ -148,6 +148,7 @@ function calculateHaltePrice(athlete) {
 let currentAthletes = [];
 let currentAcroAthletes = [];
 let currentHalteAthletes = [];
+let currentTelasAthletes = [];
 
 window.debugAuth = async function() {
   console.log('DEBUG: Estado de autenticacion avanzado');
@@ -266,6 +267,14 @@ let selectedHaltePaymentMonth = "";
 let haltePaidFilter = "ALL";
 let halteSearchTerm = "";
 let selectedHalteCsvMonth = "";
+
+// Telas state
+let selectedTelasMonth = "";
+let selectedTelasListMonth = "";
+let selectedTelasPaymentMonth = "";
+let telasPaidFilter = "ALL";
+let telasSearchTerm = "";
+let selectedTelasCsvMonth = "";
 
 // Checkin state
 let currentOpenCheckin = null;
@@ -451,6 +460,20 @@ const halteTariffPlans = [
 
 const halteTariffPlanMap = new Map(
   halteTariffPlans.map((plan) => [plan.key, {
+    ...plan,
+    priceMonthly: plan.priceTotal / plan.durationMonths,
+  }])
+);
+
+const telasTariffPlans = [
+  { key: "4/mes", durationMonths: 1, priceTotal: 45 },
+  { key: "8/mes", durationMonths: 1, priceTotal: 65 },
+  { key: "12/mes", durationMonths: 1, priceTotal: 85 },
+  { key: "Ilimitado", durationMonths: 1, priceTotal: 105 },
+];
+
+const telasTariffPlanMap = new Map(
+  telasTariffPlans.map((plan) => [plan.key, {
     ...plan,
     priceMonthly: plan.priceTotal / plan.durationMonths,
   }])
@@ -1808,6 +1831,306 @@ async function refreshHalteMonthly() {
   if (ui.halteSummaryDrop) ui.halteSummaryDrop.textContent = String(totalDrop);
 }
 
+// ========== TELAS ==========
+
+function renderTelasMonthOptions() {
+  if (!ui.telasMonthSelect) return;
+  ui.telasMonthSelect.innerHTML = "";
+  const opts = generateMonthOptions();
+  opts.forEach((optData) => {
+    const option = document.createElement("option");
+    option.value = optData.key;
+    option.textContent = optData.label;
+    ui.telasMonthSelect.appendChild(option);
+  });
+  if (!selectedTelasMonth && opts.length > 0) {
+    selectedTelasMonth = opts[0].key;
+  }
+  ui.telasMonthSelect.value = selectedTelasMonth;
+}
+
+function renderTelasListMonthOptions() {
+  if (!ui.telasListMonthSelect) return;
+  ui.telasListMonthSelect.innerHTML = "";
+  const opts = generateMonthOptions();
+  opts.forEach((optData) => {
+    const option = document.createElement("option");
+    option.value = optData.key;
+    option.textContent = optData.label;
+    ui.telasListMonthSelect.appendChild(option);
+  });
+  if (!selectedTelasListMonth && opts.length > 0) {
+    selectedTelasListMonth = opts[0].key;
+  }
+  ui.telasListMonthSelect.value = selectedTelasListMonth;
+}
+
+function renderTelasPaymentMonthOptions() {
+  if (!ui.telasPaymentMonth) return;
+  ui.telasPaymentMonth.innerHTML = "";
+  const opts = generateMonthOptions();
+  opts.forEach((optData) => {
+    const opt = document.createElement("option");
+    opt.value = optData.key;
+    opt.textContent = optData.label;
+    ui.telasPaymentMonth.appendChild(opt);
+  });
+}
+
+function renderTelasCsvMonthOptions() {
+  if (!ui.telasCsvMonth) return;
+  ui.telasCsvMonth.innerHTML = "";
+  const opts = generateMonthOptions();
+  opts.forEach((optData) => {
+    const opt = document.createElement("option");
+    opt.value = optData.key;
+    opt.textContent = optData.label;
+    ui.telasCsvMonth.appendChild(opt);
+  });
+  if (opts.length > 0) ui.telasCsvMonth.value = opts[0].key;
+}
+
+function setTelasPriceFromTariff() {
+  const tariffKey = ui.telasTariff?.value;
+  const plan = telasTariffPlanMap.get(tariffKey);
+  if (plan && ui.telasPrice) {
+    ui.telasPrice.value = String(plan.priceTotal);
+  }
+  calculateTelasFinalPrice();
+}
+
+function calculateTelasFinalPrice() {
+  const basePrice = parseFloat(ui.telasPrice?.value || "0");
+  const discount = parseFloat(ui.telasDiscount?.value || "0");
+  const finalPrice = basePrice * (1 - discount / 100);
+  if (ui.telasFinalPrice) ui.telasFinalPrice.value = finalPrice.toFixed(2);
+}
+
+async function importTelasAthletesFromCsv(file, monthKey) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target.result;
+        const lines = text.split("\n").filter((line) => line.trim() !== "");
+        if (lines.length === 0) {
+          resolve({ success: 0, errors: 0 });
+          return;
+        }
+        const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+        const nameIdx = headers.findIndex((h) =>
+          h.includes("nombre") || h.includes("name")
+        );
+        const tariffIdx = headers.findIndex((h) =>
+          h.includes("tarifa") || h.includes("tariff")
+        );
+        const paidIdx = headers.findIndex((h) =>
+          h.includes("pagado") || h.includes("paid")
+        );
+        const priceIdx = headers.findIndex((h) =>
+          h.includes("precio") || h.includes("price")
+        );
+        const discIdx = headers.findIndex((h) =>
+          h.includes("descuento") || h.includes("discount")
+        );
+        const reasonIdx = headers.findIndex((h) =>
+          h.includes("motivo") || h.includes("reason")
+        );
+        let success = 0;
+        let errors = 0;
+        for (let i = 1; i < lines.length; i++) {
+          try {
+            const cols = lines[i].split(",").map((c) => c.trim());
+            const name = nameIdx >= 0 ? cols[nameIdx] : "";
+            const tariff = tariffIdx >= 0 ? cols[tariffIdx] : "";
+            const paidStr = paidIdx >= 0 ? cols[paidIdx] : "NO";
+            const priceStr = priceIdx >= 0 ? cols[priceIdx] : "0";
+            const discStr = discIdx >= 0 ? cols[discIdx] : "0";
+            const reason = reasonIdx >= 0 ? cols[reasonIdx] : "";
+            if (!name) continue;
+            const athleteId = await createTelasAthlete(name, currentUserId);
+            const paid = paidStr.toUpperCase() === "SI" || paidStr.toUpperCase() === "YES";
+            const price = parseFloat(priceStr) || 0;
+            const discount = parseFloat(discStr) || 0;
+            await upsertTelasAthleteMonth(
+              athleteId,
+              monthKey,
+              tariff,
+              paid,
+              discount,
+              reason,
+              price,
+              true
+            );
+            success++;
+          } catch (err) {
+            console.error("Error importing telas row:", err);
+            errors++;
+          }
+        }
+        resolve({ success, errors });
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+
+async function refreshTelasMonthly() {
+  const monthKey = selectedTelasListMonth;
+  if (!monthKey || !ui.telasList) return;
+  ui.telasList.innerHTML = "";
+  const allAthletes = await getTelasAthletes();
+  currentTelasAthletes = allAthletes;
+  const athleteMonths = await getTelasAthleteMonthsForMonth(monthKey);
+  const athleteMonthsMap = new Map();
+  for (const am of athleteMonths) {
+    athleteMonthsMap.set(am.athleteId, am);
+  }
+  const [y, m] = monthKey.split("-").map(Number);
+  let prevMonthKey = "";
+  if (m === 1) {
+    prevMonthKey = `${y - 1}-12`;
+  } else {
+    const pm = m - 1;
+    prevMonthKey = `${y}-${pm < 10 ? "0" : ""}${pm}`;
+  }
+  const prevMonths = await getTelasAthleteMonthsForMonth(prevMonthKey);
+  const activePrev = new Set(
+    prevMonths.filter((am) => am.tariff && am.tariff !== "").map((am) => am.athleteId)
+  );
+  const entries = [];
+  for (const athlete of allAthletes) {
+    const am = athleteMonthsMap.get(athlete.id);
+    let tariff = "";
+    let paid = false;
+    let discount = 0;
+    let discountReason = "";
+    let price = 0;
+    let isPaymentMonth = false;
+    if (am) {
+      tariff = am.tariff || "";
+      paid = am.paid || false;
+      discount = am.discount || 0;
+      discountReason = am.discountReason || "";
+      price = am.price || 0;
+      isPaymentMonth = am.isPaymentMonth || false;
+    }
+    entries.push({
+      athlete,
+      tariff,
+      paid,
+      discount,
+      discountReason,
+      price,
+      isPaymentMonth,
+    });
+  }
+  let filtered = entries;
+  if (telasPaidFilter === "PAID") {
+    filtered = filtered.filter((e) => e.paid);
+  } else if (telasPaidFilter === "UNPAID") {
+    filtered = filtered.filter((e) => !e.paid);
+  }
+  if (telasSearchTerm.trim() !== "") {
+    const term = telasSearchTerm.trim().toLowerCase();
+    filtered = filtered.filter((e) =>
+      e.athlete.name.toLowerCase().includes(term)
+    );
+  }
+  const visibleCount = filtered.length;
+  const activeNow = new Set();
+  let totalIncome = 0;
+  for (const e of entries) {
+    if (e.tariff && e.tariff !== "") {
+      activeNow.add(e.athlete.id);
+      if (e.paid && e.isPaymentMonth) {
+        totalIncome += e.price;
+      }
+    }
+  }
+  filtered.forEach((e) => {
+    const row = document.createElement("tr");
+    const tariffOptions = ["", "4/mes", "8/mes", "12/mes", "Ilimitado"];
+    const tariffOptionsHtml = tariffOptions
+      .map((opt) => {
+        const sel = opt === e.tariff ? "selected" : "";
+        return `<option value="${opt}" ${sel}>${opt}</option>`;
+      })
+      .join("");
+    const reasonOptions = ["", "Familiar", "Funcionario", "Mañanas", "Otro"];
+    const reasonOptionsHtml = reasonOptions
+      .map((opt) => {
+        const sel = opt === e.discountReason ? "selected" : "";
+        return `<option value="${opt}" ${sel}>${opt}</option>`;
+      })
+      .join("");
+    const discountDisplay = e.discountReason
+      ? e.discountReason === "Otro"
+        ? `${e.discount}%`
+        : `${e.discount}%`
+      : `${e.discount}%`;
+    const finalPrice = e.price * (1 - e.discount / 100);
+    const paid = e.paid;
+    row.innerHTML = `
+      <td>${e.athlete.name}</td>
+      <td>
+        <select data-role="telas-tariff" data-id="${e.athlete.id}">
+          ${tariffOptionsHtml}
+        </select>
+      </td>
+      <td>
+        <select data-role="telas-discount-reason" data-id="${e.athlete.id}">
+          ${reasonOptionsHtml}
+        </select>
+      </td>
+      <td><span data-role="telas-discount-display" data-id="${e.athlete.id}">${discountDisplay}</span></td>
+      <td><span data-role="telas-final-price" data-id="${e.athlete.id}">${finalPrice.toFixed(2)}</span> €</td>
+      <td>
+        <select data-role="telas-paid" data-id="${e.athlete.id}">
+          <option value="SI" ${paid ? "selected" : ""}>SI</option>
+          <option value="NO" ${!paid ? "selected" : ""}>NO</option>
+        </select>
+      </td>
+      <td>
+        <span data-role="telas-status" data-id="${e.athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
+      </td>
+    `;
+    ui.telasList.appendChild(row);
+  });
+
+  // Add event listeners for telas discount reason selects
+  ui.telasList.querySelectorAll('[data-role="telas-discount-reason"]').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const row = e.target.closest('tr');
+      const discountDisplay = row.querySelector('[data-role="telas-discount-display"]');
+      const reason = e.target.value;
+      let discountValue = 0;
+      if (reason === 'Familiar') discountValue = 15;
+      else if (reason === 'Funcionario') discountValue = 10;
+      else if (reason === 'Mañanas') discountValue = 10;
+      discountDisplay.textContent = `${discountValue}%`;
+    });
+  });
+
+  if (ui.telasListCount) {
+    ui.telasListCount.textContent = `Mostrando ${visibleCount} atletas`;
+  }
+  updatePendingSaveButtons();
+
+  const totalActive = activeNow.size;
+  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
+  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
+  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+
+  if (ui.telasSummaryActive) ui.telasSummaryActive.textContent = String(totalActive);
+  if (ui.telasSummaryAverage) ui.telasSummaryAverage.textContent = formatCurrency(averageTariff);
+  if (ui.telasSummaryNew) ui.telasSummaryNew.textContent = String(totalNew);
+  if (ui.telasSummaryDrop) ui.telasSummaryDrop.textContent = String(totalDrop);
+}
+
 function renderYearOptions() {
   if (!ui.monthlyYearSelect) return;
   ui.monthlyYearSelect.innerHTML = "";
@@ -2467,6 +2790,11 @@ async function initializeViewIfNeeded(viewId) {
       viewsInitialized.halteView = true;
       break;
       
+    case "telasView":
+      await refreshTelasMonthly();
+      viewsInitialized.telasView = true;
+      break;
+      
     case "checkinsView":
       await refreshCheckinStatus();
       await refreshCheckinAdmin();
@@ -2762,6 +3090,42 @@ async function saveHalteRow(row) {
   }
 }
 
+async function saveTelasRow(row) {
+  const athleteId = row?.dataset?.id;
+  const athleteName = row?.dataset?.name || "";
+  const tariffSelect = row?.querySelector("[data-role='telas-tariff']");
+  const paidSelect = row?.querySelector("[data-role='telas-paid']");
+  const discountReasonInput = row?.querySelector("[data-role='telas-discount-reason']");
+
+  if (!athleteId || !tariffSelect || !paidSelect) {
+    throw new Error("Fila inválida");
+  }
+
+  const newTariff = tariffSelect.value;
+  const newPaid = paidSelect.value === "SI";
+  const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
+  const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const plan = telasTariffPlanMap.get(newTariff) || telasTariffPlanMap.get("4/mes");
+  const basePrice = plan.priceTotal;
+  const newPrice = basePrice * (1 - newDiscount / 100);
+  const monthKey = selectedTelasListMonth || selectedTelasMonth;
+  const duration = plan.durationMonths || 1;
+
+  for (let i = 0; i < duration; i += 1) {
+    const targetMonth = addMonthsToKey(monthKey, i);
+    await upsertTelasAthleteMonth(
+      athleteId,
+      targetMonth,
+      newTariff,
+      newPaid,
+      newDiscount,
+      newDiscountReason,
+      basePrice,
+      i === 0
+    );
+  }
+}
+
 if (ui.athleteList) {
   ui.athleteList.addEventListener("change", (event) => {
     const target = event.target;
@@ -2836,6 +3200,19 @@ if (ui.halteModal) {
 }
 if (ui.halteCsvModal) {
   ui.halteCsvModal.classList.add("hidden");
+}
+
+// Telas init
+renderTelasMonthOptions();
+setTelasPriceFromTariff();
+renderTelasPaymentMonthOptions();
+renderTelasListMonthOptions();
+renderTelasCsvMonthOptions();
+if (ui.telasModal) {
+  ui.telasModal.classList.add("hidden");
+}
+if (ui.telasCsvModal) {
+  ui.telasCsvModal.classList.add("hidden");
 }
 
 if (ui.acroList) {
@@ -2929,6 +3306,56 @@ if (ui.halteSaveAllBtn) {
     await refreshHalteMonthly();
     updatePendingSaveButtons();
     ui.halteSaveAllBtn.textContent = originalText;
+
+    if (failedNames.length) {
+      alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
+      return;
+    }
+    alert(`Guardados ${saved} cambios.`);
+  });
+}
+
+if (ui.telasList) {
+  ui.telasList.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!target.matches("[data-role='telas-tariff'], [data-role='telas-discount-reason'], [data-role='telas-paid']")) {
+      return;
+    }
+    const row = target.closest("tr");
+    markDirtyRow(row);
+    if (target.matches("[data-role='telas-paid']")) {
+      const statusElement = row?.querySelector("[data-role='telas-status']");
+      setStatusBadge(statusElement, target.value === "SI");
+    }
+  });
+}
+
+if (ui.telasSaveAllBtn) {
+  ui.telasSaveAllBtn.addEventListener("click", async () => {
+    const dirtyRows = ui.telasList
+      ? Array.from(ui.telasList.querySelectorAll("tr[data-dirty='true']"))
+      : [];
+    if (!dirtyRows.length) return;
+
+    const originalText = ui.telasSaveAllBtn.textContent;
+    ui.telasSaveAllBtn.textContent = "Guardando...";
+    ui.telasSaveAllBtn.disabled = true;
+
+    let saved = 0;
+    const failedNames = [];
+    for (const row of dirtyRows) {
+      try {
+        await saveTelasRow(row);
+        saved += 1;
+      } catch (error) {
+        failedNames.push(row.dataset.name || row.dataset.id || "(sin nombre)");
+        console.error("Error updating telas athlete row:", error);
+      }
+    }
+
+    await refreshTelasMonthly();
+    updatePendingSaveButtons();
+    ui.telasSaveAllBtn.textContent = originalText;
 
     if (failedNames.length) {
       alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
@@ -3136,6 +3563,23 @@ function downloadHalteTemplate() {
   const link = document.createElement("a");
   link.href = url;
   link.download = "plantilla-halterofilia.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadTelasTemplate() {
+  const headers = ["nombre", "tarifa", "pagado", "precio", "descuento", "motivo_descuento"];
+  const exampleRow = ["María García", "4/mes", "NO", "45", "15", "Familiar"];
+  
+  const csv = [headers, exampleRow]
+    .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+  
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "plantilla-telas.csv";
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -4922,6 +5366,110 @@ on(ui.halteCsvForm, "submit", async (event) => {
   }
 });
 
+// ========== TELAS EVENT LISTENERS ==========
+
+on(ui.telasForm, "submit", async (event) => {
+  event.preventDefault();
+  const rawName = ui.telasName.value.trim();
+  if (!rawName) return;
+  
+  const athletes = await getTelasAthletes();
+  const existing = athletes.find(
+    (athlete) => athlete.name?.toLowerCase() === rawName.toLowerCase()
+  );
+  const athleteId = existing
+    ? existing.id
+    : await createTelasAthlete(rawName, currentUser?.uid);
+  const athleteName = existing?.name || rawName;
+  const tariff = ui.telasTariff.value;
+  const plan = telasTariffPlanMap.get(tariff) || telasTariffPlanMap.get("4/mes");
+  const basePrice = plan.priceTotal;
+  const discountReason = ui.telasDiscountReason.value;
+  let discount = parseFloat(ui.telasDiscount.value) || 0;
+  const finalPrice = parseFloat(ui.telasFinalPrice.value) || basePrice;
+  const paid = ui.telasPaid.value === "SI";
+  const monthKey = ui.telasPaymentMonth.value || selectedTelasPaymentMonth || getMonthKey(new Date());
+
+  if (athleteId) {
+    await upsertTelasAthleteMonth(
+      athleteId,
+      monthKey,
+      tariff,
+      paid,
+      discount,
+      discountReason,
+      basePrice,
+      true
+    );
+  }
+  
+  ui.telasForm.reset();
+  ui.telasDiscount.value = 0;
+  ui.telasDiscountReason.value = "";
+  setTelasPriceFromTariff();
+  renderTelasPaymentMonthOptions();
+  if (ui.telasModal) {
+    ui.telasModal.classList.add("hidden");
+  }
+  await refreshTelasMonthly();
+});
+
+on(ui.telasTariff, "change", () => {
+  setTelasPriceFromTariff();
+});
+
+on(ui.telasDiscountReason, "change", () => {
+  const reason = ui.telasDiscountReason.value;
+  let discountValue = 0;
+  if (reason === 'Familiar') discountValue = 15;
+  else if (reason === 'Funcionario') discountValue = 10;
+  else if (reason === 'Mañanas') discountValue = 10;
+  ui.telasDiscount.value = discountValue;
+  calculateTelasFinalPrice();
+});
+
+on(ui.telasDiscount, "input", () => {
+  calculateTelasFinalPrice();
+});
+
+on(ui.telasModalOpen, "click", () => {
+  ui.telasModal?.classList.remove("hidden");
+});
+
+on(ui.telasModalClose, "click", () => {
+  ui.telasModal?.classList.add("hidden");
+});
+
+on(ui.telasCsvOpen, "click", () => {
+  renderTelasCsvMonthOptions();
+  ui.telasCsvModal?.classList.remove("hidden");
+});
+
+on(ui.telasCsvClose, "click", () => {
+  ui.telasCsvModal?.classList.add("hidden");
+});
+
+on(ui.telasCsvMonth, "change", (event) => {
+  selectedTelasCsvMonth = event.target.value;
+});
+
+on(ui.telasCsvForm, "submit", async (event) => {
+  event.preventDefault();
+  if (!ui.telasCsvFile?.files?.length) return;
+  ui.telasCsvStatus.textContent = "Importando...";
+  const monthKey = ui.telasCsvMonth?.value || selectedTelasCsvMonth || getMonthKey(new Date());
+  try {
+    const result = await importTelasAthletesFromCsv(ui.telasCsvFile.files[0], monthKey);
+    ui.telasCsvStatus.textContent = `Importados ${result.success} atletas. Errores: ${result.errors}`;
+    ui.telasCsvForm.reset();
+    renderTelasCsvMonthOptions();
+    ui.telasCsvModal?.classList.add("hidden");
+    await refreshTelasMonthly();
+  } catch (error) {
+    ui.telasCsvStatus.textContent = `Error: ${error.message || error}`;
+  }
+});
+
 // ========== MONTH FILTER EVENT LISTENERS ==========
 
 // Athletes - Month filters
@@ -4990,6 +5538,28 @@ on(ui.haltePaidFilter, "change", async (event) => {
   await refreshHalteMonthly();
 });
 
+// Telas - Month filters  
+on(ui.telasMonthSelect, "change", async (event) => {
+  selectedTelasMonth = event.target.value;
+  await refreshTelasMonthly();
+});
+
+on(ui.telasListMonthSelect, "change", async (event) => {
+  selectedTelasListMonth = event.target.value;
+  await refreshTelasMonthly();
+});
+
+// Telas - Search and paid filter
+on(ui.telasSearch, "input", async (event) => {
+  telasSearchTerm = event.target.value;
+  await refreshTelasMonthly();
+});
+
+on(ui.telasPaidFilter, "change", async (event) => {
+  telasPaidFilter = event.target.value;
+  await refreshTelasMonthly();
+});
+
 // Payment and expense month filters
 on(ui.paymentMonthSelect, "change", async (event) => {
   selectedPaymentMonth = event.target.value;
@@ -5019,6 +5589,10 @@ on(ui.downloadAcroTemplate, "click", () => {
 
 on(ui.downloadHalteTemplate, "click", () => {
   downloadHalteTemplate();
+});
+
+on(ui.downloadTelasTemplate, "click", () => {
+  downloadTelasTemplate();
 });
 
 // ========== CLASES Y TURNOS ==========
