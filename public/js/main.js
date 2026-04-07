@@ -2718,6 +2718,50 @@ async function saveAcroRow(row) {
   }
 }
 
+async function saveHalteRow(row) {
+  const athleteId = row?.dataset?.id;
+  const athleteName = row?.dataset?.name || "";
+  const tariffSelect = row?.querySelector("[data-role='halte-tariff']");
+  const paidSelect = row?.querySelector("[data-role='halte-paid']");
+  const discountReasonInput = row?.querySelector("[data-role='halte-discount-reason']");
+
+  if (!athleteId || !tariffSelect || !paidSelect) {
+    throw new Error("Fila inválida");
+  }
+
+  const newTariff = tariffSelect.value;
+  const newPaid = paidSelect.value === "SI";
+  const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
+  const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const plan = halteTariffPlanMap.get(newTariff) || halteTariffPlanMap.get("Pequeña");
+  const basePrice = plan.priceTotal;
+  const newPrice = basePrice * (1 - newDiscount / 100);
+  const monthKey = selectedHalteListMonth || selectedHalteMonth;
+  const duration = plan.durationMonths || 1;
+
+  for (let i = 0; i < duration; i += 1) {
+    const targetMonth = addMonthsToKey(monthKey, i);
+    await upsertHalteAthleteMonth(
+      athleteId,
+      targetMonth,
+      {
+        athleteName,
+        tariff: newTariff,
+        price: newPrice,
+        basePrice,
+        discount: newDiscount,
+        discountReason: newDiscountReason,
+        paid: newPaid,
+        active: newPaid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
+      },
+      currentUser?.uid
+    );
+  }
+}
+
 if (ui.athleteList) {
   ui.athleteList.addEventListener("change", (event) => {
     const target = event.target;
@@ -2781,6 +2825,19 @@ if (ui.acroCsvModal) {
   ui.acroCsvModal.classList.add("hidden");
 }
 
+// Halterofilia init
+renderHalteMonthOptions();
+setHaltePriceFromTariff();
+renderHaltePaymentMonthOptions();
+renderHalteListMonthOptions();
+renderHalteCsvMonthOptions();
+if (ui.halteModal) {
+  ui.halteModal.classList.add("hidden");
+}
+if (ui.halteCsvModal) {
+  ui.halteCsvModal.classList.add("hidden");
+}
+
 if (ui.acroList) {
   ui.acroList.addEventListener("change", (event) => {
     const target = event.target;
@@ -2822,6 +2879,56 @@ if (ui.acroSaveAllBtn) {
     await refreshAcroMonthly();
     updatePendingSaveButtons();
     ui.acroSaveAllBtn.textContent = originalText;
+
+    if (failedNames.length) {
+      alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
+      return;
+    }
+    alert(`Guardados ${saved} cambios.`);
+  });
+}
+
+if (ui.halteList) {
+  ui.halteList.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!target.matches("[data-role='halte-tariff'], [data-role='halte-discount-reason'], [data-role='halte-paid']")) {
+      return;
+    }
+    const row = target.closest("tr");
+    markDirtyRow(row);
+    if (target.matches("[data-role='halte-paid']")) {
+      const statusElement = row?.querySelector("[data-role='halte-status']");
+      setStatusBadge(statusElement, target.value === "SI");
+    }
+  });
+}
+
+if (ui.halteSaveAllBtn) {
+  ui.halteSaveAllBtn.addEventListener("click", async () => {
+    const dirtyRows = ui.halteList
+      ? Array.from(ui.halteList.querySelectorAll("tr[data-dirty='true']"))
+      : [];
+    if (!dirtyRows.length) return;
+
+    const originalText = ui.halteSaveAllBtn.textContent;
+    ui.halteSaveAllBtn.textContent = "Guardando...";
+    ui.halteSaveAllBtn.disabled = true;
+
+    let saved = 0;
+    const failedNames = [];
+    for (const row of dirtyRows) {
+      try {
+        await saveHalteRow(row);
+        saved += 1;
+      } catch (error) {
+        failedNames.push(row.dataset.name || row.dataset.id || "(sin nombre)");
+        console.error("Error updating halte athlete row:", error);
+      }
+    }
+
+    await refreshHalteMonthly();
+    updatePendingSaveButtons();
+    ui.halteSaveAllBtn.textContent = originalText;
 
     if (failedNames.length) {
       alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
