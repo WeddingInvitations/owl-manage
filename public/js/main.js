@@ -1835,59 +1835,80 @@ async function refreshHalteMonthly() {
 
 function renderTelasMonthOptions() {
   if (!ui.telasMonthSelect) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
   ui.telasMonthSelect.innerHTML = "";
-  const opts = generateMonthOptions();
-  opts.forEach((optData) => {
+  options.forEach((key) => {
     const option = document.createElement("option");
-    option.value = optData.key;
-    option.textContent = optData.label;
+    option.value = key;
+    option.textContent = getMonthLabel(key);
     ui.telasMonthSelect.appendChild(option);
   });
-  if (!selectedTelasMonth && opts.length > 0) {
-    selectedTelasMonth = opts[0].key;
-  }
+  selectedTelasMonth = options[0];
   ui.telasMonthSelect.value = selectedTelasMonth;
 }
 
 function renderTelasListMonthOptions() {
   if (!ui.telasListMonthSelect) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 12; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  for (let i = 1; i <= 6; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
   ui.telasListMonthSelect.innerHTML = "";
-  const opts = generateMonthOptions();
-  opts.forEach((optData) => {
+  options.forEach((key) => {
     const option = document.createElement("option");
-    option.value = optData.key;
-    option.textContent = optData.label;
+    option.value = key;
+    option.textContent = getMonthLabel(key);
     ui.telasListMonthSelect.appendChild(option);
   });
-  if (!selectedTelasListMonth && opts.length > 0) {
-    selectedTelasListMonth = opts[0].key;
-  }
+  selectedTelasListMonth = getMonthKey(now);
   ui.telasListMonthSelect.value = selectedTelasListMonth;
 }
 
 function renderTelasPaymentMonthOptions() {
   if (!ui.telasPaymentMonth) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
   ui.telasPaymentMonth.innerHTML = "";
-  const opts = generateMonthOptions();
-  opts.forEach((optData) => {
-    const opt = document.createElement("option");
-    opt.value = optData.key;
-    opt.textContent = optData.label;
-    ui.telasPaymentMonth.appendChild(opt);
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.telasPaymentMonth.appendChild(option);
   });
+  if (options.length > 0) ui.telasPaymentMonth.value = options[0];
 }
 
 function renderTelasCsvMonthOptions() {
   if (!ui.telasCsvMonth) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
   ui.telasCsvMonth.innerHTML = "";
-  const opts = generateMonthOptions();
-  opts.forEach((optData) => {
-    const opt = document.createElement("option");
-    opt.value = optData.key;
-    opt.textContent = optData.label;
-    ui.telasCsvMonth.appendChild(opt);
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.telasCsvMonth.appendChild(option);
   });
-  if (opts.length > 0) ui.telasCsvMonth.value = opts[0].key;
+  if (options.length > 0) ui.telasCsvMonth.value = options[0];
 }
 
 function setTelasPriceFromTariff() {
