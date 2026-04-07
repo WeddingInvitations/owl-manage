@@ -520,6 +520,47 @@ select:focus {
   background: rgba(0,0,0,0.1);
 }
 
+/* Mejoras de usabilidad táctil */
+@media (hover: none) and (pointer: coarse) {
+  /* Mejora de área de toque para dispositivos táctiles */
+  .btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .btn.small {
+    min-height: 36px;
+    min-width: 36px;
+  }
+  
+  .btn-icon {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px;
+  }
+  
+  /* Eliminar efectos hover en táctil */
+  .btn:hover,
+  .btn.ghost:hover,
+  .btn.danger:hover {
+    transform: none;
+  }
+  
+  /* Feedback táctil con active state */
+  .btn:active {
+    transform: scale(0.96);
+    opacity: 0.8;
+  }
+  
+  .mobile-nav-btn:active {
+    background: rgba(0, 0, 0, 0.1);
+  }
+  
+  .mobile-nav-btn.active:active {
+    background: rgba(108, 125, 255, 0.2);
+  }
+}
+
 .btn-icon.btn-delete:hover {
   background: rgba(220, 53, 69, 0.15);
 }
@@ -1396,12 +1437,14 @@ select:focus {
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(8, 10, 16, 0.7);
+  background: rgba(8, 10, 16, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding: 24px;
-  z-index: 50;
+  z-index: 9999;
   overflow-y: auto;
 }
 
@@ -1422,6 +1465,24 @@ select:focus {
   max-height: 85vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Modal del menú "Más" optimizado para móvil */
+#moreMenu .modal-content {
+  width: min(400px, 90vw);
+  max-height: 70vh;
+}
+
+#moreMenu .stack {
+  gap: 8px;
+}
+
+#moreMenu .btn {
+  padding: 14px 16px;
+  justify-content: flex-start;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 500;
 }
 
 .badge {
@@ -1696,7 +1757,7 @@ select:focus {
   .main-shell {
     grid-template-columns: 1fr;
     min-height: calc(100vh - 60px);
-    padding-bottom: 70px;
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
   }
 
   /* Hide side menu on mobile, use bottom nav */
@@ -1713,11 +1774,11 @@ select:focus {
     right: 0;
     background: var(--card);
     border-top: 1px solid var(--border);
-    padding: 8px 4px;
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 4px 4px;
+    padding-bottom: max(4px, calc(env(safe-area-inset-bottom) + 4px));
     z-index: 1000;
     justify-content: space-around;
-    gap: 4px;
+    gap: 2px;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   }
 
@@ -1731,13 +1792,14 @@ select:focus {
     border: none;
     color: var(--muted);
     font-size: 10px;
-    padding: 6px 4px;
+    padding: 8px 4px;
     border-radius: 8px;
     cursor: pointer;
     flex: 1;
     max-width: 80px;
-    min-height: 48px;
+    min-height: 56px;
     transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .mobile-nav-btn .icon {
@@ -1762,7 +1824,7 @@ select:focus {
   /* Content area */
   .content {
     padding: 16px;
-    padding-bottom: 80px;
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
   }
 
   .grid {
@@ -2291,8 +2353,9 @@ select:focus {
 
   /* Modals */
   .modal {
-    padding: 16px;
+    padding: 0;
     align-items: flex-end;
+    justify-content: center;
   }
 
   .modal-content {
@@ -2300,7 +2363,31 @@ select:focus {
     max-height: 85vh;
     overflow-y: auto;
     border-radius: 16px 16px 0 0;
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding: 20px;
+    padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 20px));
+  }
+  
+  /* Modal del menú "Más" en móvil */
+  #moreMenu.modal {
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  
+  #moreMenu .modal-content {
+    width: min(350px, 90vw);
+    max-height: 60vh;
+    border-radius: 16px;
+    padding-bottom: 20px;
+  }
+  
+  #moreMenu .btn {
+    font-size: 16px;
+    padding: 16px 20px;
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
   /* Detail grid */
@@ -2311,7 +2398,7 @@ select:focus {
 
   /* Footer */
   .app-footer {
-    padding: 12px 16px 80px;
+    padding: 12px 16px calc(70px + env(safe-area-inset-bottom));
     text-align: center;
     font-size: 12px;
   }

@@ -2057,6 +2057,15 @@ on(ui.moreMenuClose, "click", () => {
   }
 });
 
+// Close more menu when clicking outside (on the backdrop)
+if (ui.moreMenu) {
+  ui.moreMenu.addEventListener("click", (e) => {
+    if (e.target === ui.moreMenu) {
+      ui.moreMenu.classList.add("hidden");
+    }
+  });
+}
+
 // More menu option buttons
 document.querySelectorAll('[data-close-more]').forEach((button) => {
   button.addEventListener("click", async () => {
