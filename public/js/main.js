@@ -44,6 +44,7 @@ import {
   addTraining,
   createAthlete,
   getAthletes,
+  updateAthlete,
   getTeachers,
   createTeacher,
   updateTeacher,
@@ -82,16 +83,19 @@ import {
   setMustChangePassword,
   createAcroAthlete,
   getAcroAthletes,
+  updateAcroAthlete,
   getAllAcroAthleteMonths,
   getAcroAthleteMonthsForMonth,
   upsertAcroAthleteMonth,
   createHalteAthlete,
   getHalteAthletes,
+  updateHalteAthlete,
   getAllHalteAthleteMonths,
   getHalteAthleteMonthsForMonth,
   upsertHalteAthleteMonth,
   createTelasAthlete,
   getTelasAthletes,
+  updateTelasAthlete,
   getAllTelasAthleteMonths,
   getTelasAthleteMonthsForMonth,
   upsertTelasAthleteMonth,
@@ -448,6 +452,7 @@ const tariffPlanMap = new Map(
 const acroTariffPlans = [
   { key: "4/mes", durationMonths: 1, priceTotal: 45 },
   { key: "8/mes", durationMonths: 1, priceTotal: 65 },
+  { key: "Open Mensual", durationMonths: 1, priceTotal: 70 },
   { key: "12/mes", durationMonths: 1, priceTotal: 85 },
   { key: "Ilimitado", durationMonths: 1, priceTotal: 105 },
 ];
@@ -935,12 +940,28 @@ async function refreshAthleteMonthly() {
   });
 
   let visibleCount = 0;
-  const listAthletes = visibleAthletes.length > 0
+  let listAthletes = visibleAthletes.length > 0
     ? visibleAthletes
     : Array.from(new Map(listMonthRecords.map((record) => [
         record.athleteId,
         { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
       ])).values());
+
+  // Ordenar por fecha de última actualización
+  listAthletes = listAthletes.map(athlete => {
+    const current = listMonthMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const mostRecent = history.length > 0 ? history[0] : null;
+    const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
+    return { ...athlete, lastUpdate };
+  }).sort((a, b) => {
+    if (!a.lastUpdate && !b.lastUpdate) return 0;
+    if (!a.lastUpdate) return 1;
+    if (!b.lastUpdate) return -1;
+    const timeA = a.lastUpdate?.seconds || a.lastUpdate?.toMillis?.() / 1000 || 0;
+    const timeB = b.lastUpdate?.seconds || b.lastUpdate?.toMillis?.() / 1000 || 0;
+    return timeB - timeA;
+  });
 
   listAthletes.forEach((athlete) => {
     const current = listMonthMap.get(athlete.id);
@@ -980,14 +1001,19 @@ async function refreshAthleteMonthly() {
     row.dataset.id = athlete.id;
     row.dataset.name = athlete.name;
     row.innerHTML = `
-      <td>${athlete.name}</td>
+      <td style="max-width: 200px;">
+        <div style="display: flex; align-items: flex-start; gap: 6px;">
+          <span data-role="athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name}</span>
+          <button class="edit-name-btn" data-role="edit-athlete-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+        </div>
+      </td>
       <td>
         <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
-        <select data-role="tariff" data-id="${athlete.id}">
+        <select data-role="tariff" data-id="${athlete.id}" style="max-width: 100px;">
           ${tariffPlans
             .map(
               (option) =>
-                `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key} - ${option.priceTotal}€</option>`
+                `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`
             )
             .join("")}
         </select>
@@ -1031,6 +1057,26 @@ async function refreshAthleteMonthly() {
       else if (reason === 'Mañanas') discountValue = 10; // example
       // For Otro, maybe keep previous or 0
       discountDisplay.textContent = `${discountValue}%`;
+    });
+  });
+
+  // Add event listeners for edit name buttons
+  ui.athleteList.querySelectorAll('[data-role="edit-athlete-name"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.target.dataset.id;
+      const nameSpan = ui.athleteList.querySelector(`[data-role="athlete-name"][data-id="${athleteId}"]`);
+      const currentName = nameSpan.textContent;
+      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
+      
+      if (newName && newName.trim() !== '' && newName !== currentName) {
+        try {
+          await updateAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
+          await refreshAthleteMonthly();
+        } catch (error) {
+          console.error('Error al actualizar el nombre del atleta:', error);
+          alert('Error al actualizar el nombre del atleta');
+        }
+      }
     });
   });
 
@@ -1328,12 +1374,28 @@ async function refreshAcroMonthly() {
   });
 
   let visibleCount = 0;
-  const listAthletes = visibleAthletes.length > 0
+  let listAthletes = visibleAthletes.length > 0
     ? visibleAthletes
     : Array.from(new Map(listMonthRecords.map((record) => [
         record.athleteId,
         { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
       ])).values());
+
+  // Ordenar por fecha de última actualización
+  listAthletes = listAthletes.map(athlete => {
+    const current = listMonthMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const mostRecent = history.length > 0 ? history[0] : null;
+    const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
+    return { ...athlete, lastUpdate };
+  }).sort((a, b) => {
+    if (!a.lastUpdate && !b.lastUpdate) return 0;
+    if (!a.lastUpdate) return 1;
+    if (!b.lastUpdate) return -1;
+    const timeA = a.lastUpdate?.seconds || a.lastUpdate?.toMillis?.() / 1000 || 0;
+    const timeB = b.lastUpdate?.seconds || b.lastUpdate?.toMillis?.() / 1000 || 0;
+    return timeB - timeA;
+  });
 
   listAthletes.forEach((athlete) => {
     const current = listMonthMap.get(athlete.id);
@@ -1375,10 +1437,15 @@ async function refreshAcroMonthly() {
     row.dataset.id = athlete.id;
     row.dataset.name = athlete.name || "";
     row.innerHTML = `
-      <td>${athlete.name || "(Sin nombre)"}</td>
+      <td style="max-width: 200px;">
+        <div style="display: flex; align-items: flex-start; gap: 6px;">
+          <span data-role="acro-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
+          <button class="edit-name-btn" data-role="edit-acro-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+        </div>
+      </td>
       <td>
         <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
-        <select data-role="acro-tariff" data-id="${athlete.id}">
+        <select data-role="acro-tariff" data-id="${athlete.id}" style="max-width: 100px;">
           ${acroTariffPlans
             .map(
               (option) =>
@@ -1425,6 +1492,26 @@ async function refreshAcroMonthly() {
       else if (reason === 'Funcionario') discountValue = 10;
       else if (reason === 'Mañanas') discountValue = 10;
       discountDisplay.textContent = `${discountValue}%`;
+    });
+  });
+
+  // Add event listeners for edit acro name buttons
+  ui.acroList.querySelectorAll('[data-role="edit-acro-name"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.target.dataset.id;
+      const nameSpan = ui.acroList.querySelector(`[data-role="acro-athlete-name"][data-id="${athleteId}"]`);
+      const currentName = nameSpan.textContent;
+      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
+      
+      if (newName && newName.trim() !== '' && newName !== currentName) {
+        try {
+          await updateAcroAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
+          await refreshAcroMonthly();
+        } catch (error) {
+          console.error('Error al actualizar el nombre del atleta:', error);
+          alert('Error al actualizar el nombre del atleta');
+        }
+      }
     });
   });
 
@@ -1722,12 +1809,28 @@ async function refreshHalteMonthly() {
   });
 
   let visibleCount = 0;
-  const listAthletes = visibleAthletes.length > 0
+  let listAthletes = visibleAthletes.length > 0
     ? visibleAthletes
     : Array.from(new Map(listMonthRecords.map((record) => [
         record.athleteId,
         { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
       ])).values());
+
+  // Ordenar por fecha de última actualización
+  listAthletes = listAthletes.map(athlete => {
+    const current = listMonthMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const mostRecent = history.length > 0 ? history[0] : null;
+    const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
+    return { ...athlete, lastUpdate };
+  }).sort((a, b) => {
+    if (!a.lastUpdate && !b.lastUpdate) return 0;
+    if (!a.lastUpdate) return 1;
+    if (!b.lastUpdate) return -1;
+    const timeA = a.lastUpdate?.seconds || a.lastUpdate?.toMillis?.() / 1000 || 0;
+    const timeB = b.lastUpdate?.seconds || b.lastUpdate?.toMillis?.() / 1000 || 0;
+    return timeB - timeA;
+  });
 
   listAthletes.forEach((athlete) => {
     const current = listMonthMap.get(athlete.id);
@@ -1769,10 +1872,15 @@ async function refreshHalteMonthly() {
     row.dataset.id = athlete.id;
     row.dataset.name = athlete.name || "";
     row.innerHTML = `
-      <td>${athlete.name || "(Sin nombre)"}</td>
+      <td style="max-width: 200px;">
+        <div style="display: flex; align-items: flex-start; gap: 6px;">
+          <span data-role="halte-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
+          <button class="edit-name-btn" data-role="edit-halte-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+        </div>
+      </td>
       <td>
         <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
-        <select data-role="halte-tariff" data-id="${athlete.id}">
+        <select data-role="halte-tariff" data-id="${athlete.id}" style="max-width: 100px;">
           ${halteTariffPlans
             .map(
               (option) =>
@@ -1819,6 +1927,26 @@ async function refreshHalteMonthly() {
       else if (reason === 'Funcionario') discountValue = 10;
       else if (reason === 'Mañanas') discountValue = 10;
       discountDisplay.textContent = `${discountValue}%`;
+    });
+  });
+
+  // Add event listeners for edit halte name buttons
+  ui.halteList.querySelectorAll('[data-role="edit-halte-name"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.target.dataset.id;
+      const nameSpan = ui.halteList.querySelector(`[data-role="halte-athlete-name"][data-id="${athleteId}"]`);
+      const currentName = nameSpan.textContent;
+      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
+      
+      if (newName && newName.trim() !== '' && newName !== currentName) {
+        try {
+          await updateHalteAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
+          await refreshHalteMonthly();
+        } catch (error) {
+          console.error('Error al actualizar el nombre del atleta:', error);
+          alert('Error al actualizar el nombre del atleta');
+        }
+      }
     });
   });
 
@@ -2046,6 +2174,7 @@ async function refreshTelasMonthly() {
     let discountReason = "";
     let price = 0;
     let isPaymentMonth = false;
+    let lastUpdate = null;
     if (am) {
       tariff = am.tariff || "";
       paid = am.paid || false;
@@ -2053,6 +2182,7 @@ async function refreshTelasMonthly() {
       discountReason = am.discountReason || "";
       price = am.price || 0;
       isPaymentMonth = am.isPaymentMonth || false;
+      lastUpdate = am.updatedAt || am.createdAt;
     }
     entries.push({
       athlete,
@@ -2062,8 +2192,20 @@ async function refreshTelasMonthly() {
       discountReason,
       price,
       isPaymentMonth,
+      lastUpdate,
     });
   }
+
+  // Ordenar por fecha de última actualización
+  entries.sort((a, b) => {
+    if (!a.lastUpdate && !b.lastUpdate) return 0;
+    if (!a.lastUpdate) return 1;
+    if (!b.lastUpdate) return -1;
+    const timeA = a.lastUpdate?.seconds || a.lastUpdate?.toMillis?.() / 1000 || 0;
+    const timeB = b.lastUpdate?.seconds || b.lastUpdate?.toMillis?.() / 1000 || 0;
+    return timeB - timeA;
+  });
+
   let filtered = entries;
   if (telasPaidFilter === "PAID") {
     filtered = filtered.filter((e) => e.paid);
@@ -2113,9 +2255,14 @@ async function refreshTelasMonthly() {
     row.dataset.id = e.athlete.id;
     row.dataset.name = e.athlete.name || "";
     row.innerHTML = `
-      <td>${e.athlete.name}</td>
+      <td style="max-width: 200px;">
+        <div style="display: flex; align-items: flex-start; gap: 6px;">
+          <span data-role="telas-athlete-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${e.athlete.name}</span>
+          <button class="edit-name-btn" data-role="edit-telas-name" data-id="${e.athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+        </div>
+      </td>
       <td>
-        <select data-role="telas-tariff" data-id="${e.athlete.id}">
+        <select data-role="telas-tariff" data-id="${e.athlete.id}" style="max-width: 120px;">
           ${tariffOptionsHtml}
         </select>
       </td>
@@ -2157,6 +2304,26 @@ async function refreshTelasMonthly() {
       else if (reason === 'Funcionario') discountValue = 10;
       else if (reason === 'Mañanas') discountValue = 10;
       discountDisplay.textContent = `${discountValue}%`;
+    });
+  });
+
+  // Add event listeners for edit telas name buttons
+  ui.telasList.querySelectorAll('[data-role="edit-telas-name"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.target.dataset.id;
+      const nameSpan = ui.telasList.querySelector(`[data-role="telas-athlete-name"][data-id="${athleteId}"]`);
+      const currentName = nameSpan.textContent;
+      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
+      
+      if (newName && newName.trim() !== '' && newName !== currentName) {
+        try {
+          await updateTelasAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
+          await refreshTelasMonthly();
+        } catch (error) {
+          console.error('Error al actualizar el nombre del atleta:', error);
+          alert('Error al actualizar el nombre del atleta');
+        }
+      }
     });
   });
 

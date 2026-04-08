@@ -428,6 +428,14 @@ export async function createAthlete(name, userId) {
   return docRef.id;
 }
 
+export async function updateAthlete(athleteId, athleteData, userId) {
+  await updateDoc(doc(db, "athletes", athleteId), {
+    ...athleteData,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  });
+}
+
 export async function getAthletes() {
   const snap = await getDocs(collection(db, "athletes"));
   const athletes = [];
@@ -1192,6 +1200,14 @@ export async function createAcroAthlete(name, userId) {
   return docRef.id;
 }
 
+export async function updateAcroAthlete(athleteId, athleteData, userId) {
+  await updateDoc(doc(db, "athletes_acrobacias", athleteId), {
+    ...athleteData,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  });
+}
+
 export async function getAcroAthletes() {
   const snap = await getDocs(collection(db, "athletes_acrobacias"));
   const athletes = [];
@@ -1262,6 +1278,14 @@ export async function createHalteAthlete(name, userId) {
   return docRef.id;
 }
 
+export async function updateHalteAthlete(athleteId, athleteData, userId) {
+  await updateDoc(doc(db, "athletes_halterofilia", athleteId), {
+    ...athleteData,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  });
+}
+
 export async function getHalteAthletes() {
   const snap = await getDocs(collection(db, "athletes_halterofilia"));
   const athletes = [];
@@ -1330,6 +1354,14 @@ export async function createTelasAthlete(name, userId) {
     createdBy: userId || null,
   });
   return docRef.id;
+}
+
+export async function updateTelasAthlete(athleteId, athleteData, userId) {
+  await updateDoc(doc(db, "athletes_telas", athleteId), {
+    ...athleteData,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  });
 }
 
 export async function getTelasAthletes() {
