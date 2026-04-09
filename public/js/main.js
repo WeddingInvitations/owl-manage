@@ -25,7 +25,7 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js?v=20250409b";
+} from "./ui.js?v=20250409d";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -117,7 +117,7 @@ import {
   loadOrdersForMonth,
   addEmployeePayment,
   loadEmployeePayments,
-} from "./data.js?v=20250409b";
+} from "./data.js?v=20250409d";
 
 import { createUserWithRole } from "./admin.js";
 
@@ -2608,7 +2608,7 @@ async function refreshSingleClassesMonthly() {
     let lastUpdate = null;
     if (am) {
       tariff = am.tariff || "";
-      paid = am.paid || false;
+      paid = am.paid === true || am.paid === "SI";
       discount = am.discount || 0;
       discountReason = am.discountReason || "";
       price = am.price || 0;
