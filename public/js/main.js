@@ -6872,14 +6872,6 @@ if (document.readyState === 'loading') {
 
 // Inicialización del menú móvil y búsqueda
 function initializeMobileMenuAndSearch() {
-  // Menu toggle
-  ui.menuToggle?.addEventListener('click', () => {
-    const sideMenu = document.querySelector('.side-menu');
-    const overlay = ui.menuOverlay;
-    sideMenu.classList.toggle('open');
-    overlay.classList.toggle('show');
-  });
-
   // Close menu on overlay click
   ui.menuOverlay?.addEventListener('click', () => {
     const sideMenu = document.querySelector('.side-menu');

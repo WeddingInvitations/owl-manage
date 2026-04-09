@@ -456,7 +456,6 @@ export const ui = {
   moreMenu: $("moreMenu"),
   moreMenuClose: $("moreMenuClose"),
   // Menu toggle and search
-  menuToggle: $("menuToggle"),
   menuOverlay: $("menuOverlay"),
   globalSearch: $("globalSearch"),
   searchBtn: $("searchBtn"),
