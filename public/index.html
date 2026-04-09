@@ -128,6 +128,13 @@
               </svg>
               Telas
             </button>
+            <button class="menu-btn" data-view="singleClassesView">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+              </svg>
+              Clases Sueltas
+            </button>
           </div>
         </div>
         
@@ -1711,6 +1718,176 @@
           </div>
         </section>
 
+        <section id="singleClassesView" class="view hidden">
+          <div class="card">
+            <h2>Control de pagos · Clases Sueltas</h2>
+            <div class="detail-header">
+              <div class="table-actions">
+                <button id="singleClassesCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
+                  📄 CSV
+                </button>
+                <button id="singleClassesModalOpen" class="btn" type="button">
+                  Alta de usuario
+                </button>
+              </div>
+            </div>
+          </div>
+          <div id="singleClassesModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Alta de usuario</h3>
+                <button id="singleClassesModalClose" class="btn ghost small" type="button">
+                  Cerrar
+                </button>
+              </div>
+              <form id="singleClassesForm" class="stack">
+                <label>
+                  Nombre
+                  <input id="singleClassesName" type="text" list="singleClassesNameList" required />
+                </label>
+                <datalist id="singleClassesNameList"></datalist>
+                <label>
+                  Mes de pago
+                  <select id="singleClassesPaymentMonth"></select>
+                </label>
+                <label>
+                  Tarifa
+                  <select id="singleClassesTariff">
+                    <option value="Clase Crossfit">Clase Crossfit - 15€</option>
+                    <option value="Bono 10 Clases Crossfit">Bono 10 Clases Crossfit - 135€</option>
+                    <option value="Clase Acrobacias">Clase Acrobacias - 15€</option>
+                    <option value="Open Acrobacias 1h">Open Acrobacias 1h - 10€</option>
+                    <option value="Open Acrobacias 2h">Open Acrobacias 2h - 15€</option>
+                  </select>
+                </label>
+                <label>
+                  Precio (€)
+                  <input id="singleClassesPrice" type="number" min="0" step="0.01" readonly />
+                </label>
+                <label>
+                  Motivo del descuento
+                  <select id="singleClassesDiscountReason">
+                    <option value="Ninguno">Ninguno (0%)</option>
+                    <option value="Familiar">Familiar (15%)</option>
+                    <option value="Funcionario">Funcionario (10%)</option>
+                    <option value="Mañanas">Mañanas (10%)</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </label>
+                <label>
+                  Descuento (%)
+                  <input id="singleClassesDiscount" type="number" min="0" max="100" step="0.1" value="0" />
+                </label>
+                <label>
+                  Precio final (€)
+                  <input id="singleClassesFinalPrice" type="number" min="0" step="0.01" readonly />
+                </label>
+                <label>
+                  Pagado
+                  <select id="singleClassesPaid">
+                    <option value="SI">SI</option>
+                    <option value="NO">NO</option>
+                  </select>
+                </label>
+                <button class="btn" type="submit">Añadir atleta</button>
+              </form>
+            </div>
+          </div>
+          <div id="singleClassesCsvModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Carga masiva de atletas</h3>
+                <button id="singleClassesCsvClose" class="btn ghost small" type="button">
+                  Cerrar
+                </button>
+              </div>
+              <form id="singleClassesCsvForm" class="stack">
+                <p class="muted">El CSV debe tener las columnas: nombre, tarifa, pagado, precio (opcional), descuento (opcional), motivo_descuento (opcional). Formatos aceptados: nombre/name, tarifa/plan, pagado/paid, precio/price, descuento/discount, motivo_descuento/discount_reason.</p>
+                <div class="flex gap-2 mb-3">
+                  <button id="downloadSingleClassesTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
+                    📥 Descargar plantilla
+                  </button>
+                </div>
+                <label>
+                  Archivo CSV
+                  <input id="singleClassesCsvFile" type="file" accept=".csv,text/csv" required />
+                </label>
+                <label>
+                  Mes de pago
+                  <select id="singleClassesCsvMonth"></select>
+                </label>
+                <button class="btn" type="submit">Importar</button>
+                <p id="singleClassesCsvStatus" class="muted"></p>
+              </form>
+            </div>
+          </div>
+          <div class="card">
+            <div class="detail-header">
+              <h3>Resumen mensual</h3>
+              <select id="singleClassesMonthSelect"></select>
+            </div>
+            <div class="summary">
+              <div>
+                <p class="label">Activos</p>
+                <p id="singleClassesSummaryActive" class="value">0</p>
+              </div>
+              <div>
+                <p class="label">Tarifa media</p>
+                <p id="singleClassesSummaryAverage" class="value">0 €</p>
+              </div>
+              <div>
+                <p class="label">Altas nuevas</p>
+                <p id="singleClassesSummaryNew" class="value">0</p>
+              </div>
+              <div>
+                <p class="label">Bajas</p>
+                <p id="singleClassesSummaryDrop" class="value">0</p>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="detail-header athlete-list-header">
+              <h3>Listado mensual</h3>
+              <div class="filter-row">
+                <select id="singleClassesListMonthSelect"></select>
+                <input
+                  id="singleClassesSearch"
+                  type="search"
+                  list="singleClassesSearchList"
+                  placeholder="Buscar..."
+                />
+                <select id="singleClassesPaidFilter">
+                  <option value="ALL">Todos</option>
+                  <option value="SI">Pagado</option>
+                  <option value="NO">No pagado</option>
+                </select>
+                <button id="singleClassesSaveAllBtn" class="btn" type="button" disabled>
+                  Guardar cambios (0)
+                </button>
+              </div>
+            </div>
+            <datalist id="singleClassesSearchList"></datalist>
+            <div class="table-container">
+              <table class="table athlete-table-mobile">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Tarifa</th>
+                    <th>Precio</th>
+                    <th>Descuento</th>
+                    <th>Motivo</th>
+                    <th>Precio Final</th>
+                    <th>Pagado</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="singleClassesList"></tbody>
+              </table>
+            </div>
+            <p id="singleClassesListCount" class="muted"></p>
+          </div>
+        </section>
+
         <!-- ========== CLASES ========== -->
         <section id="classesView" class="view hidden">
           <div class="card">
@@ -2164,7 +2341,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script type="module" src="js/main.js?v=20250219f" defer></script>
+    <script type="module" src="js/main.js?v=20250409a" defer></script>
     <script type="module" src="js/caja.js?v=20250401" defer></script>
     
     <!-- Script de debugging simplificado -->

@@ -6,6 +6,8 @@ const viewsInitialized = {
   athletesView: false,
   acroView: false,
   halteView: false,
+  telasView: false,
+  singleClassesView: false,
   checkinsView: false,
   vacationsView: false,
   classesView: false,
@@ -23,7 +25,7 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js?v=20250219f";
+} from "./ui.js?v=20250409b";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -99,6 +101,12 @@ import {
   getAllTelasAthleteMonths,
   getTelasAthleteMonthsForMonth,
   upsertTelasAthleteMonth,
+  createSingleClassesAthlete,
+  getSingleClassesAthletes,
+  updateSingleClassesAthlete,
+  getAllSingleClassesAthleteMonths,
+  getSingleClassesAthleteMonthsForMonth,
+  upsertSingleClassesAthleteMonth,
   updatePayment,
   deletePayment,
   updateExpense,
@@ -109,7 +117,7 @@ import {
   loadOrdersForMonth,
   addEmployeePayment,
   loadEmployeePayments,
-} from "./data.js?v=20250316a";
+} from "./data.js?v=20250409b";
 
 import { createUserWithRole } from "./admin.js";
 
@@ -153,11 +161,23 @@ function calculateHaltePrice(athlete) {
   return basePrice * (1 - discount / 100);
 }
 
+function calculateSingleClassesPrice(athlete) {
+  const tariff = athlete.tariff || "Clase Crossfit";
+  const plan = singleClassesTariffPlanMap.get(tariff) || singleClassesTariffPlanMap.get("Clase Crossfit");
+  const basePrice = plan.priceTotal;
+  let discount = 0;
+  if (athlete.discountReason === 'Familiar') discount = 15;
+  else if (athlete.discountReason === 'Funcionario') discount = 10;
+  else if (athlete.discountReason === 'Mañanas') discount = 10;
+  return basePrice * (1 - discount / 100);
+}
+
 // Global variables for current athletes data
 let currentAthletes = [];
 let currentAcroAthletes = [];
 let currentHalteAthletes = [];
 let currentTelasAthletes = [];
+let currentSingleClassesAthletes = [];
 
 window.debugAuth = async function() {
   console.log('DEBUG: Estado de autenticacion avanzado');
@@ -284,6 +304,14 @@ let selectedTelasPaymentMonth = "";
 let telasPaidFilter = "ALL";
 let telasSearchTerm = "";
 let selectedTelasCsvMonth = "";
+
+// Single Classes state
+let selectedSingleClassesMonth = "";
+let selectedSingleClassesListMonth = "";
+let selectedSingleClassesPaymentMonth = "";
+let singleClassesPaidFilter = "ALL";
+let singleClassesSearchTerm = "";
+let selectedSingleClassesCsvMonth = "";
 
 // Checkin state
 let currentOpenCheckin = null;
@@ -486,6 +514,22 @@ const telasTariffPlans = [
 
 const telasTariffPlanMap = new Map(
   telasTariffPlans.map((plan) => [plan.key, {
+    ...plan,
+    priceMonthly: plan.priceTotal / plan.durationMonths,
+  }])
+);
+
+// Tarifas específicas para Clases Sueltas
+const singleClassesTariffPlans = [
+  { key: "Clase Crossfit", durationMonths: 1, priceTotal: 15 },
+  { key: "Bono 10 Clases Crossfit", durationMonths: 1, priceTotal: 135 },
+  { key: "Clase Acrobacias", durationMonths: 1, priceTotal: 15 },
+  { key: "Open Acrobacias 1h", durationMonths: 1, priceTotal: 10 },
+  { key: "Open Acrobacias 2h", durationMonths: 1, priceTotal: 15 },
+];
+
+const singleClassesTariffPlanMap = new Map(
+  singleClassesTariffPlans.map((plan) => [plan.key, {
     ...plan,
     priceMonthly: plan.priceTotal / plan.durationMonths,
   }])
@@ -2046,6 +2090,50 @@ function renderTelasCsvMonthOptions() {
   if (options.length > 0) ui.telasCsvMonth.value = options[0];
 }
 
+// ========== SINGLE CLASSES MONTH OPTIONS ==========
+
+function renderSingleClassesMonthOptions() {
+  if (!ui.singleClassesMonthSelect) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.singleClassesMonthSelect.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.singleClassesMonthSelect.appendChild(option);
+  });
+  selectedSingleClassesMonth = options[0];
+  ui.singleClassesMonthSelect.value = selectedSingleClassesMonth;
+}
+
+function renderSingleClassesListMonthOptions() {
+  if (!ui.singleClassesListMonthSelect) return;
+  const now = new Date();
+  const options = [];
+  for (let i = 12; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  for (let i = 1; i <= 6; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
+  ui.singleClassesListMonthSelect.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.singleClassesListMonthSelect.appendChild(option);
+  });
+  selectedSingleClassesListMonth = getMonthKey(now);
+  ui.singleClassesListMonthSelect.value = selectedSingleClassesListMonth;
+}
+
 function setTelasPriceFromTariff() {
   const tariffKey = ui.telasTariff?.value;
   const plan = telasTariffPlanMap.get(tariffKey);
@@ -2341,6 +2429,349 @@ async function refreshTelasMonthly() {
   if (ui.telasSummaryAverage) ui.telasSummaryAverage.textContent = formatCurrency(averageTariff);
   if (ui.telasSummaryNew) ui.telasSummaryNew.textContent = String(totalNew);
   if (ui.telasSummaryDrop) ui.telasSummaryDrop.textContent = String(totalDrop);
+}
+
+// ========== SINGLE CLASSES AUXILIARY FUNCTIONS ==========
+
+function renderSingleClassesPaymentMonthOptions() {
+  if (!ui.singleClassesPaymentMonth) return;
+  ui.singleClassesPaymentMonth.innerHTML = "";
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const key = getMonthKey(d);
+    options.push(key);
+  }
+  if (!selectedSingleClassesPaymentMonth) {
+    selectedSingleClassesPaymentMonth = options[0];
+  }
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.singleClassesPaymentMonth.appendChild(option);
+  });
+  if (options.length > 0) ui.singleClassesPaymentMonth.value = options[0];
+}
+
+function renderSingleClassesCsvMonthOptions() {
+  if (!ui.singleClassesCsvMonth) return;
+  ui.singleClassesCsvMonth.innerHTML = "";
+  const now = new Date();
+  const options = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const key = getMonthKey(d);
+    options.push(key);
+  }
+  if (!selectedSingleClassesCsvMonth) {
+    selectedSingleClassesCsvMonth = options[0];
+  }
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.singleClassesCsvMonth.appendChild(option);
+  });
+  if (options.length > 0) ui.singleClassesCsvMonth.value = options[0];
+}
+
+function setSingleClassesPriceFromTariff() {
+  const tariffKey = ui.singleClassesTariff?.value;
+  const plan = singleClassesTariffPlanMap.get(tariffKey);
+  if (plan && ui.singleClassesPrice) {
+    ui.singleClassesPrice.value = String(plan.priceTotal);
+  }
+  calculateSingleClassesFinalPrice();
+}
+
+function calculateSingleClassesFinalPrice() {
+  const basePrice = parseFloat(ui.singleClassesPrice?.value || "0");
+  const discount = parseFloat(ui.singleClassesDiscount?.value || "0");
+  const finalPrice = basePrice * (1 - discount / 100);
+  if (ui.singleClassesFinalPrice) ui.singleClassesFinalPrice.value = finalPrice.toFixed(2);
+}
+
+async function importSingleClassesAthletesFromCsv(file, monthKey) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target.result;
+        const lines = text.split("\n").filter((line) => line.trim() !== "");
+        if (lines.length === 0) {
+          resolve({ success: 0, errors: 0 });
+          return;
+        }
+        const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+        const nameIdx = headers.findIndex((h) =>
+          h.includes("nombre") || h.includes("name")
+        );
+        const tariffIdx = headers.findIndex((h) =>
+          h.includes("tarifa") || h.includes("tariff")
+        );
+        const paidIdx = headers.findIndex((h) =>
+          h.includes("pagado") || h.includes("paid")
+        );
+        const priceIdx = headers.findIndex((h) =>
+          h.includes("precio") || h.includes("price")
+        );
+        const discIdx = headers.findIndex((h) =>
+          h.includes("descuento") || h.includes("discount")
+        );
+        const reasonIdx = headers.findIndex((h) =>
+          h.includes("motivo") || h.includes("reason")
+        );
+        let success = 0;
+        let errors = 0;
+        for (let i = 1; i < lines.length; i++) {
+          try {
+            const cols = lines[i].split(",").map((c) => c.trim());
+            const name = nameIdx >= 0 ? cols[nameIdx] : "";
+            const tariff = tariffIdx >= 0 ? cols[tariffIdx] : "";
+            const paidStr = paidIdx >= 0 ? cols[paidIdx] : "NO";
+            const priceStr = priceIdx >= 0 ? cols[priceIdx] : "0";
+            const discStr = discIdx >= 0 ? cols[discIdx] : "0";
+            const reason = reasonIdx >= 0 ? cols[reasonIdx] : "";
+            if (!name) continue;
+            const athleteId = await createSingleClassesAthlete(name, currentUserId);
+            const paid = paidStr.toUpperCase() === "SI" || paidStr.toUpperCase() === "YES";
+            const price = parseFloat(priceStr) || 0;
+            const discount = parseFloat(discStr) || 0;
+            const plan = singleClassesTariffPlanMap.get(tariff) || singleClassesTariffPlanMap.get("Clase Crossfit");
+            const basePrice = plan.priceTotal;
+            await upsertSingleClassesAthleteMonth(
+              athleteId,
+              monthKey,
+              {
+                name,
+                tariff,
+                price: basePrice,
+                discount,
+                discountReason: reason,
+                paid,
+                durationMonths: 1,
+                priceMonthly: basePrice,
+                isPaymentMonth: true,
+              },
+              currentUserId
+            );
+            success++;
+          } catch (err) {
+            console.error("Error importing single classes row:", err);
+            errors++;
+          }
+        }
+        resolve({ success, errors });
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+
+async function refreshSingleClassesMonthly() {
+  const monthKey = selectedSingleClassesListMonth;
+  if (!monthKey || !ui.singleClassesList) return;
+  ui.singleClassesList.innerHTML = "";
+  const allAthletes = await getSingleClassesAthletes();
+  currentSingleClassesAthletes = allAthletes;
+  const athleteMonths = await getSingleClassesAthleteMonthsForMonth(monthKey);
+  const athleteMonthsMap = new Map();
+  for (const am of athleteMonths) {
+    athleteMonthsMap.set(am.athleteId, am);
+  }
+  const [y, m] = monthKey.split("-").map(Number);
+  let prevMonthKey = "";
+  if (m === 1) {
+    prevMonthKey = `${y - 1}-12`;
+  } else {
+    const pm = m - 1;
+    prevMonthKey = `${y}-${pm < 10 ? "0" : ""}${pm}`;
+  }
+  const prevMonths = await getSingleClassesAthleteMonthsForMonth(prevMonthKey);
+  const activePrev = new Set(
+    prevMonths.filter((am) => am.tariff && am.tariff !== "").map((am) => am.athleteId)
+  );
+  const entries = [];
+  for (const athlete of allAthletes) {
+    const am = athleteMonthsMap.get(athlete.id);
+    let tariff = "";
+    let paid = false;
+    let discount = 0;
+    let discountReason = "";
+    let price = 0;
+    let isPaymentMonth = false;
+    let lastUpdate = null;
+    if (am) {
+      tariff = am.tariff || "";
+      paid = am.paid || false;
+      discount = am.discount || 0;
+      discountReason = am.discountReason || "";
+      price = am.price || 0;
+      isPaymentMonth = am.isPaymentMonth || false;
+      lastUpdate = am.updatedAt || am.createdAt;
+    }
+    entries.push({
+      athlete,
+      tariff,
+      paid,
+      discount,
+      discountReason,
+      price,
+      isPaymentMonth,
+      lastUpdate,
+    });
+  }
+
+  // Ordenar por fecha de última actualización
+  entries.sort((a, b) => {
+    if (!a.lastUpdate && !b.lastUpdate) return 0;
+    if (!a.lastUpdate) return 1;
+    if (!b.lastUpdate) return -1;
+    const timeA = a.lastUpdate?.seconds || a.lastUpdate?.toMillis?.() / 1000 || 0;
+    const timeB = b.lastUpdate?.seconds || b.lastUpdate?.toMillis?.() / 1000 || 0;
+    return timeB - timeA;
+  });
+
+  let filtered = entries;
+  if (singleClassesPaidFilter === "PAID") {
+    filtered = filtered.filter((e) => e.paid);
+  } else if (singleClassesPaidFilter === "UNPAID") {
+    filtered = filtered.filter((e) => !e.paid);
+  }
+  if (singleClassesSearchTerm.trim() !== "") {
+    const term = singleClassesSearchTerm.trim().toLowerCase();
+    filtered = filtered.filter((e) =>
+      e.athlete.name.toLowerCase().includes(term)
+    );
+  }
+  const visibleCount = filtered.length;
+  const activeNow = new Set();
+  let totalIncome = 0;
+  for (const e of entries) {
+    if (e.tariff && e.tariff !== "") {
+      activeNow.add(e.athlete.id);
+      if (e.paid && e.isPaymentMonth) {
+        totalIncome += e.price;
+      }
+    }
+  }
+  filtered.forEach((e) => {
+    const row = document.createElement("tr");
+    const tariffOptions = ["", "Clase Crossfit", "Bono 10 Clases Crossfit", "Clase Acrobacias", "Open Acrobacias 1h", "Open Acrobacias 2h"];
+    const tariffOptionsHtml = tariffOptions
+      .map((opt) => {
+        const sel = opt === e.tariff ? "selected" : "";
+        return `<option value="${opt}" ${sel}>${opt}</option>`;
+      })
+      .join("");
+    const reasonOptions = ["", "Familiar", "Funcionario", "Mañanas", "Otro"];
+    const reasonOptionsHtml = reasonOptions
+      .map((opt) => {
+        const sel = opt === e.discountReason ? "selected" : "";
+        return `<option value="${opt}" ${sel}>${opt}</option>`;
+      })
+      .join("");
+    const discountDisplay = e.discountReason
+      ? e.discountReason === "Otro"
+        ? `${e.discount}%`
+        : `${e.discount}%`
+      : `${e.discount}%`;
+    const finalPrice = e.price * (1 - e.discount / 100);
+    const paid = e.paid;
+    row.dataset.id = e.athlete.id;
+    row.dataset.name = e.athlete.name || "";
+    row.innerHTML = `
+      <td style="max-width: 200px;">
+        <div style="display: flex; align-items: flex-start; gap: 6px;">
+          <span data-role="singleclasses-athlete-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${e.athlete.name}</span>
+          <button class="edit-name-btn" data-role="edit-singleclasses-name" data-id="${e.athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+        </div>
+      </td>
+      <td>
+        <select data-role="singleclasses-tariff" data-id="${e.athlete.id}" style="max-width: 180px;">
+          ${tariffOptionsHtml}
+        </select>
+      </td>
+      <td><span data-role="singleclasses-price" data-id="${e.athlete.id}">${e.price.toFixed(2)}</span> €</td>
+      <td>
+        <span data-role="singleclasses-discount-display" data-id="${e.athlete.id}">${discountDisplay}</span>
+      </td>
+      <td>
+        <select data-role="singleclasses-discount-reason" data-id="${e.athlete.id}" style="width: 120px;">
+          <option value="" ${!e.discountReason ? "selected" : ""}>Ninguno</option>
+          <option value="Familiar" ${e.discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Funcionario" ${e.discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
+          <option value="Mañanas" ${e.discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
+          <option value="Otro" ${e.discountReason === "Otro" ? "selected" : ""}>Otro</option>
+        </select>
+      </td>
+      <td><span data-role="singleclasses-final-price" data-id="${e.athlete.id}">${finalPrice.toFixed(2)}</span> €</td>
+      <td>
+        <select data-role="singleclasses-paid" data-id="${e.athlete.id}">
+          <option value="SI" ${paid ? "selected" : ""}>SI</option>
+          <option value="NO" ${!paid ? "selected" : ""}>NO</option>
+        </select>
+      </td>
+      <td>
+        <span data-role="singleclasses-status" data-id="${e.athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
+      </td>
+    `;
+    ui.singleClassesList.appendChild(row);
+  });
+
+  // Add event listeners for single classes discount reason selects
+  ui.singleClassesList.querySelectorAll('[data-role="singleclasses-discount-reason"]').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const row = e.target.closest('tr');
+      const discountDisplay = row.querySelector('[data-role="singleclasses-discount-display"]');
+      const reason = e.target.value;
+      let discountValue = 0;
+      if (reason === 'Familiar') discountValue = 15;
+      else if (reason === 'Funcionario') discountValue = 10;
+      else if (reason === 'Mañanas') discountValue = 10;
+      discountDisplay.textContent = `${discountValue}%`;
+    });
+  });
+
+  // Add event listeners for edit single classes name buttons
+  ui.singleClassesList.querySelectorAll('[data-role="edit-singleclasses-name"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.target.dataset.id;
+      const nameSpan = ui.singleClassesList.querySelector(`[data-role="singleclasses-athlete-name"][data-id="${athleteId}"]`);
+      const currentName = nameSpan.textContent;
+      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
+      
+      if (newName && newName.trim() !== '' && newName !== currentName) {
+        try {
+          await updateSingleClassesAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
+          await refreshSingleClassesMonthly();
+        } catch (error) {
+          console.error('Error al actualizar el nombre del atleta:', error);
+          alert('Error al actualizar el nombre del atleta');
+        }
+      }
+    });
+  });
+
+  if (ui.singleClassesListCount) {
+    ui.singleClassesListCount.textContent = `Mostrando ${visibleCount} atletas`;
+  }
+  updatePendingSaveButtons();
+
+  const totalActive = activeNow.size;
+  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
+  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
+  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+
+  if (ui.singleClassesSummaryActive) ui.singleClassesSummaryActive.textContent = String(totalActive);
+  if (ui.singleClassesSummaryAverage) ui.singleClassesSummaryAverage.textContent = formatCurrency(averageTariff);
+  if (ui.singleClassesSummaryNew) ui.singleClassesSummaryNew.textContent = String(totalNew);
+  if (ui.singleClassesSummaryDrop) ui.singleClassesSummaryDrop.textContent = String(totalDrop);
 }
 
 function renderYearOptions() {
@@ -3007,6 +3438,11 @@ async function initializeViewIfNeeded(viewId) {
       viewsInitialized.telasView = true;
       break;
       
+    case "singleClassesView":
+      await refreshSingleClassesMonthly();
+      viewsInitialized.singleClassesView = true;
+      break;
+      
     case "checkinsView":
       await refreshCheckinStatus();
       await refreshCheckinAdmin();
@@ -3346,6 +3782,50 @@ async function saveTelasRow(row) {
   }
 }
 
+async function saveSingleClassesRow(row) {
+  const athleteId = row?.dataset?.id;
+  const athleteName = row?.dataset?.name || "";
+  const tariffSelect = row?.querySelector("[data-role='singleclasses-tariff']");
+  const paidSelect = row?.querySelector("[data-role='singleclasses-paid']");
+  const discountReasonInput = row?.querySelector("[data-role='singleclasses-discount-reason']");
+
+  if (!athleteId || !tariffSelect || !paidSelect) {
+    throw new Error("Fila inválida");
+  }
+
+  const newTariff = tariffSelect.value;
+  const newPaid = paidSelect.value === "SI";
+  const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
+  const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const plan = singleClassesTariffPlanMap.get(newTariff) || singleClassesTariffPlanMap.get("Clase Crossfit");
+  const basePrice = plan.priceTotal;
+  const newPrice = basePrice * (1 - newDiscount / 100);
+  const monthKey = selectedSingleClassesListMonth || selectedSingleClassesMonth;
+  const duration = plan.durationMonths || 1;
+
+  for (let i = 0; i < duration; i += 1) {
+    const targetMonth = addMonthsToKey(monthKey, i);
+    await upsertSingleClassesAthleteMonth(
+      athleteId,
+      targetMonth,
+      {
+        name: athleteName,
+        tariff: newTariff,
+        price: newPrice,
+        basePrice,
+        discount: newDiscount,
+        discountReason: newDiscountReason,
+        paid: newPaid,
+        active: newPaid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
+      },
+      currentUser?.uid
+    );
+  }
+}
+
 if (ui.athleteList) {
   ui.athleteList.addEventListener("change", (event) => {
     const target = event.target;
@@ -3433,6 +3913,19 @@ if (ui.telasModal) {
 }
 if (ui.telasCsvModal) {
   ui.telasCsvModal.classList.add("hidden");
+}
+
+// Single Classes init
+renderSingleClassesMonthOptions();
+setSingleClassesPriceFromTariff();
+renderSingleClassesPaymentMonthOptions();
+renderSingleClassesListMonthOptions();
+renderSingleClassesCsvMonthOptions();
+if (ui.singleClassesModal) {
+  ui.singleClassesModal.classList.add("hidden");
+}
+if (ui.singleClassesCsvModal) {
+  ui.singleClassesCsvModal.classList.add("hidden");
 }
 
 if (ui.acroList) {
@@ -3576,6 +4069,56 @@ if (ui.telasSaveAllBtn) {
     await refreshTelasMonthly();
     updatePendingSaveButtons();
     ui.telasSaveAllBtn.textContent = originalText;
+
+    if (failedNames.length) {
+      alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
+      return;
+    }
+    alert(`Guardados ${saved} cambios.`);
+  });
+}
+
+if (ui.singleClassesList) {
+  ui.singleClassesList.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!target.matches("[data-role='singleclasses-tariff'], [data-role='singleclasses-discount-reason'], [data-role='singleclasses-paid']")) {
+      return;
+    }
+    const row = target.closest("tr");
+    markDirtyRow(row);
+    if (target.matches("[data-role='singleclasses-paid']")) {
+      const statusElement = row?.querySelector("[data-role='singleclasses-status']");
+      setStatusBadge(statusElement, target.value === "SI");
+    }
+  });
+}
+
+if (ui.singleClassesSaveAllBtn) {
+  ui.singleClassesSaveAllBtn.addEventListener("click", async () => {
+    const dirtyRows = ui.singleClassesList
+      ? Array.from(ui.singleClassesList.querySelectorAll("tr[data-dirty='true']"))
+      : [];
+    if (!dirtyRows.length) return;
+
+    const originalText = ui.singleClassesSaveAllBtn.textContent;
+    ui.singleClassesSaveAllBtn.textContent = "Guardando...";
+    ui.singleClassesSaveAllBtn.disabled = true;
+
+    let saved = 0;
+    const failedNames = [];
+    for (const row of dirtyRows) {
+      try {
+        await saveSingleClassesRow(row);
+        saved += 1;
+      } catch (error) {
+        failedNames.push(row.dataset.name || row.dataset.id || "(sin nombre)");
+        console.error("Error updating single classes athlete row:", error);
+      }
+    }
+
+    await refreshSingleClassesMonthly();
+    updatePendingSaveButtons();
+    ui.singleClassesSaveAllBtn.textContent = originalText;
 
     if (failedNames.length) {
       alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
@@ -5699,6 +6242,121 @@ on(ui.telasCsvForm, "submit", async (event) => {
   }
 });
 
+// ========== SINGLE CLASSES EVENT LISTENERS ==========
+
+on(ui.singleClassesForm, "submit", async (event) => {
+  event.preventDefault();
+  const rawName = ui.singleClassesName.value.trim();
+  if (!rawName) return;
+  
+  const athletes = await getSingleClassesAthletes();
+  const existing = athletes.find(
+    (athlete) => athlete.name?.toLowerCase() === rawName.toLowerCase()
+  );
+  const athleteId = existing
+    ? existing.id
+    : await createSingleClassesAthlete(rawName, currentUser?.uid);
+  const athleteName = existing?.name || rawName;
+  const tariff = ui.singleClassesTariff.value;
+  const plan = singleClassesTariffPlanMap.get(tariff) || singleClassesTariffPlanMap.get("Clase Crossfit");
+  const basePrice = plan.priceTotal;
+  const discountReason = ui.singleClassesDiscountReason.value;
+  let discount = parseFloat(ui.singleClassesDiscount.value) || 0;
+  const finalPrice = parseFloat(ui.singleClassesFinalPrice.value) || basePrice;
+  const paid = ui.singleClassesPaid.value === "SI";
+  const monthKey = ui.singleClassesPaymentMonth.value || selectedSingleClassesPaymentMonth || getMonthKey(new Date());
+
+  if (athleteId) {
+    await upsertSingleClassesAthleteMonth(
+      athleteId,
+      monthKey,
+      {
+        name: athleteName,
+        tariff,
+        price: basePrice,
+        discount,
+        discountReason,
+        finalPrice,
+        paid,
+        durationMonths: 1,
+        priceMonthly: basePrice,
+        isPaymentMonth: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      currentUser?.uid
+    );
+  }
+  
+  ui.singleClassesForm.reset();
+  ui.singleClassesDiscount.value = 0;
+  ui.singleClassesDiscountReason.value = "";
+  setSingleClassesPriceFromTariff();
+  renderSingleClassesPaymentMonthOptions();
+  if (ui.singleClassesModal) {
+    ui.singleClassesModal.classList.add("hidden");
+  }
+  await refreshSingleClassesMonthly();
+});
+
+on(ui.singleClassesTariff, "change", () => {
+  setSingleClassesPriceFromTariff();
+});
+
+on(ui.singleClassesDiscountReason, "change", () => {
+  const reason = ui.singleClassesDiscountReason.value;
+  let discountValue = 0;
+  if (reason === 'Familiar') discountValue = 15;
+  else if (reason === 'Funcionario') discountValue = 10;
+  else if (reason === 'Mañanas') discountValue = 10;
+  ui.singleClassesDiscount.value = discountValue;
+  calculateSingleClassesFinalPrice();
+});
+
+on(ui.singleClassesDiscount, "input", () => {
+  calculateSingleClassesFinalPrice();
+});
+
+on(ui.singleClassesModalOpen, "click", () => {
+  renderSingleClassesPaymentMonthOptions();
+  setSingleClassesPriceFromTariff();
+  ui.singleClassesModal?.classList.remove("hidden");
+});
+
+on(ui.singleClassesModalClose, "click", () => {
+  ui.singleClassesModal?.classList.add("hidden");
+});
+
+on(ui.singleClassesCsvOpen, "click", () => {
+  renderSingleClassesCsvMonthOptions();
+  ui.singleClassesCsvModal?.classList.remove("hidden");
+});
+
+on(ui.singleClassesCsvClose, "click", () => {
+  ui.singleClassesCsvModal?.classList.add("hidden");
+});
+
+on(ui.singleClassesCsvMonth, "change", (event) => {
+  selectedSingleClassesCsvMonth = event.target.value;
+});
+
+on(ui.singleClassesCsvForm, "submit", async (event) => {
+  event.preventDefault();
+  if (!ui.singleClassesCsvFile?.files?.length) return;
+  ui.singleClassesCsvStatus.textContent = "Importando...";
+  const monthKey = ui.singleClassesCsvMonth?.value || selectedSingleClassesCsvMonth || getMonthKey(new Date());
+  try {
+    const result = await importSingleClassesAthletesFromCsv(ui.singleClassesCsvFile.files[0], monthKey);
+    ui.singleClassesCsvStatus.textContent = `Importados ${result.success} atletas. Errores: ${result.errors}`;
+    ui.singleClassesCsvForm.reset();
+    renderSingleClassesCsvMonthOptions();
+    ui.singleClassesCsvModal?.classList.add("hidden");
+    await refreshSingleClassesMonthly();
+  } catch (error) {
+    ui.singleClassesCsvStatus.textContent = `Error: ${error.message || error}`;
+  }
+});
+
 // ========== MONTH FILTER EVENT LISTENERS ==========
 
 // Athletes - Month filters
@@ -5787,6 +6445,28 @@ on(ui.telasSearch, "input", async (event) => {
 on(ui.telasPaidFilter, "change", async (event) => {
   telasPaidFilter = event.target.value;
   await refreshTelasMonthly();
+});
+
+// Single Classes - Month filters  
+on(ui.singleClassesMonthSelect, "change", async (event) => {
+  selectedSingleClassesMonth = event.target.value;
+  await refreshSingleClassesMonthly();
+});
+
+on(ui.singleClassesListMonthSelect, "change", async (event) => {
+  selectedSingleClassesListMonth = event.target.value;
+  await refreshSingleClassesMonthly();
+});
+
+// Single Classes - Search and paid filter
+on(ui.singleClassesSearch, "input", async (event) => {
+  singleClassesSearchTerm = event.target.value;
+  await refreshSingleClassesMonthly();
+});
+
+on(ui.singleClassesPaidFilter, "change", async (event) => {
+  singleClassesPaidFilter = event.target.value;
+  await refreshSingleClassesMonthly();
 });
 
 // Payment and expense month filters

@@ -1425,6 +1425,86 @@ export async function getAllTelasAthleteMonths() {
   return records;
 }
 
+// ========== CLASES SUELTAS ==========
+
+export async function createSingleClassesAthlete(name, userId) {
+  const docRef = await addDoc(collection(db, "athletes_singleclasses"), {
+    name,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function updateSingleClassesAthlete(athleteId, athleteData, userId) {
+  await updateDoc(doc(db, "athletes_singleclasses", athleteId), {
+    ...athleteData,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  });
+}
+
+export async function getSingleClassesAthletes() {
+  const snap = await getDocs(collection(db, "athletes_singleclasses"));
+  const athletes = [];
+  snap.forEach((docSnap) => {
+    athletes.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return athletes;
+}
+
+export async function upsertSingleClassesAthleteMonth(athleteId, month, payload, userId) {
+  const snap = await getDocs(
+    query(
+      collection(db, "athlete_singleclasses_months"),
+      where("athleteId", "==", athleteId),
+      where("month", "==", month)
+    )
+  );
+  let docId = null;
+  snap.forEach((docSnap) => {
+    docId = docSnap.id;
+  });
+
+  if (docId) {
+    await updateDoc(doc(db, "athlete_singleclasses_months", docId), {
+      ...payload,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+    return docId;
+  }
+
+  const docRef = await addDoc(collection(db, "athlete_singleclasses_months"), {
+    athleteId,
+    month,
+    ...payload,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function getSingleClassesAthleteMonthsForMonth(month) {
+  const snap = await getDocs(
+    query(collection(db, "athlete_singleclasses_months"), where("month", "==", month))
+  );
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
+export async function getAllSingleClassesAthleteMonths() {
+  const snap = await getDocs(collection(db, "athlete_singleclasses_months"));
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
 // ========== CLASES Y PROFESORES ==========
 
 export async function getTeachers() {
