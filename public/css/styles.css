@@ -1373,16 +1373,32 @@ select:focus {
   border: 1px solid transparent;
 }
 
-.athlete-status-paid {
+/* Tema claro */
+.light .athlete-status-paid {
   color: #166534;
   background: rgba(34, 197, 94, 0.18);
   border-color: rgba(22, 101, 52, 0.25);
 }
 
-.athlete-status-unpaid {
+.light .athlete-status-unpaid {
   color: #991b1b;
   background: rgba(239, 68, 68, 0.18);
   border-color: rgba(153, 27, 27, 0.25);
+}
+
+/* Tema oscuro (por defecto) */
+body:not(.light) .athlete-status-paid,
+.athlete-status-paid {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+body:not(.light) .athlete-status-unpaid,
+.athlete-status-unpaid {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
 }
 
 [data-theme="light"] .plan-mensual {
