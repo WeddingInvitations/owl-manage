@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prueba Estado Atletas - REAL</title>
+  <link rel="stylesheet" href="public/css/styles.css">
+  <style>
+    body {
+      background: linear-gradient(180deg, #0f1419 0%, #0d1117 100%);
+      min-height: 100vh;
+    }
+    .test-section {
+      padding: 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .test-controls {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--card);
+      padding: 20px;
+      border-radius: 8px;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .debug-info {
+      margin-top: 20px;
+      padding: 15px;
+      background: var(--accent);
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-controls">
+    <h3>Controles de Prueba</h3>
+    <button onclick="toggleTheme()" style="padding: 10px 20px; margin-bottom: 10px; width: 100%;">
+      🌓 Cambiar Tema
+    </button>
+    <button onclick="addDynamicRow()" style="padding: 10px 20px; width: 100%;">
+      ➕ Añadir Fila Dinámica
+    </button>
+    <div class="debug-info">
+      <div><strong>Tema:</strong> <span id="themeStatus">Oscuro</span></div>
+      <div><strong>Filas:</strong> <span id="rowCount">2</span></div>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h1>Prueba Status Badge - Simulación Real</h1>
+    
+    <div class="card">
+      <h2>Listado de Atletas (Generado Dinámicamente)</h2>
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Tarifa</th>
+              <th>Precio</th>
+              <th>Pagado</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="athleteList">
+            <!-- Se genera dinámicamente -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let rowCounter = 1;
+
+    function toggleTheme() {
+      document.body.classList.toggle('light');
+      updateThemeStatus();
+    }
+
+    function updateThemeStatus() {
+      const isLight = document.body.classList.contains('light');
+      document.getElementById('themeStatus').textContent = isLight ? 'Claro' : 'Oscuro';
+    }
+
+    function addDynamicRow() {
+      const tbody = document.getElementById('athleteList');
+      const paid = rowCounter % 2 === 0;
+      const row = document.createElement('tr');
+      row.dataset.id = `athlete-${rowCounter}`;
+      row.dataset.name = `Atleta ${rowCounter}`;
+      
+      // Este HTML es EXACTAMENTE como se genera en main.js
+      row.innerHTML = `
+        <td>Atleta ${rowCounter}</td>
+        <td>
+          <select>
+            <option>8/mes</option>
+            <option>12/mes</option>
+          </select>
+        </td>
+        <td>70,00 €</td>
+        <td>
+          <select data-role="paid" data-id="athlete-${rowCounter}">
+            <option value="SI" ${paid ? "selected" : ""}>SI</option>
+            <option value="NO" ${!paid ? "selected" : ""}>NO</option>
+          </select>
+        </td>
+        <td>
+          <span data-role="status" data-id="athlete-${rowCounter}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
+        </td>
+      `;
+      
+      tbody.appendChild(row);
+      
+      // Debug igual que en main.js
+      const addedRow = tbody.querySelector(`tr[data-id="athlete-${rowCounter}"]`);
+      const statusBadge = addedRow?.querySelector('[data-role="status"]');
+      console.log('✓ Fila añadida:', {
+        id: `athlete-${rowCounter}`,
+        paid: paid,
+        badgeText: statusBadge?.textContent,
+        badgeClasses: statusBadge?.className
+      });
+      
+      if (statusBadge && !statusBadge.textContent.trim()) {
+        console.warn('❌ Badge sin texto:', `athlete-${rowCounter}`);
+        statusBadge.textContent = paid ? "Pagado" : "No Pagado";
+      }
+      
+      rowCounter++;
+      document.getElementById('rowCount').textContent = tbody.children.length;
+    }
+
+    // Generar filas iniciales
+    addDynamicRow();
+    addDynamicRow();
+    
+    // Agregar listener para cambio de paid (igual que en main.js)
+    document.getElementById('athleteList').addEventListener('change', (event) => {
+      if (event.target.matches('[data-role="paid"]')) {
+        const row = event.target.closest('tr');
+        const statusElement = row?.querySelector('[data-role="status"]');
+        const isPaid = event.target.value === 'SI';
+        
+        if (statusElement) {
+          statusElement.textContent = isPaid ? "Pagado" : "No Pagado";
+          statusElement.classList.toggle("athlete-status-paid", isPaid);
+          statusElement.classList.toggle("athlete-status-unpaid", !isPaid);
+          
+          console.log('✓ Estado actualizado:', {
+            row: row.dataset.name,
+            paid: isPaid,
+            text: statusElement.textContent,
+            classes: statusElement.className
+          });
+        }
+      }
+    });
+    
+    updateThemeStatus();
+  </script>
+</body>
+</html>

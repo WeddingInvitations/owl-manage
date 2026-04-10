@@ -1087,6 +1087,13 @@ async function refreshAthleteMonthly() {
       </td>
     `;
     ui.athleteList.appendChild(row);
+    // Debug: verificar que el badge tiene el texto correcto
+    const addedRow = ui.athleteList.querySelector(`tr[data-id="${athlete.id}"]`);
+    const statusBadge = addedRow?.querySelector('[data-role="status"]');
+    if (statusBadge && !statusBadge.textContent.trim()) {
+      console.warn('❌ Badge sin texto para atleta:', athlete.name, 'paid:', paid);
+      statusBadge.textContent = paid ? "Pagado" : "No Pagado";
+    }
   });
 
   // Add event listeners for discount reason selects
@@ -1523,6 +1530,13 @@ async function refreshAcroMonthly() {
       </td>
     `;
     ui.acroList.appendChild(row);
+    // Debug: verificar que el badge tiene el texto correcto
+    const addedRow = ui.acroList.querySelector(`tr[data-id="${athlete.id}"]`);
+    const statusBadge = addedRow?.querySelector('[data-role="acro-status"]');
+    if (statusBadge && !statusBadge.textContent.trim()) {
+      console.warn('❌ Badge sin texto para acro:', athlete.name, 'paid:', paid);
+      statusBadge.textContent = paid ? "Pagado" : "No Pagado";
+    }
   });
 
   // Add event listeners for acro discount reason selects
@@ -1958,6 +1972,13 @@ async function refreshHalteMonthly() {
       </td>
     `;
     ui.halteList.appendChild(row);
+    // Debug: verificar que el badge tiene el texto correcto
+    const addedRow = ui.halteList.querySelector(`tr[data-id="${athlete.id}"]`);
+    const statusBadge = addedRow?.querySelector('[data-role="halte-status"]');
+    if (statusBadge && !statusBadge.textContent.trim()) {
+      console.warn('❌ Badge sin texto para halte:', athlete.name, 'paid:', paid);
+      statusBadge.textContent = paid ? "Pagado" : "No Pagado";
+    }
   });
 
   // Add event listeners for halte discount reason selects
@@ -2379,6 +2400,13 @@ async function refreshTelasMonthly() {
       </td>
     `;
     ui.telasList.appendChild(row);
+    // Debug: verificar que el badge tiene el texto correcto
+    const addedRow = ui.telasList.querySelector(`tr[data-id="${e.athlete.id}"]`);
+    const statusBadge = addedRow?.querySelector('[data-role="telas-status"]');
+    if (statusBadge && !statusBadge.textContent.trim()) {
+      console.warn('❌ Badge sin texto para telas:', e.athlete.name, 'paid:', paid);
+      statusBadge.textContent = paid ? "Pagado" : "No Pagado";
+    }
   });
 
   // Add event listeners for telas discount reason selects
@@ -2722,6 +2750,13 @@ async function refreshSingleClassesMonthly() {
       </td>
     `;
     ui.singleClassesList.appendChild(row);
+    // Debug: verificar que el badge tiene el texto correcto
+    const addedRow = ui.singleClassesList.querySelector(`tr[data-id="${e.athlete.id}"]`);
+    const statusBadge = addedRow?.querySelector('[data-role="singleclasses-status"]');
+    if (statusBadge && !statusBadge.textContent.trim()) {
+      console.warn('❌ Badge sin texto para singleclasses:', e.athlete.name, 'paid:', paid);
+      statusBadge.textContent = paid ? "Pagado" : "No Pagado";
+    }
   });
 
   // Add event listeners for single classes discount reason selects

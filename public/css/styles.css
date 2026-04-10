@@ -996,18 +996,33 @@ select:focus {
 }
 
 .athlete-status-badge {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
   padding: 3px 10px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 11px !important;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   min-width: 50px;
   text-align: center;
   transition: all 0.2s ease;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Asegurar que el contenido de texto del badge sea visible */
+.athlete-status-badge::before {
+  content: none !important;
+}
+
+.athlete-status-badge::after {
+  content: none !important;
 }
 
 [data-theme="light"] .status-badge.open {
@@ -1231,9 +1246,19 @@ select:focus {
 /* Asegurar que todo el texto en tablas sea visible */
 .table td,
 .table th,
-.table td *,
+.table td *:not(.athlete-status-badge):not(.athlete-status-paid):not(.athlete-status-unpaid),
 .table th * {
   color: var(--text) !important;
+}
+
+/* IMPORTANTE: Los badges de estado NO deben heredar el color de la tabla */
+.table .athlete-status-badge,
+.table .athlete-status-paid,
+.table .athlete-status-unpaid,
+table .athlete-status-badge,
+table .athlete-status-paid,
+table .athlete-status-unpaid {
+  color: inherit !important;
 }
 
 /* Elementos muted en tablas */
@@ -1373,32 +1398,98 @@ select:focus {
   border: 1px solid transparent;
 }
 
-/* Tema claro */
+/* Tema claro - Máxima especificidad */
+.light .table .athlete-status-paid,
+.light table .athlete-status-paid,
+.light tbody .athlete-status-paid,
+.light tr .athlete-status-paid,
+.light td .athlete-status-paid,
+.light span.athlete-status-paid,
+.light [data-role="status"].athlete-status-paid,
+.light [data-role="acro-status"].athlete-status-paid,
+.light [data-role="halte-status"].athlete-status-paid,
+.light [data-role="telas-status"].athlete-status-paid,
+.light [data-role="singleclasses-status"].athlete-status-paid,
 .light .athlete-status-paid {
-  color: #166534;
-  background: rgba(34, 197, 94, 0.18);
-  border-color: rgba(22, 101, 52, 0.25);
+  color: #166534 !important;
+  background: rgba(34, 197, 94, 0.18) !important;
+  border-color: rgba(22, 101, 52, 0.25) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
+.light .table .athlete-status-unpaid,
+.light table .athlete-status-unpaid,
+.light tbody .athlete-status-unpaid,
+.light tr .athlete-status-unpaid,
+.light td .athlete-status-unpaid,
+.light span.athlete-status-unpaid,
+.light [data-role="status"].athlete-status-unpaid,
+.light [data-role="acro-status"].athlete-status-unpaid,
+.light [data-role="halte-status"].athlete-status-unpaid,
+.light [data-role="telas-status"].athlete-status-unpaid,
+.light [data-role="singleclasses-status"].athlete-status-unpaid,
 .light .athlete-status-unpaid {
-  color: #991b1b;
-  background: rgba(239, 68, 68, 0.18);
-  border-color: rgba(153, 27, 27, 0.25);
+  color: #991b1b !important;
+  background: rgba(239, 68, 68, 0.18) !important;
+  border-color: rgba(153, 27, 27, 0.25) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
-/* Tema oscuro (por defecto) */
-body:not(.light) .athlete-status-paid,
+/* Tema oscuro (por defecto) - Máxima especificidad */
+body:not(.light) .table .athlete-status-paid,
+body:not(.light) table .athlete-status-paid,
+.table .athlete-status-paid,
+table .athlete-status-paid,
+tbody .athlete-status-paid,
+tr .athlete-status-paid,
+td .athlete-status-paid,
+span.athlete-status-paid,
+[data-role="status"].athlete-status-paid,
+[data-role="acro-status"].athlete-status-paid,
+[data-role="halte-status"].athlete-status-paid,
+[data-role="telas-status"].athlete-status-paid,
+[data-role="singleclasses-status"].athlete-status-paid,
 .athlete-status-paid {
-  color: #86efac;
-  background: rgba(34, 197, 94, 0.18);
-  border-color: rgba(34, 197, 94, 0.35);
+  color: #86efac !important;
+  background: rgba(34, 197, 94, 0.18) !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
-body:not(.light) .athlete-status-unpaid,
+body:not(.light) .table .athlete-status-unpaid,
+body:not(.light) table .athlete-status-unpaid,
+.table .athlete-status-unpaid,
+table .athlete-status-unpaid,
+tbody .athlete-status-unpaid,
+tr .athlete-status-unpaid,
+td .athlete-status-unpaid,
+span.athlete-status-unpaid,
+[data-role="status"].athlete-status-unpaid,
+[data-role="acro-status"].athlete-status-unpaid,
+[data-role="halte-status"].athlete-status-unpaid,
+[data-role="telas-status"].athlete-status-unpaid,
+[data-role="singleclasses-status"].athlete-status-unpaid,
 .athlete-status-unpaid {
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.18);
-  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5 !important;
+  background: rgba(239, 68, 68, 0.18) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 [data-theme="light"] .plan-mensual {
@@ -3356,5 +3447,75 @@ body:not(.light) .athlete-status-unpaid,
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* ============================================
+   CORRECCIÓN FINAL: Estado de Atletas
+   Estas reglas DEBEN ir al final para tener
+   máxima especificidad y prioridad
+   ============================================ */
+
+/* Forzar visibilidad del texto en badges */
+span[data-role="status"],
+span[data-role="acro-status"],
+span[data-role="halte-status"],
+span[data-role="telas-status"],
+span[data-role="singleclasses-status"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 3px 10px !important;
+  border-radius: 12px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  min-width: 50px !important;
+  white-space: nowrap !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  line-height: 1.4 !important;
+}
+
+/* PAGADO - Verde */
+span[data-role="status"].athlete-status-paid,
+span[data-role="acro-status"].athlete-status-paid,
+span[data-role="halte-status"].athlete-status-paid,
+span[data-role="telas-status"].athlete-status-paid,
+span[data-role="singleclasses-status"].athlete-status-paid {
+  color: #86efac !important;
+  background: rgba(34, 197, 94, 0.18) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+}
+
+/* NO PAGADO - Rojo */
+span[data-role="status"].athlete-status-unpaid,
+span[data-role="acro-status"].athlete-status-unpaid,
+span[data-role="halte-status"].athlete-status-unpaid,
+span[data-role="telas-status"].athlete-status-unpaid,
+span[data-role="singleclasses-status"].athlete-status-unpaid {
+  color: #fca5a5 !important;
+  background: rgba(239, 68, 68, 0.18) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+}
+
+/* Tema claro */
+.light span[data-role="status"].athlete-status-paid,
+.light span[data-role="acro-status"].athlete-status-paid,
+.light span[data-role="halte-status"].athlete-status-paid,
+.light span[data-role="telas-status"].athlete-status-paid,
+.light span[data-role="singleclasses-status"].athlete-status-paid {
+  color: #166534 !important;
+  background: rgba(34, 197, 94, 0.18) !important;
+  border: 1px solid rgba(22, 101, 52, 0.25) !important;
+}
+
+.light span[data-role="status"].athlete-status-unpaid,
+.light span[data-role="acro-status"].athlete-status-unpaid,
+.light span[data-role="halte-status"].athlete-status-unpaid,
+.light span[data-role="telas-status"].athlete-status-unpaid,
+.light span[data-role="singleclasses-status"].athlete-status-unpaid {
+  color: #991b1b !important;
+  background: rgba(239, 68, 68, 0.18) !important;
+  border: 1px solid rgba(153, 27, 27, 0.25) !important;
 }
 
