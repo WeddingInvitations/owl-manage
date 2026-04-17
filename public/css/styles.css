@@ -1246,19 +1246,13 @@ select:focus {
 /* Asegurar que todo el texto en tablas sea visible */
 .table td,
 .table th,
-.table td *:not(.athlete-status-badge):not(.athlete-status-paid):not(.athlete-status-unpaid),
 .table th * {
   color: var(--text) !important;
 }
 
-/* IMPORTANTE: Los badges de estado NO deben heredar el color de la tabla */
-.table .athlete-status-badge,
-.table .athlete-status-paid,
-.table .athlete-status-unpaid,
-table .athlete-status-badge,
-table .athlete-status-paid,
-table .athlete-status-unpaid {
-  color: inherit !important;
+/* Excluir badges del color de texto general */
+.table td *:not(.athlete-status-badge):not(.athlete-status-paid):not(.athlete-status-unpaid):not([data-role="status"]):not([data-role="acro-status"]):not([data-role="halte-status"]):not([data-role="telas-status"]):not([data-role="singleclasses-status"]) {
+  color: var(--text) !important;
 }
 
 /* Elementos muted en tablas */
@@ -3477,6 +3471,11 @@ span[data-role="singleclasses-status"] {
 }
 
 /* PAGADO - Verde */
+.table span[data-role="status"].athlete-status-paid,
+.table span[data-role="acro-status"].athlete-status-paid,
+.table span[data-role="halte-status"].athlete-status-paid,
+.table span[data-role="telas-status"].athlete-status-paid,
+.table span[data-role="singleclasses-status"].athlete-status-paid,
 span[data-role="status"].athlete-status-paid,
 span[data-role="acro-status"].athlete-status-paid,
 span[data-role="halte-status"].athlete-status-paid,
@@ -3488,6 +3487,11 @@ span[data-role="singleclasses-status"].athlete-status-paid {
 }
 
 /* NO PAGADO - Rojo */
+.table span[data-role="status"].athlete-status-unpaid,
+.table span[data-role="acro-status"].athlete-status-unpaid,
+.table span[data-role="halte-status"].athlete-status-unpaid,
+.table span[data-role="telas-status"].athlete-status-unpaid,
+.table span[data-role="singleclasses-status"].athlete-status-unpaid,
 span[data-role="status"].athlete-status-unpaid,
 span[data-role="acro-status"].athlete-status-unpaid,
 span[data-role="halte-status"].athlete-status-unpaid,
@@ -3499,6 +3503,11 @@ span[data-role="singleclasses-status"].athlete-status-unpaid {
 }
 
 /* Tema claro */
+.light .table span[data-role="status"].athlete-status-paid,
+.light .table span[data-role="acro-status"].athlete-status-paid,
+.light .table span[data-role="halte-status"].athlete-status-paid,
+.light .table span[data-role="telas-status"].athlete-status-paid,
+.light .table span[data-role="singleclasses-status"].athlete-status-paid,
 .light span[data-role="status"].athlete-status-paid,
 .light span[data-role="acro-status"].athlete-status-paid,
 .light span[data-role="halte-status"].athlete-status-paid,
@@ -3509,6 +3518,11 @@ span[data-role="singleclasses-status"].athlete-status-unpaid {
   border: 1px solid rgba(22, 101, 52, 0.25) !important;
 }
 
+.light .table span[data-role="status"].athlete-status-unpaid,
+.light .table span[data-role="acro-status"].athlete-status-unpaid,
+.light .table span[data-role="halte-status"].athlete-status-unpaid,
+.light .table span[data-role="telas-status"].athlete-status-unpaid,
+.light .table span[data-role="singleclasses-status"].athlete-status-unpaid,
 .light span[data-role="status"].athlete-status-unpaid,
 .light span[data-role="acro-status"].athlete-status-unpaid,
 .light span[data-role="halte-status"].athlete-status-unpaid,
@@ -3517,5 +3531,27 @@ span[data-role="singleclasses-status"].athlete-status-unpaid {
   color: #991b1b !important;
   background: rgba(239, 68, 68, 0.18) !important;
   border: 1px solid rgba(153, 27, 27, 0.25) !important;
+}
+
+/* Estilos simples para badges de estado - igual que otros elementos de texto */
+span[data-role="status"].athlete-status-paid {
+  color: #22c55e !important;
+  font-weight: 600;
+}
+
+span[data-role="status"].athlete-status-unpaid {
+  color: #ef4444 !important;
+  font-weight: 600;
+}
+
+/* Tema claro */
+.light span[data-role="status"].athlete-status-paid {
+  color: #16a34a !important;
+  font-weight: 600;
+}
+
+.light span[data-role="status"].athlete-status-unpaid {
+  color: #dc2626 !important;
+  font-weight: 600;
 }
 
