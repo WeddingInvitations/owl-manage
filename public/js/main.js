@@ -456,6 +456,7 @@ const tariffPlans = [
   { key: "Open Box", durationMonths: 1, priceTotal: 50 },
   { key: "8/mes", durationMonths: 1, priceTotal: 70 },
   { key: "Fundador", durationMonths: 1, priceTotal: 70 },
+  { key: "SPL", durationMonths: 1, priceTotal: 70 },
   { key: "12/mes", durationMonths: 1, priceTotal: 80 },
   { key: "Ilimitado", durationMonths: 1, priceTotal: 100 },
   { key: "Trimestre 8/mes", durationMonths: 3, priceTotal: 200 },
@@ -961,6 +962,7 @@ async function refreshAthleteMonthly() {
     if (discountReason === 'Familiar') discount = 15;
     else if (discountReason === 'Funcionario') discount = 10;
     else if (discountReason === 'Mañanas') discount = 10;
+    else if (discountReason === 'Amigo') discount = 10;
     const price = basePrice * (1 - discount / 100);
     const paid = Boolean(current?.paid);
     const active = paid;
@@ -1022,6 +1024,7 @@ async function refreshAthleteMonthly() {
     if (discountReason === 'Familiar') displayDiscount = 15;
     else if (discountReason === 'Funcionario') displayDiscount = 10;
     else if (discountReason === 'Mañanas') displayDiscount = 10;
+    else if (discountReason === 'Amigo') displayDiscount = 10;
     else if (discountReason === 'Ninguno') displayDiscount = 0;
     const paid = Boolean(current?.paid);
     const active = paid;
@@ -1072,7 +1075,7 @@ async function refreshAthleteMonthly() {
           <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
           <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
           <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
-          <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
+          <option value="Amigo" ${discountReason === "Amigo" ? "selected" : ""}>Amigo</option>
         </select>
       </td>
       <td><span data-role="final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
@@ -1106,6 +1109,7 @@ async function refreshAthleteMonthly() {
       if (reason === 'Familiar') discountValue = 15;
       else if (reason === 'Funcionario') discountValue = 10; // example
       else if (reason === 'Mañanas') discountValue = 10; // example
+      else if (reason === 'Amigo') discountValue = 10;
       // For Otro, maybe keep previous or 0
       discountDisplay.textContent = `${discountValue}%`;
     });
