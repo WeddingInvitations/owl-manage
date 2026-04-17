@@ -1761,6 +1761,7 @@ span.athlete-status-unpaid,
   .athlete-table-mobile {
     display: table !important;
     width: 100%;
+    table-layout: fixed;
   }
 
   .athlete-table-mobile thead {
@@ -1785,14 +1786,61 @@ span.athlete-status-unpaid,
     display: table-cell;
     border-bottom: 1px solid var(--border);
     padding: 12px 16px;
+    vertical-align: middle;
   }
 
+  /* Anchos específicos para cada columna */
+  .athlete-table-mobile th:nth-child(1),
+  .athlete-table-mobile td:nth-child(1) {
+    width: 20%; /* Nombre */
+  }
+
+  .athlete-table-mobile th:nth-child(2),
+  .athlete-table-mobile td:nth-child(2) {
+    width: 12%; /* Tarifa */
+  }
+
+  .athlete-table-mobile th:nth-child(3),
+  .athlete-table-mobile td:nth-child(3) {
+    width: 10%; /* Precio */
+    text-align: right;
+  }
+
+  .athlete-table-mobile th:nth-child(4),
+  .athlete-table-mobile td:nth-child(4) {
+    width: 10%; /* Descuento */
+    text-align: center;
+  }
+
+  .athlete-table-mobile th:nth-child(5),
+  .athlete-table-mobile td:nth-child(5) {
+    width: 13%; /* Motivo */
+  }
+
+  .athlete-table-mobile th:nth-child(6),
+  .athlete-table-mobile td:nth-child(6) {
+    width: 11%; /* Precio Final */
+    text-align: right;
+  }
+
+  .athlete-table-mobile th:nth-child(7),
   .athlete-table-mobile td:nth-child(7) {
+    width: 10%; /* Pagado */
     display: table-cell;
+    text-align: center;
   }
 
+  .athlete-table-mobile th:nth-child(8),
   .athlete-table-mobile td:nth-child(8) {
+    width: 14%; /* Estado */
     margin-left: 0;
+    text-align: center;
+  }
+
+  /* Asegurar que los selects se ajusten al ancho de la celda */
+  .athlete-table-mobile select {
+    max-width: 100%;
+    width: 100%;
   }
 }
 

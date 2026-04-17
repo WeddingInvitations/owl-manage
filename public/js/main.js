@@ -1055,8 +1055,7 @@ async function refreshAthleteMonthly() {
         </div>
       </td>
       <td>
-        <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
-        <select data-role="tariff" data-id="${athlete.id}" style="max-width: 100px;">
+        <select data-role="tariff" data-id="${athlete.id}">
           ${tariffPlans
             .map(
               (option) =>
@@ -1070,7 +1069,7 @@ async function refreshAthleteMonthly() {
         <span data-role="discount-display" data-id="${athlete.id}">${displayDiscount}%</span>
       </td>
       <td>
-        <select data-role="discount-reason" data-id="${athlete.id}" style="width: 120px;">
+        <select data-role="discount-reason" data-id="${athlete.id}">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
           <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
           <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
@@ -1499,8 +1498,7 @@ async function refreshAcroMonthly() {
         </div>
       </td>
       <td>
-        <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
-        <select data-role="acro-tariff" data-id="${athlete.id}" style="max-width: 100px;">
+        <select data-role="acro-tariff" data-id="${athlete.id}">
           ${acroTariffPlans
             .map(
               (option) =>
@@ -1514,7 +1512,7 @@ async function refreshAcroMonthly() {
         <span data-role="acro-discount-display" data-id="${athlete.id}">${displayDiscount}%</span>
       </td>
       <td>
-        <select data-role="acro-discount-reason" data-id="${athlete.id}" style="width: 120px;">
+        <select data-role="acro-discount-reason" data-id="${athlete.id}">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
           <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
           <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
@@ -1941,8 +1939,7 @@ async function refreshHalteMonthly() {
         </div>
       </td>
       <td>
-        <span class="plan-badge plan-${planLabel.toLowerCase()}">${planLabel}</span>
-        <select data-role="halte-tariff" data-id="${athlete.id}" style="max-width: 100px;">
+        <select data-role="halte-tariff" data-id="${athlete.id}">
           ${halteTariffPlans
             .map(
               (option) =>
@@ -1956,7 +1953,7 @@ async function refreshHalteMonthly() {
         <span data-role="halte-discount-display" data-id="${athlete.id}">${displayDiscount}%</span>
       </td>
       <td>
-        <select data-role="halte-discount-reason" data-id="${athlete.id}" style="width: 120px;">
+        <select data-role="halte-discount-reason" data-id="${athlete.id}">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
           <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
           <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
@@ -2375,7 +2372,7 @@ async function refreshTelasMonthly() {
         </div>
       </td>
       <td>
-        <select data-role="telas-tariff" data-id="${e.athlete.id}" style="max-width: 120px;">
+        <select data-role="telas-tariff" data-id="${e.athlete.id}">
           ${tariffOptionsHtml}
         </select>
       </td>
@@ -2384,7 +2381,7 @@ async function refreshTelasMonthly() {
         <span data-role="telas-discount-display" data-id="${e.athlete.id}">${discountDisplay}</span>
       </td>
       <td>
-        <select data-role="telas-discount-reason" data-id="${e.athlete.id}" style="width: 120px;">
+        <select data-role="telas-discount-reason" data-id="${e.athlete.id}">
           <option value="" ${!e.discountReason ? "selected" : ""}>Ninguno</option>
           <option value="Familiar" ${e.discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
           <option value="Funcionario" ${e.discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
