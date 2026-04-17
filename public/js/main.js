@@ -12,7 +12,9 @@ const viewsInitialized = {
   vacationsView: false,
   classesView: false,
   employeePaymentsView: false,
-  cajaView: false
+  cajaView: false,
+  paymentsView: false,
+  expensesView: false
 };
 
 // OwlManage MVP
@@ -563,6 +565,20 @@ function getMonthKey(date) {
   return `${date.getFullYear()}-${month}`;
 }
 
+function getCurrentMonthForInput() {
+  return getMonthKey(new Date());
+}
+
+function setDefaultMonthForPaymentExpense() {
+  const currentMonth = getCurrentMonthForInput();
+  if (ui.paymentDate && !ui.paymentDate.value) {
+    ui.paymentDate.value = currentMonth;
+  }
+  if (ui.expenseDate && !ui.expenseDate.value) {
+    ui.expenseDate.value = currentMonth;
+  }
+}
+
 function getCurrentYearMonths() {
   const year = new Date().getFullYear();
   const months = [];
@@ -1084,18 +1100,8 @@ async function refreshAthleteMonthly() {
           <option value="NO" ${!paid ? "selected" : ""}>NO</option>
         </select>
       </td>
-      <td>
-        <span data-role="status" data-id="${athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
-      </td>
     `;
     ui.athleteList.appendChild(row);
-    // Debug: verificar que el badge tiene el texto correcto
-    const addedRow = ui.athleteList.querySelector(`tr[data-id="${athlete.id}"]`);
-    const statusBadge = addedRow?.querySelector('[data-role="status"]');
-    if (statusBadge && !statusBadge.textContent.trim()) {
-      console.warn('❌ Badge sin texto para atleta:', athlete.name, 'paid:', paid);
-      statusBadge.textContent = paid ? "Pagado" : "No Pagado";
-    }
   });
 
   // Add event listeners for discount reason selects
@@ -1527,18 +1533,8 @@ async function refreshAcroMonthly() {
           <option value="NO" ${!paid ? "selected" : ""}>NO</option>
         </select>
       </td>
-      <td>
-        <span data-role="acro-status" data-id="${athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
-      </td>
     `;
     ui.acroList.appendChild(row);
-    // Debug: verificar que el badge tiene el texto correcto
-    const addedRow = ui.acroList.querySelector(`tr[data-id="${athlete.id}"]`);
-    const statusBadge = addedRow?.querySelector('[data-role="acro-status"]');
-    if (statusBadge && !statusBadge.textContent.trim()) {
-      console.warn('❌ Badge sin texto para acro:', athlete.name, 'paid:', paid);
-      statusBadge.textContent = paid ? "Pagado" : "No Pagado";
-    }
   });
 
   // Add event listeners for acro discount reason selects
@@ -1968,18 +1964,8 @@ async function refreshHalteMonthly() {
           <option value="NO" ${!paid ? "selected" : ""}>NO</option>
         </select>
       </td>
-      <td>
-        <span data-role="halte-status" data-id="${athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
-      </td>
     `;
     ui.halteList.appendChild(row);
-    // Debug: verificar que el badge tiene el texto correcto
-    const addedRow = ui.halteList.querySelector(`tr[data-id="${athlete.id}"]`);
-    const statusBadge = addedRow?.querySelector('[data-role="halte-status"]');
-    if (statusBadge && !statusBadge.textContent.trim()) {
-      console.warn('❌ Badge sin texto para halte:', athlete.name, 'paid:', paid);
-      statusBadge.textContent = paid ? "Pagado" : "No Pagado";
-    }
   });
 
   // Add event listeners for halte discount reason selects
@@ -2396,18 +2382,8 @@ async function refreshTelasMonthly() {
           <option value="NO" ${!paid ? "selected" : ""}>NO</option>
         </select>
       </td>
-      <td>
-        <span data-role="telas-status" data-id="${e.athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
-      </td>
     `;
     ui.telasList.appendChild(row);
-    // Debug: verificar que el badge tiene el texto correcto
-    const addedRow = ui.telasList.querySelector(`tr[data-id="${e.athlete.id}"]`);
-    const statusBadge = addedRow?.querySelector('[data-role="telas-status"]');
-    if (statusBadge && !statusBadge.textContent.trim()) {
-      console.warn('❌ Badge sin texto para telas:', e.athlete.name, 'paid:', paid);
-      statusBadge.textContent = paid ? "Pagado" : "No Pagado";
-    }
   });
 
   // Add event listeners for telas discount reason selects
@@ -2746,18 +2722,8 @@ async function refreshSingleClassesMonthly() {
           <option value="NO" ${!paid ? "selected" : ""}>NO</option>
         </select>
       </td>
-      <td>
-        <span data-role="singleclasses-status" data-id="${e.athlete.id}" class="athlete-status-badge ${paid ? "athlete-status-paid" : "athlete-status-unpaid"}">${paid ? "Pagado" : "No Pagado"}</span>
-      </td>
     `;
     ui.singleClassesList.appendChild(row);
-    // Debug: verificar que el badge tiene el texto correcto
-    const addedRow = ui.singleClassesList.querySelector(`tr[data-id="${e.athlete.id}"]`);
-    const statusBadge = addedRow?.querySelector('[data-role="singleclasses-status"]');
-    if (statusBadge && !statusBadge.textContent.trim()) {
-      console.warn('❌ Badge sin texto para singleclasses:', e.athlete.name, 'paid:', paid);
-      statusBadge.textContent = paid ? "Pagado" : "No Pagado";
-    }
   });
 
   // Add event listeners for single classes discount reason selects
@@ -3505,6 +3471,16 @@ async function initializeViewIfNeeded(viewId) {
     case "cajaView":
       await initializeCaja();
       viewsInitialized.cajaView = true;
+      break;
+      
+    case "paymentsView":
+      setDefaultMonthForPaymentExpense();
+      viewsInitialized.paymentsView = true;
+      break;
+      
+    case "expensesView":
+      setDefaultMonthForPaymentExpense();
+      viewsInitialized.expensesView = true;
       break;
   }
 }
@@ -4297,10 +4273,10 @@ function renderProfileView() {
 // ---------- Funciones de importación CSV para pagos/gastos ----------
 
 function downloadCsvTemplate(filename, type) {
-  const headers = ["Concepto", "Fecha", "Importe"];
+  const headers = ["Concepto", "Mes", "Importe"];
   const exampleRow = type === "payment" 
-    ? ["Cuota mensual", "2026-02-01", "50.00"]
-    : ["Material oficina", "2026-02-01", "25.00"];
+    ? ["Cuota mensual", "2026-02", "50.00"]
+    : ["Material oficina", "2026-02", "25.00"];
   
   const csv = [headers, exampleRow]
     .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
@@ -4490,6 +4466,7 @@ on(ui.paymentForm, "submit", async (event) => {
     currentUser?.uid
   );
   ui.paymentForm.reset();
+  setDefaultMonthForPaymentExpense();
   await refreshAll();
 });
 
@@ -4497,7 +4474,9 @@ on(ui.paymentForm, "submit", async (event) => {
 function handleEditPayment(paymentId, paymentData) {
   ui.paymentEditId.value = paymentId;
   ui.paymentEditConcept.value = paymentData.concept || "";
-  ui.paymentEditDate.value = paymentData.date || "";
+  // Convertir fecha de YYYY-MM-DD a YYYY-MM si es necesario
+  const date = paymentData.date || "";
+  ui.paymentEditDate.value = date.length > 7 ? date.substring(0, 7) : date;
   ui.paymentEditAmount.value = paymentData.amount || 0;
   ui.paymentEditModal?.classList.remove("hidden");
 }
@@ -4553,7 +4532,9 @@ on(ui.paymentDeleteCancel, "click", () => {
 function handleEditExpense(expenseId, expenseData) {
   ui.expenseEditId.value = expenseId;
   ui.expenseEditConcept.value = expenseData.concept || "";
-  ui.expenseEditDate.value = expenseData.date || "";
+  // Convertir fecha de YYYY-MM-DD a YYYY-MM si es necesario
+  const date = expenseData.date || "";
+  ui.expenseEditDate.value = date.length > 7 ? date.substring(0, 7) : date;
   ui.expenseEditAmount.value = expenseData.amount || 0;
   ui.expenseEditModal?.classList.remove("hidden");
 }
@@ -4642,6 +4623,7 @@ on(ui.expenseForm, "submit", async (event) => {
     currentUser?.uid
   );
   ui.expenseForm.reset();
+  setDefaultMonthForPaymentExpense();
   await refreshAll();
 });
 
@@ -7622,6 +7604,13 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initializeMobileMenuAndSearch);
 } else {
   initializeMobileMenuAndSearch();
+}
+
+// Establecer mes por defecto en formularios de ingresos y gastos
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setDefaultMonthForPaymentExpense);
+} else {
+  setDefaultMonthForPaymentExpense();
 }
 
 // Global event listeners for discount changes

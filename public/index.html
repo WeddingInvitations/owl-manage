@@ -368,8 +368,8 @@
                 <input id="paymentConcept" type="text" required />
               </label>
               <label>
-                Fecha
-                <input id="paymentDate" type="date" required />
+                Mes
+                <input id="paymentDate" type="month" required />
               </label>
               <label>
                 Importe (€)
@@ -386,7 +386,7 @@
                 <button id="paymentCsvClose" class="btn ghost small" type="button">Cerrar</button>
               </div>
               <form id="paymentCsvForm" class="stack">
-                <p class="muted">El CSV debe tener 3 columnas: Concepto, Fecha (YYYY-MM-DD), Importe. La primera fila (cabecera) se ignorará.</p>
+                <p class="muted">El CSV debe tener 3 columnas: Concepto, Mes (YYYY-MM), Importe. La primera fila (cabecera) se ignorará.</p>
                 <div class="flex gap-2 mb-3">
                   <button id="downloadPaymentTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
                     📥 Descargar plantilla
@@ -414,8 +414,8 @@
                   <input id="paymentEditConcept" type="text" required />
                 </label>
                 <label>
-                  Fecha
-                  <input id="paymentEditDate" type="date" required />
+                  Mes
+                  <input id="paymentEditDate" type="month" required />
                 </label>
                 <label>
                   Importe (€)
@@ -457,8 +457,8 @@
                 <input id="expenseConcept" type="text" required />
               </label>
               <label>
-                Fecha
-                <input id="expenseDate" type="date" required />
+                Mes
+                <input id="expenseDate" type="month" required />
               </label>
               <label>
                 Importe (€)
@@ -475,7 +475,7 @@
                 <button id="expenseCsvClose" class="btn ghost small" type="button">Cerrar</button>
               </div>
               <form id="expenseCsvForm" class="stack">
-                <p class="muted">El CSV debe tener 3 columnas: Concepto, Fecha (YYYY-MM-DD), Importe. La primera fila (cabecera) se ignorará.</p>
+                <p class="muted">El CSV debe tener 3 columnas: Concepto, Mes (YYYY-MM), Importe. La primera fila (cabecera) se ignorará.</p>
                 <div class="flex gap-2 mb-3">
                   <button id="downloadExpenseTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
                     📥 Descargar plantilla
@@ -503,8 +503,8 @@
                   <input id="expenseEditConcept" type="text" required />
                 </label>
                 <label>
-                  Fecha
-                  <input id="expenseEditDate" type="date" required />
+                  Mes
+                  <input id="expenseEditDate" type="month" required />
                 </label>
                 <label>
                   Importe (€)
@@ -1193,6 +1193,7 @@
               </div>
             </div>
             <datalist id="athleteSearchList"></datalist>
+            <p id="athleteListCount" class="muted" style="margin: 8px 0; font-size: 14px;"></p>
             <div class="table-container">
               <table class="table athlete-table-mobile">
                 <thead>
@@ -1204,13 +1205,11 @@
                     <th>Motivo</th>
                     <th>Precio Final</th>
                     <th>Pagado</th>
-                    <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody id="athleteList"></tbody>
               </table>
             </div>
-            <p id="athleteListCount" class="muted"></p>
           </div>
         </section>
 
@@ -1362,6 +1361,7 @@
               </div>
             </div>
             <datalist id="acroSearchList"></datalist>
+            <p id="acroListCount" class="muted" style="margin: 8px 0; font-size: 14px;"></p>
             <div class="table-container">
               <table class="table athlete-table-mobile">
                 <thead>
@@ -1373,13 +1373,11 @@
                     <th>Motivo</th>
                     <th>Precio Final</th>
                     <th>Pagado</th>
-                    <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody id="acroList"></tbody>
               </table>
             </div>
-            <p id="acroListCount" class="muted"></p>
           </div>
         </section>
 
@@ -1529,6 +1527,7 @@
               </div>
             </div>
             <datalist id="halteSearchList"></datalist>
+            <p id="halteListCount" class="muted" style="margin: 8px 0; font-size: 14px;"></p>
             <div class="table-container">
               <table class="table athlete-table-mobile">
                 <thead>
@@ -1540,13 +1539,11 @@
                     <th>Motivo</th>
                     <th>Precio Final</th>
                     <th>Pagado</th>
-                    <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody id="halteList"></tbody>
               </table>
             </div>
-            <p id="halteListCount" class="muted"></p>
           </div>
         </section>
 
@@ -1698,6 +1695,7 @@
               </div>
             </div>
             <datalist id="telasSearchList"></datalist>
+            <p id="telasListCount" class="muted" style="margin: 8px 0; font-size: 14px;"></p>
             <div class="table-container">
               <table class="table athlete-table-mobile">
                 <thead>
@@ -1709,13 +1707,11 @@
                     <th>Motivo</th>
                     <th>Precio Final</th>
                     <th>Pagado</th>
-                    <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody id="telasList"></tbody>
               </table>
             </div>
-            <p id="telasListCount" class="muted"></p>
           </div>
         </section>
 
@@ -1879,7 +1875,6 @@
                     <th>Motivo</th>
                     <th>Precio Final</th>
                     <th>Pagado</th>
-                    <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody id="singleClassesList"></tbody>
