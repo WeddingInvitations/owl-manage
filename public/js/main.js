@@ -28,6 +28,7 @@ import {
   setActiveView,
   updateMenuVisibility,
 } from "./ui.js?v=20250409d";
+import { showToast } from "./toast.js";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -1094,10 +1095,10 @@ async function refreshAthleteMonthly() {
         </select>
       </td>
       <td><span data-role="final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
-      <td>
-        <select data-role="paid" data-id="${athlete.id}">
-          <option value="SI" ${paid ? "selected" : ""}>SI</option>
-          <option value="NO" ${!paid ? "selected" : ""}>NO</option>
+      <td style="min-width:110px;">
+        <select data-role="paid" data-id="${athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
+          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
+          <option value="NO" ${!paid ? "selected" : ""}>No</option>
         </select>
       </td>
     `;
@@ -1527,10 +1528,10 @@ async function refreshAcroMonthly() {
         </select>
       </td>
       <td><span data-role="acro-final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
-      <td>
-        <select data-role="acro-paid" data-id="${athlete.id}">
-          <option value="SI" ${paid ? "selected" : ""}>SI</option>
-          <option value="NO" ${!paid ? "selected" : ""}>NO</option>
+      <td style="min-width:110px;">
+        <select data-role="acro-paid" data-id="${athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
+          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
+          <option value="NO" ${!paid ? "selected" : ""}>No</option>
         </select>
       </td>
     `;
@@ -1958,10 +1959,10 @@ async function refreshHalteMonthly() {
         </select>
       </td>
       <td><span data-role="halte-final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
-      <td>
-        <select data-role="halte-paid" data-id="${athlete.id}">
-          <option value="SI" ${paid ? "selected" : ""}>SI</option>
-          <option value="NO" ${!paid ? "selected" : ""}>NO</option>
+      <td style="min-width:110px;">
+        <select data-role="halte-paid" data-id="${athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
+          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
+          <option value="NO" ${!paid ? "selected" : ""}>No</option>
         </select>
       </td>
     `;
@@ -2376,10 +2377,10 @@ async function refreshTelasMonthly() {
         </select>
       </td>
       <td><span data-role="telas-final-price" data-id="${e.athlete.id}">${finalPrice.toFixed(2)}</span> €</td>
-      <td>
-        <select data-role="telas-paid" data-id="${e.athlete.id}">
-          <option value="SI" ${paid ? "selected" : ""}>SI</option>
-          <option value="NO" ${!paid ? "selected" : ""}>NO</option>
+      <td style="min-width:110px;">
+        <select data-role="telas-paid" data-id="${e.athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
+          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
+          <option value="NO" ${!paid ? "selected" : ""}>No</option>
         </select>
       </td>
     `;
@@ -2716,10 +2717,10 @@ async function refreshSingleClassesMonthly() {
         </select>
       </td>
       <td><span data-role="singleclasses-final-price" data-id="${e.athlete.id}">${finalPrice.toFixed(2)}</span> €</td>
-      <td>
-        <select data-role="singleclasses-paid" data-id="${e.athlete.id}">
-          <option value="SI" ${paid ? "selected" : ""}>SI</option>
-          <option value="NO" ${!paid ? "selected" : ""}>NO</option>
+      <td style="min-width:110px;">
+        <select data-role="singleclasses-paid" data-id="${e.athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
+          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
+          <option value="NO" ${!paid ? "selected" : ""}>No</option>
         </select>
       </td>
     `;
@@ -3588,9 +3589,10 @@ function calculateDiscountFromReason(reason) {
 
 function setStatusBadge(statusElement, paid) {
   if (!statusElement) return;
-  statusElement.textContent = paid ? "Pagado" : "No Pagado";
-  statusElement.classList.toggle("athlete-status-paid", paid);
-  statusElement.classList.toggle("athlete-status-unpaid", !paid);
+  if (!statusElement) return;
+  statusElement.value = paid ? "SI" : "NO";
+  statusElement.classList.toggle("select-paid", paid);
+  statusElement.classList.toggle("select-unpaid", !paid);
 }
 
 function updatePendingSaveButtons() {
@@ -3881,10 +3883,10 @@ if (ui.athleteSaveAllBtn) {
     ui.athleteSaveAllBtn.textContent = originalText;
 
     if (failedNames.length) {
-      alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
+      showToast(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`, "error");
       return;
     }
-    alert(`Guardados ${saved} cambios.`);
+    showToast(`Guardados ${saved} cambios.`, "success");
   });
 }
 
