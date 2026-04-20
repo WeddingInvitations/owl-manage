@@ -644,6 +644,10 @@ async function refreshExpenseList() {
       : (availableExpenseMonths[0] || "");
   }
   renderExpenseMonthOptions();
+  // Update the prominent month/year title
+  if (ui.expenseMonthTitle) {
+    ui.expenseMonthTitle.textContent = getMonthLabel(selectedExpenseMonth);
+  }
   await loadExpensesForMonth(
     ui.expenseList,
     formatCurrency,
@@ -4621,7 +4625,7 @@ on(ui.expenseForm, "submit", async (event) => {
   await addExpense(
     ui.expenseConcept.value,
     Number(ui.expenseAmount.value),
-    ui.expenseDate.value,
+    undefined,
     currentUser?.uid
   );
   ui.expenseForm.reset();
