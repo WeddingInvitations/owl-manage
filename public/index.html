@@ -444,7 +444,10 @@
         <section id="expensesView" class="view hidden">
           <div class="card">
             <div class="detail-header">
-              <h2>Contabilidad · Gastos</h2>
+              <div style="display: flex; align-items: center; gap: 18px; flex-wrap: wrap;">
+                <h2 style="margin-bottom: 0;">Contabilidad · Gastos</h2>
+                <span id="expenseMonthTitle" class="month-title" style="font-size: 1.6rem; font-weight: bold; color: var(--primary, #2a4a7b); margin-bottom: 0;"></span>
+              </div>
               <div class="filter-row">
                 <select id="expenseMonthSelect"></select>
                 <button id="expenseCsvOpen" class="btn ghost small" type="button" title="Importar CSV">📄 CSV</button>
@@ -455,10 +458,6 @@
               <label>
                 Concepto
                 <input id="expenseConcept" type="text" required />
-              </label>
-              <label>
-                Mes
-                <input id="expenseDate" type="month" required />
               </label>
               <label>
                 Importe (€)
