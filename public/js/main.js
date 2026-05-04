@@ -455,7 +455,7 @@ on(ui.passwordChangeForm, "submit", async (event) => {
 });
 
 const tariffPlans = [
-  { key: "Open Box", durationMonths: 1, priceTotal: 50 },
+  { key: "Open Box", durationMonths: 1, priceTotal: 70 },
   { key: "8/mes", durationMonths: 1, priceTotal: 70 },
   { key: "Fundador", durationMonths: 1, priceTotal: 70 },
   { key: "SPL", durationMonths: 1, priceTotal: 70 },
@@ -3600,6 +3600,12 @@ function updatePendingSaveButtons() {
   const acroPending = ui.acroList
     ? ui.acroList.querySelectorAll("tr[data-dirty='true']").length
     : 0;
+  const haltePending = ui.halteList
+    ? ui.halteList.querySelectorAll("tr[data-dirty='true']").length
+    : 0;
+  const telasPending = ui.telasList
+    ? ui.telasList.querySelectorAll("tr[data-dirty='true']").length
+    : 0;
 
   if (ui.athleteSaveAllBtn) {
     ui.athleteSaveAllBtn.disabled = athletePending === 0;
@@ -3608,6 +3614,14 @@ function updatePendingSaveButtons() {
   if (ui.acroSaveAllBtn) {
     ui.acroSaveAllBtn.disabled = acroPending === 0;
     ui.acroSaveAllBtn.textContent = `Guardar cambios (${acroPending})`;
+  }
+  if (ui.halteSaveAllBtn) {
+    ui.halteSaveAllBtn.disabled = haltePending === 0;
+    ui.halteSaveAllBtn.textContent = `Guardar cambios (${haltePending})`;
+  }
+  if (ui.telasSaveAllBtn) {
+    ui.telasSaveAllBtn.disabled = telasPending === 0;
+    ui.telasSaveAllBtn.textContent = `Guardar cambios (${telasPending})`;
   }
 }
 
