@@ -460,6 +460,10 @@
                 <input id="expenseConcept" type="text" required />
               </label>
               <label>
+                Mes
+                <input id="expenseDate" type="month" required />
+              </label>
+              <label>
                 Importe (€)
                 <input id="expenseAmount" type="number" min="0" step="0.01" required />
               </label>
@@ -2301,10 +2305,15 @@
         </div>
         <div class="stack" style="margin-top: 16px;">
           <button class="btn ghost" data-view="profileView" data-close-more>👤 Mi perfil</button>
+          <button class="btn ghost" data-view="cajaView" data-close-more>💵 Caja</button>
+          <button class="btn ghost" data-view="employeePaymentsView" data-close-more>👥 Pagos empleados</button>
+          <button class="btn ghost" data-view="ordersView" data-close-more>🛒 Pedidos</button>
+          <button class="btn ghost" data-view="singleClassesView" data-close-more>📋 Clases Sueltas</button>
           <button class="btn ghost" data-view="halteView" data-close-more>🏋️ Halterofilia</button>
           <button class="btn ghost" data-view="telasView" data-close-more>🎪 Telas</button>
           <button class="btn ghost" data-view="checkinsView" data-close-more>📋 Fichajes</button>
           <button class="btn ghost" data-view="trainingsView" data-close-more>🏃 Entrenamientos</button>
+          <button class="btn ghost" data-view="classesView" data-close-more>🎓 Clases</button>
           <button class="btn ghost" data-view="rolesView" data-close-more>👥 Roles</button>
         </div>
       </div>

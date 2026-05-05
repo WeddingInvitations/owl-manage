@@ -2961,7 +2961,19 @@ function updateMobileNavActive(viewId) {
   if (!ui.mobileNavButtons) return;
   ui.mobileNavButtons.forEach((btn) => {
     const isMore = btn.dataset.view === "moreView";
-    const moreViews = ["checkinsView", "trainingsView", "rolesView", "profileView"];
+    const moreViews = [
+      "checkinsView", 
+      "trainingsView", 
+      "rolesView", 
+      "profileView",
+      "cajaView",
+      "employeePaymentsView",
+      "ordersView",
+      "singleClassesView",
+      "halteView",
+      "telasView",
+      "classesView"
+    ];
     const isActive = btn.dataset.view === viewId || 
       (isMore && moreViews.includes(viewId));
     btn.classList.toggle("active", isActive);
@@ -4639,7 +4651,7 @@ on(ui.expenseForm, "submit", async (event) => {
   await addExpense(
     ui.expenseConcept.value,
     Number(ui.expenseAmount.value),
-    undefined,
+    ui.expenseDate.value,
     currentUser?.uid
   );
   ui.expenseForm.reset();
