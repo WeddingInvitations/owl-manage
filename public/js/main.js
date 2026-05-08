@@ -387,6 +387,18 @@ const on = (element, eventName, handler) => {
   element.addEventListener(eventName, handler);
 };
 
+/**
+ * Debounce: retrasa la ejecución hasta que el usuario deje de escribir.
+ * Imprescindible en móviles/tablets donde cada tecla dispararía llamadas a Firestore.
+ */
+function debounce(fn, delay) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 // --- Cambio de contraseña inicial ---
 on(ui.passwordChangeForm, "submit", async (event) => {
   event.preventDefault();
@@ -6421,10 +6433,11 @@ on(ui.athleteListMonthSelect, "change", async (event) => {
 });
 
 // Athletes - Search and paid filter
-on(ui.athleteSearch, "input", async (event) => {
+// Debounce: esperar 400ms tras la última tecla antes de relanzar Firestore (mejora rendimiento en móvil)
+on(ui.athleteSearch, "input", debounce(async (event) => {
   athleteSearchTerm = event.target.value;
   await refreshAthleteMonthly();
-});
+}, 400));
 
 on(ui.athletePaidFilter, "change", async (event) => {
   athletePaidFilter = event.target.value;
@@ -6443,10 +6456,11 @@ on(ui.acroListMonthSelect, "change", async (event) => {
 });
 
 // Acrobacias - Search and paid filter
-on(ui.acroSearch, "input", async (event) => {
+// Debounce: esperar 400ms tras la última tecla antes de relanzar Firestore (mejora rendimiento en móvil)
+on(ui.acroSearch, "input", debounce(async (event) => {
   acroSearchTerm = event.target.value;
   await refreshAcroMonthly();
-});
+}, 400));
 
 on(ui.acroPaidFilter, "change", async (event) => {
   acroPaidFilter = event.target.value;
@@ -6465,10 +6479,11 @@ on(ui.halteListMonthSelect, "change", async (event) => {
 });
 
 // Halterofilia - Search and paid filter
-on(ui.halteSearch, "input", async (event) => {
+// Debounce: esperar 400ms tras la última tecla antes de relanzar Firestore (mejora rendimiento en móvil)
+on(ui.halteSearch, "input", debounce(async (event) => {
   halteSearchTerm = event.target.value;
   await refreshHalteMonthly();
-});
+}, 400));
 
 on(ui.haltePaidFilter, "change", async (event) => {
   haltePaidFilter = event.target.value;
@@ -6487,10 +6502,11 @@ on(ui.telasListMonthSelect, "change", async (event) => {
 });
 
 // Telas - Search and paid filter
-on(ui.telasSearch, "input", async (event) => {
+// Debounce: esperar 400ms tras la última tecla antes de relanzar Firestore (mejora rendimiento en móvil)
+on(ui.telasSearch, "input", debounce(async (event) => {
   telasSearchTerm = event.target.value;
   await refreshTelasMonthly();
-});
+}, 400));
 
 on(ui.telasPaidFilter, "change", async (event) => {
   telasPaidFilter = event.target.value;
@@ -6509,10 +6525,11 @@ on(ui.singleClassesListMonthSelect, "change", async (event) => {
 });
 
 // Single Classes - Search and paid filter
-on(ui.singleClassesSearch, "input", async (event) => {
+// Debounce: esperar 400ms tras la última tecla antes de relanzar Firestore (mejora rendimiento en móvil)
+on(ui.singleClassesSearch, "input", debounce(async (event) => {
   singleClassesSearchTerm = event.target.value;
   await refreshSingleClassesMonthly();
-});
+}, 400));
 
 on(ui.singleClassesPaidFilter, "change", async (event) => {
   singleClassesPaidFilter = event.target.value;
