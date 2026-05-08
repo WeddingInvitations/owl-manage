@@ -308,6 +308,12 @@ let telasPaidFilter = "ALL";
 let telasSearchTerm = "";
 let selectedTelasCsvMonth = "";
 
+// Caché de datos para filtrado instantáneo (sin re-fetch a Firestore al buscar)
+let athleteListCacheData = null;
+let acroListCacheData = null;
+let halteListCacheData = null;
+let telasListCacheData = null;
+
 // Single Classes state
 let selectedSingleClassesMonth = "";
 let selectedSingleClassesListMonth = "";
@@ -906,6 +912,126 @@ function calculateAthleteFinalPrice() {
   ui.athleteFinalPrice.value = finalPrice.toFixed(2);
 }
 
+// Renderiza la lista de atletas usando datos en caché — sincrónico, sin Firestore
+function filterAndRenderAthleteList() {
+  if (!athleteListCacheData || !ui.athleteList) return;
+  const { allAthletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory } = athleteListCacheData;
+  const searchValue = athleteSearchTerm.trim().toLowerCase();
+  const filteredAthletes = searchValue
+    ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    : allAthletes;
+  let listAthletes = filteredAthletes.length > 0 ? filteredAthletes : athletesFallback;
+  listAthletes = listAthletes.map(athlete => {
+    const current = listMonthMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const mostRecent = history.length > 0 ? history[0] : null;
+    const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
+    return { ...athlete, lastUpdate };
+  }).sort((a, b) => {
+    if (!a.lastUpdate && !b.lastUpdate) return 0;
+    if (!a.lastUpdate) return 1;
+    if (!b.lastUpdate) return -1;
+    const timeA = a.lastUpdate?.seconds || a.lastUpdate?.toMillis?.() / 1000 || 0;
+    const timeB = b.lastUpdate?.seconds || b.lastUpdate?.toMillis?.() / 1000 || 0;
+    return timeB - timeA;
+  });
+  ui.athleteList.innerHTML = "";
+  let visibleCount = 0;
+  listAthletes.forEach((athlete) => {
+    const current = listMonthMap.get(athlete.id);
+    const previous = listPreviousMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const lastPaid = history.find((record) => record.paid);
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
+    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
+    const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || fallbackPlan;
+    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
+    const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
+    const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
+    let displayDiscount = discount;
+    if (discountReason === 'Familiar') displayDiscount = 15;
+    else if (discountReason === 'Funcionario') displayDiscount = 10;
+    else if (discountReason === 'Mañanas') displayDiscount = 10;
+    else if (discountReason === 'Amigo') displayDiscount = 10;
+    else if (discountReason === 'Ninguno') displayDiscount = 0;
+    const paid = Boolean(current?.paid);
+    if (athletePaidFilter === "SI" && !paid) return;
+    if (athletePaidFilter === "NO" && paid) return;
+    visibleCount += 1;
+    const planDuration = plan.durationMonths || 1;
+    const planLabel = planDuration === 1 ? "Mensual" : planDuration === 3 ? "Trimestral" : planDuration === 6 ? "Semestral" : "Anual";
+    const row = document.createElement("tr");
+    row.dataset.id = athlete.id;
+    row.dataset.name = athlete.name;
+    row.innerHTML = `
+      <td style="max-width: 200px;">
+        <div style="display: flex; align-items: flex-start; gap: 6px;">
+          <span data-role="athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name}</span>
+          <button class="edit-name-btn" data-role="edit-athlete-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+        </div>
+      </td>
+      <td>
+        <select data-role="tariff" data-id="${athlete.id}">
+          ${tariffPlans.map((option) => `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`).join("")}
+        </select>
+      </td>
+      <td><span data-role="price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
+      <td><span data-role="discount-display" data-id="${athlete.id}">${displayDiscount}%</span></td>
+      <td>
+        <select data-role="discount-reason" data-id="${athlete.id}">
+          <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
+          <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
+          <option value="Amigo" ${discountReason === "Amigo" ? "selected" : ""}>Amigo</option>
+        </select>
+      </td>
+      <td><span data-role="final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
+      <td style="min-width:110px;">
+        <select data-role="paid" data-id="${athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
+          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
+          <option value="NO" ${!paid ? "selected" : ""}>No</option>
+        </select>
+      </td>
+    `;
+    ui.athleteList.appendChild(row);
+  });
+  ui.athleteList.querySelectorAll('[data-role="discount-reason"]').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const row = e.target.closest('tr');
+      const discountDisplay = row.querySelector('[data-role="discount-display"]');
+      const reason = e.target.value;
+      let discountValue = 0;
+      if (reason === 'Familiar') discountValue = 15;
+      else if (reason === 'Funcionario') discountValue = 10;
+      else if (reason === 'Mañanas') discountValue = 10;
+      else if (reason === 'Amigo') discountValue = 10;
+      discountDisplay.textContent = `${discountValue}%`;
+    });
+  });
+  ui.athleteList.querySelectorAll('[data-role="edit-athlete-name"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.target.dataset.id;
+      const nameSpan = ui.athleteList.querySelector(`[data-role="athlete-name"][data-id="${athleteId}"]`);
+      const currentName = nameSpan.textContent;
+      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
+      if (newName && newName.trim() !== '' && newName !== currentName) {
+        try {
+          await updateAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
+          await refreshAthleteMonthly();
+        } catch (error) {
+          console.error('Error al actualizar el nombre del atleta:', error);
+          alert('Error al actualizar el nombre del atleta');
+        }
+      }
+    });
+  });
+  if (ui.athleteListCount) {
+    ui.athleteListCount.textContent = `Mostrando ${visibleCount} atletas`;
+  }
+  updatePendingSaveButtons();
+}
+
 async function refreshAthleteMonthly() {
   if (!selectedAthleteMonth) {
     renderAthleteMonthOptions();
@@ -924,21 +1050,6 @@ async function refreshAthleteMonthly() {
       const option = document.createElement("option");
       option.value = name;
       ui.athleteNameList.appendChild(option);
-    });
-  }
-  const searchValue = athleteSearchTerm.trim().toLowerCase();
-  const visibleAthletes = searchValue
-    ? athletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
-    : athletes;
-  if (ui.athleteSearchList) {
-    const names = Array.from(
-      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b));
-    ui.athleteSearchList.innerHTML = "";
-    names.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      ui.athleteSearchList.appendChild(option);
     });
   }
   const allMonthRecords = await getAllAthleteMonths();
@@ -973,8 +1084,6 @@ async function refreshAthleteMonthly() {
   athleteHistory.forEach((records) =>
     records.sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0))
   );
-
-  ui.athleteList.innerHTML = "";
 
   const activeNow = new Set();
   const activePrev = new Set();
@@ -1018,149 +1127,15 @@ async function refreshAthleteMonthly() {
     }
   });
 
-  let visibleCount = 0;
-  let listAthletes = visibleAthletes.length > 0
-    ? visibleAthletes
-    : Array.from(new Map(listMonthRecords.map((record) => [
-        record.athleteId,
-        { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
-      ])).values());
-
-  // Ordenar por fecha de última actualización
-  listAthletes = listAthletes.map(athlete => {
-    const current = listMonthMap.get(athlete.id);
-    const history = athleteHistory.get(athlete.id) || [];
-    const mostRecent = history.length > 0 ? history[0] : null;
-    const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
-    return { ...athlete, lastUpdate };
-  }).sort((a, b) => {
-    if (!a.lastUpdate && !b.lastUpdate) return 0;
-    if (!a.lastUpdate) return 1;
-    if (!b.lastUpdate) return -1;
-    const timeA = a.lastUpdate?.seconds || a.lastUpdate?.toMillis?.() / 1000 || 0;
-    const timeB = b.lastUpdate?.seconds || b.lastUpdate?.toMillis?.() / 1000 || 0;
-    return timeB - timeA;
-  });
-
-  listAthletes.forEach((athlete) => {
-    const current = listMonthMap.get(athlete.id);
-    const previous = listPreviousMap.get(athlete.id);
-    const history = athleteHistory.get(athlete.id) || [];
-    const lastPaid = history.find((record) => record.paid);
-    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
-    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
-    const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || fallbackPlan;
-    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
-    const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
-    const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
-    let displayDiscount = discount;
-    if (discountReason === 'Familiar') displayDiscount = 15;
-    else if (discountReason === 'Funcionario') displayDiscount = 10;
-    else if (discountReason === 'Mañanas') displayDiscount = 10;
-    else if (discountReason === 'Amigo') displayDiscount = 10;
-    else if (discountReason === 'Ninguno') displayDiscount = 0;
-    const paid = Boolean(current?.paid);
-    const active = paid;
-    if (athletePaidFilter === "SI" && !paid) {
-      return;
-    }
-    if (athletePaidFilter === "NO" && paid) {
-      return;
-    }
-    visibleCount += 1;
-    const planDuration = plan.durationMonths || 1;
-    const planLabel = planDuration === 1
-      ? "Mensual"
-      : planDuration === 3
-        ? "Trimestral"
-        : planDuration === 6
-          ? "Semestral"
-          : "Anual";
-
-    const row = document.createElement("tr");
-    row.dataset.id = athlete.id;
-    row.dataset.name = athlete.name;
-    row.innerHTML = `
-      <td style="max-width: 200px;">
-        <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name}</span>
-          <button class="edit-name-btn" data-role="edit-athlete-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
-        </div>
-      </td>
-      <td>
-        <select data-role="tariff" data-id="${athlete.id}">
-          ${tariffPlans
-            .map(
-              (option) =>
-                `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`
-            )
-            .join("")}
-        </select>
-      </td>
-      <td><span data-role="price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
-      <td>
-        <span data-role="discount-display" data-id="${athlete.id}">${displayDiscount}%</span>
-      </td>
-      <td>
-        <select data-role="discount-reason" data-id="${athlete.id}">
-          <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
-          <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
-          <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
-          <option value="Amigo" ${discountReason === "Amigo" ? "selected" : ""}>Amigo</option>
-        </select>
-      </td>
-      <td><span data-role="final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
-      <td style="min-width:110px;">
-        <select data-role="paid" data-id="${athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
-          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
-          <option value="NO" ${!paid ? "selected" : ""}>No</option>
-        </select>
-      </td>
-    `;
-    ui.athleteList.appendChild(row);
-  });
-
-  // Add event listeners for discount reason selects
-  ui.athleteList.querySelectorAll('[data-role="discount-reason"]').forEach(select => {
-    select.addEventListener('change', (e) => {
-      const row = e.target.closest('tr');
-      const discountDisplay = row.querySelector('[data-role="discount-display"]');
-      const reason = e.target.value;
-      let discountValue = 0;
-      if (reason === 'Familiar') discountValue = 15;
-      else if (reason === 'Funcionario') discountValue = 10; // example
-      else if (reason === 'Mañanas') discountValue = 10; // example
-      else if (reason === 'Amigo') discountValue = 10;
-      // For Otro, maybe keep previous or 0
-      discountDisplay.textContent = `${discountValue}%`;
-    });
-  });
-
-  // Add event listeners for edit name buttons
-  ui.athleteList.querySelectorAll('[data-role="edit-athlete-name"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const athleteId = e.target.dataset.id;
-      const nameSpan = ui.athleteList.querySelector(`[data-role="athlete-name"][data-id="${athleteId}"]`);
-      const currentName = nameSpan.textContent;
-      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
-      
-      if (newName && newName.trim() !== '' && newName !== currentName) {
-        try {
-          await updateAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
-          await refreshAthleteMonthly();
-        } catch (error) {
-          console.error('Error al actualizar el nombre del atleta:', error);
-          alert('Error al actualizar el nombre del atleta');
-        }
-      }
-    });
-  });
-
-  if (ui.athleteListCount) {
-    ui.athleteListCount.textContent = `Mostrando ${visibleCount} atletas`;
-  }
-  updatePendingSaveButtons();
+  // Cachear datos y delegar render (sin re-fetch a Firestore при buscar/filtrar)
+  const athletesFallback = Array.from(
+    new Map(listMonthRecords.map((record) => [
+      record.athleteId,
+      { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
+    ])).values()
+  );
+  athleteListCacheData = { allAthletes: athletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory };
+  filterAndRenderAthleteList();
 
   const totalActive = activeNow.size;
   const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
@@ -1338,6 +1313,123 @@ async function importAcroAthletesFromCsv(file, monthKey) {
   return processed;
 }
 
+// Renderiza la lista de acrobacias usando datos en caché — sincrónico, sin Firestore
+function filterAndRenderAcroList() {
+  if (!acroListCacheData || !ui.acroList) return;
+  const { allAthletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory } = acroListCacheData;
+  const searchValue = acroSearchTerm.trim().toLowerCase();
+  const filteredAthletes = searchValue
+    ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    : allAthletes;
+  let listAthletes = filteredAthletes.length > 0 ? filteredAthletes : athletesFallback;
+  listAthletes = listAthletes.map(athlete => {
+    const current = listMonthMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const mostRecent = history.length > 0 ? history[0] : null;
+    const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
+    return { ...athlete, lastUpdate };
+  }).sort((a, b) => {
+    if (!a.lastUpdate && !b.lastUpdate) return 0;
+    if (!a.lastUpdate) return 1;
+    if (!b.lastUpdate) return -1;
+    const timeA = a.lastUpdate?.seconds || a.lastUpdate?.toMillis?.() / 1000 || 0;
+    const timeB = b.lastUpdate?.seconds || b.lastUpdate?.toMillis?.() / 1000 || 0;
+    return timeB - timeA;
+  });
+  ui.acroList.innerHTML = "";
+  let visibleCount = 0;
+  listAthletes.forEach((athlete) => {
+    const current = listMonthMap.get(athlete.id);
+    const previous = listPreviousMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const lastPaid = history.find((record) => record.paid);
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
+    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
+    const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
+    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
+    const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
+    const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
+    let displayDiscount = discount;
+    if (discountReason === 'Familiar') displayDiscount = 15;
+    else if (discountReason === 'Funcionario') displayDiscount = 10;
+    else if (discountReason === 'Mañanas') displayDiscount = 10;
+    else if (discountReason === 'Ninguno') displayDiscount = 0;
+    const paid = Boolean(current?.paid);
+    if (acroPaidFilter === "SI" && !paid) return;
+    if (acroPaidFilter === "NO" && paid) return;
+    visibleCount += 1;
+    const planDuration = plan.durationMonths || 1;
+    const row = document.createElement("tr");
+    row.dataset.id = athlete.id;
+    row.dataset.name = athlete.name || "";
+    row.innerHTML = `
+      <td style="max-width: 200px;">
+        <div style="display: flex; align-items: flex-start; gap: 6px;">
+          <span data-role="acro-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
+          <button class="edit-name-btn" data-role="edit-acro-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+        </div>
+      </td>
+      <td>
+        <select data-role="acro-tariff" data-id="${athlete.id}">
+          ${acroTariffPlans.map((option) => `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`).join("")}
+        </select>
+      </td>
+      <td><span data-role="acro-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
+      <td><span data-role="acro-discount-display" data-id="${athlete.id}">${displayDiscount}%</span></td>
+      <td>
+        <select data-role="acro-discount-reason" data-id="${athlete.id}">
+          <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
+          <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
+          <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
+        </select>
+      </td>
+      <td><span data-role="acro-final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
+      <td style="min-width:110px;">
+        <select data-role="acro-paid" data-id="${athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
+          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
+          <option value="NO" ${!paid ? "selected" : ""}>No</option>
+        </select>
+      </td>
+    `;
+    ui.acroList.appendChild(row);
+  });
+  ui.acroList.querySelectorAll('[data-role="acro-discount-reason"]').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const row = e.target.closest('tr');
+      const discountDisplay = row.querySelector('[data-role="acro-discount-display"]');
+      const reason = e.target.value;
+      let discountValue = 0;
+      if (reason === 'Familiar') discountValue = 15;
+      else if (reason === 'Funcionario') discountValue = 10;
+      else if (reason === 'Mañanas') discountValue = 10;
+      discountDisplay.textContent = `${discountValue}%`;
+    });
+  });
+  ui.acroList.querySelectorAll('[data-role="edit-acro-name"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.target.dataset.id;
+      const nameSpan = ui.acroList.querySelector(`[data-role="acro-athlete-name"][data-id="${athleteId}"]`);
+      const currentName = nameSpan.textContent;
+      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
+      if (newName && newName.trim() !== '' && newName !== currentName) {
+        try {
+          await updateAcroAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
+          await refreshAcroMonthly();
+        } catch (error) {
+          console.error('Error al actualizar el nombre del atleta:', error);
+          alert('Error al actualizar el nombre del atleta');
+        }
+      }
+    });
+  });
+  if (ui.acroListCount) {
+    ui.acroListCount.textContent = `Mostrando ${visibleCount} atletas`;
+  }
+  updatePendingSaveButtons();
+}
+
 async function refreshAcroMonthly() {
   if (!ui.acroList) return;
   
@@ -1363,23 +1455,6 @@ async function refreshAcroMonthly() {
       ui.acroNameList.appendChild(option);
     });
   }
-
-  if (ui.acroSearchList) {
-    const names = Array.from(
-      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b));
-    ui.acroSearchList.innerHTML = "";
-    names.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      ui.acroSearchList.appendChild(option);
-    });
-  }
-
-  const searchValue = acroSearchTerm.trim().toLowerCase();
-  const visibleAthletes = searchValue
-    ? athletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
-    : athletes;
 
   const allMonthRecords = await getAllAcroAthleteMonths();
   const summaryMonthRecords = await getAcroAthleteMonthsForMonth(selectedAcroMonth);
@@ -1415,8 +1490,6 @@ async function refreshAcroMonthly() {
     records.sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0))
   );
 
-  ui.acroList.innerHTML = "";
-
   const activeNow = new Set();
   const activePrev = new Set();
   let totalIncome = 0;
@@ -1450,148 +1523,15 @@ async function refreshAcroMonthly() {
     }
   });
 
-  let visibleCount = 0;
-  let listAthletes = visibleAthletes.length > 0
-    ? visibleAthletes
-    : Array.from(new Map(listMonthRecords.map((record) => [
-        record.athleteId,
-        { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
-      ])).values());
-
-  // Ordenar por fecha de última actualización
-  listAthletes = listAthletes.map(athlete => {
-    const current = listMonthMap.get(athlete.id);
-    const history = athleteHistory.get(athlete.id) || [];
-    const mostRecent = history.length > 0 ? history[0] : null;
-    const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
-    return { ...athlete, lastUpdate };
-  }).sort((a, b) => {
-    if (!a.lastUpdate && !b.lastUpdate) return 0;
-    if (!a.lastUpdate) return 1;
-    if (!b.lastUpdate) return -1;
-    const timeA = a.lastUpdate?.seconds || a.lastUpdate?.toMillis?.() / 1000 || 0;
-    const timeB = b.lastUpdate?.seconds || b.lastUpdate?.toMillis?.() / 1000 || 0;
-    return timeB - timeA;
-  });
-
-  listAthletes.forEach((athlete) => {
-    const current = listMonthMap.get(athlete.id);
-    const previous = listPreviousMap.get(athlete.id);
-    const history = athleteHistory.get(athlete.id) || [];
-    const lastPaid = history.find((record) => record.paid);
-    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
-    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
-    const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
-    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
-    const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
-    const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
-    let displayDiscount = discount;
-    if (discountReason === 'Familiar') displayDiscount = 15;
-    else if (discountReason === 'Funcionario') displayDiscount = 10;
-    else if (discountReason === 'Mañanas') displayDiscount = 10;
-    else if (discountReason === 'Ninguno') displayDiscount = 0;
-    const paid = Boolean(current?.paid);
-    const active = paid;
-
-    if (acroPaidFilter === "SI" && !paid) {
-      return;
-    }
-    if (acroPaidFilter === "NO" && paid) {
-      return;
-    }
-
-    visibleCount += 1;
-    const planDuration = plan.durationMonths || 1;
-    const planLabel = planDuration === 1
-      ? "Mensual"
-      : planDuration === 3
-        ? "Trimestral"
-        : planDuration === 6
-          ? "Semestral"
-          : "Anual";
-
-    const row = document.createElement("tr");
-    row.dataset.id = athlete.id;
-    row.dataset.name = athlete.name || "";
-    row.innerHTML = `
-      <td style="max-width: 200px;">
-        <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="acro-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
-          <button class="edit-name-btn" data-role="edit-acro-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
-        </div>
-      </td>
-      <td>
-        <select data-role="acro-tariff" data-id="${athlete.id}">
-          ${acroTariffPlans
-            .map(
-              (option) =>
-                `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`
-            )
-            .join("")}
-        </select>
-      </td>
-      <td><span data-role="acro-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
-      <td>
-        <span data-role="acro-discount-display" data-id="${athlete.id}">${displayDiscount}%</span>
-      </td>
-      <td>
-        <select data-role="acro-discount-reason" data-id="${athlete.id}">
-          <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
-          <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
-          <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
-          <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
-        </select>
-      </td>
-      <td><span data-role="acro-final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
-      <td style="min-width:110px;">
-        <select data-role="acro-paid" data-id="${athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
-          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
-          <option value="NO" ${!paid ? "selected" : ""}>No</option>
-        </select>
-      </td>
-    `;
-    ui.acroList.appendChild(row);
-  });
-
-  // Add event listeners for acro discount reason selects
-  ui.acroList.querySelectorAll('[data-role="acro-discount-reason"]').forEach(select => {
-    select.addEventListener('change', (e) => {
-      const row = e.target.closest('tr');
-      const discountDisplay = row.querySelector('[data-role="acro-discount-display"]');
-      const reason = e.target.value;
-      let discountValue = 0;
-      if (reason === 'Familiar') discountValue = 15;
-      else if (reason === 'Funcionario') discountValue = 10;
-      else if (reason === 'Mañanas') discountValue = 10;
-      discountDisplay.textContent = `${discountValue}%`;
-    });
-  });
-
-  // Add event listeners for edit acro name buttons
-  ui.acroList.querySelectorAll('[data-role="edit-acro-name"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const athleteId = e.target.dataset.id;
-      const nameSpan = ui.acroList.querySelector(`[data-role="acro-athlete-name"][data-id="${athleteId}"]`);
-      const currentName = nameSpan.textContent;
-      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
-      
-      if (newName && newName.trim() !== '' && newName !== currentName) {
-        try {
-          await updateAcroAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
-          await refreshAcroMonthly();
-        } catch (error) {
-          console.error('Error al actualizar el nombre del atleta:', error);
-          alert('Error al actualizar el nombre del atleta');
-        }
-      }
-    });
-  });
-
-  if (ui.acroListCount) {
-    ui.acroListCount.textContent = `Mostrando ${visibleCount} atletas`;
-  }
-  updatePendingSaveButtons();
+  // Cachear datos y delegar render (sin re-fetch a Firestore al buscar/filtrar)
+  const athletesFallback = Array.from(
+    new Map(listMonthRecords.map((record) => [
+      record.athleteId,
+      { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
+    ])).values()
+  );
+  acroListCacheData = { allAthletes: athletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory };
+  filterAndRenderAcroList();
 
   const totalActive = activeNow.size;
   const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
@@ -1769,6 +1709,123 @@ async function importHalteAthletesFromCsv(file, monthKey) {
   return processed;
 }
 
+// Renderiza la lista de halterofilia usando datos en caché — sincrónico, sin Firestore
+function filterAndRenderHalteList() {
+  if (!halteListCacheData || !ui.halteList) return;
+  const { allAthletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory } = halteListCacheData;
+  const searchValue = halteSearchTerm.trim().toLowerCase();
+  const filteredAthletes = searchValue
+    ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    : allAthletes;
+  let listAthletes = filteredAthletes.length > 0 ? filteredAthletes : athletesFallback;
+  listAthletes = listAthletes.map(athlete => {
+    const current = listMonthMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const mostRecent = history.length > 0 ? history[0] : null;
+    const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
+    return { ...athlete, lastUpdate };
+  }).sort((a, b) => {
+    if (!a.lastUpdate && !b.lastUpdate) return 0;
+    if (!a.lastUpdate) return 1;
+    if (!b.lastUpdate) return -1;
+    const timeA = a.lastUpdate?.seconds || a.lastUpdate?.toMillis?.() / 1000 || 0;
+    const timeB = b.lastUpdate?.seconds || b.lastUpdate?.toMillis?.() / 1000 || 0;
+    return timeB - timeA;
+  });
+  ui.halteList.innerHTML = "";
+  let visibleCount = 0;
+  listAthletes.forEach((athlete) => {
+    const current = listMonthMap.get(athlete.id);
+    const previous = listPreviousMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const lastPaid = history.find((record) => record.paid);
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
+    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
+    const plan = halteTariffPlanMap.get(tariff) || halteTariffPlanMap.get("4/mes") || fallbackPlan;
+    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
+    const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
+    const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
+    let displayDiscount = discount;
+    if (discountReason === 'Familiar') displayDiscount = 15;
+    else if (discountReason === 'Funcionario') displayDiscount = 10;
+    else if (discountReason === 'Mañanas') displayDiscount = 10;
+    else if (discountReason === 'Ninguno') displayDiscount = 0;
+    const paid = Boolean(current?.paid);
+    if (haltePaidFilter === "SI" && !paid) return;
+    if (haltePaidFilter === "NO" && paid) return;
+    visibleCount += 1;
+    const planDuration = plan.durationMonths || 1;
+    const row = document.createElement("tr");
+    row.dataset.id = athlete.id;
+    row.dataset.name = athlete.name || "";
+    row.innerHTML = `
+      <td style="max-width: 200px;">
+        <div style="display: flex; align-items: flex-start; gap: 6px;">
+          <span data-role="halte-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
+          <button class="edit-name-btn" data-role="edit-halte-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+        </div>
+      </td>
+      <td>
+        <select data-role="halte-tariff" data-id="${athlete.id}">
+          ${halteTariffPlans.map((option) => `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`).join("")}
+        </select>
+      </td>
+      <td><span data-role="halte-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
+      <td><span data-role="halte-discount-display" data-id="${athlete.id}">${displayDiscount}%</span></td>
+      <td>
+        <select data-role="halte-discount-reason" data-id="${athlete.id}">
+          <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
+          <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
+          <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
+        </select>
+      </td>
+      <td><span data-role="halte-final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
+      <td style="min-width:110px;">
+        <select data-role="halte-paid" data-id="${athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
+          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
+          <option value="NO" ${!paid ? "selected" : ""}>No</option>
+        </select>
+      </td>
+    `;
+    ui.halteList.appendChild(row);
+  });
+  ui.halteList.querySelectorAll('[data-role="halte-discount-reason"]').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const row = e.target.closest('tr');
+      const discountDisplay = row.querySelector('[data-role="halte-discount-display"]');
+      const reason = e.target.value;
+      let discountValue = 0;
+      if (reason === 'Familiar') discountValue = 15;
+      else if (reason === 'Funcionario') discountValue = 10;
+      else if (reason === 'Mañanas') discountValue = 10;
+      discountDisplay.textContent = `${discountValue}%`;
+    });
+  });
+  ui.halteList.querySelectorAll('[data-role="edit-halte-name"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.target.dataset.id;
+      const nameSpan = ui.halteList.querySelector(`[data-role="halte-athlete-name"][data-id="${athleteId}"]`);
+      const currentName = nameSpan.textContent;
+      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
+      if (newName && newName.trim() !== '' && newName !== currentName) {
+        try {
+          await updateHalteAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
+          await refreshHalteMonthly();
+        } catch (error) {
+          console.error('Error al actualizar el nombre del atleta:', error);
+          alert('Error al actualizar el nombre del atleta');
+        }
+      }
+    });
+  });
+  if (ui.halteListCount) {
+    ui.halteListCount.textContent = `Mostrando ${visibleCount} atletas`;
+  }
+  updatePendingSaveButtons();
+}
+
 async function refreshHalteMonthly() {
   if (!ui.halteList) return;
   
@@ -1794,23 +1851,6 @@ async function refreshHalteMonthly() {
       ui.halteNameList.appendChild(option);
     });
   }
-
-  if (ui.halteSearchList) {
-    const names = Array.from(
-      new Set(athletes.map((athlete) => athlete.name).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b));
-    ui.halteSearchList.innerHTML = "";
-    names.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      ui.halteSearchList.appendChild(option);
-    });
-  }
-
-  const searchValue = halteSearchTerm.trim().toLowerCase();
-  const visibleAthletes = searchValue
-    ? athletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
-    : athletes;
 
   const allMonthRecords = await getAllHalteAthleteMonths();
   const summaryMonthRecords = await getHalteAthleteMonthsForMonth(selectedHalteMonth);
@@ -1846,8 +1886,6 @@ async function refreshHalteMonthly() {
     records.sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0))
   );
 
-  ui.halteList.innerHTML = "";
-
   const activeNow = new Set();
   const activePrev = new Set();
   let totalIncome = 0;
@@ -1881,148 +1919,15 @@ async function refreshHalteMonthly() {
     }
   });
 
-  let visibleCount = 0;
-  let listAthletes = visibleAthletes.length > 0
-    ? visibleAthletes
-    : Array.from(new Map(listMonthRecords.map((record) => [
-        record.athleteId,
-        { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
-      ])).values());
-
-  // Ordenar por fecha de última actualización
-  listAthletes = listAthletes.map(athlete => {
-    const current = listMonthMap.get(athlete.id);
-    const history = athleteHistory.get(athlete.id) || [];
-    const mostRecent = history.length > 0 ? history[0] : null;
-    const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
-    return { ...athlete, lastUpdate };
-  }).sort((a, b) => {
-    if (!a.lastUpdate && !b.lastUpdate) return 0;
-    if (!a.lastUpdate) return 1;
-    if (!b.lastUpdate) return -1;
-    const timeA = a.lastUpdate?.seconds || a.lastUpdate?.toMillis?.() / 1000 || 0;
-    const timeB = b.lastUpdate?.seconds || b.lastUpdate?.toMillis?.() / 1000 || 0;
-    return timeB - timeA;
-  });
-
-  listAthletes.forEach((athlete) => {
-    const current = listMonthMap.get(athlete.id);
-    const previous = listPreviousMap.get(athlete.id);
-    const history = athleteHistory.get(athlete.id) || [];
-    const lastPaid = history.find((record) => record.paid);
-    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
-    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
-    const plan = halteTariffPlanMap.get(tariff) || halteTariffPlanMap.get("4/mes") || fallbackPlan;
-    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
-    const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
-    const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
-    let displayDiscount = discount;
-    if (discountReason === 'Familiar') displayDiscount = 15;
-    else if (discountReason === 'Funcionario') displayDiscount = 10;
-    else if (discountReason === 'Mañanas') displayDiscount = 10;
-    else if (discountReason === 'Ninguno') displayDiscount = 0;
-    const paid = Boolean(current?.paid);
-    const active = paid;
-
-    if (haltePaidFilter === "SI" && !paid) {
-      return;
-    }
-    if (haltePaidFilter === "NO" && paid) {
-      return;
-    }
-
-    visibleCount += 1;
-    const planDuration = plan.durationMonths || 1;
-    const planLabel = planDuration === 1
-      ? "Mensual"
-      : planDuration === 3
-        ? "Trimestral"
-        : planDuration === 6
-          ? "Semestral"
-          : "Anual";
-
-    const row = document.createElement("tr");
-    row.dataset.id = athlete.id;
-    row.dataset.name = athlete.name || "";
-    row.innerHTML = `
-      <td style="max-width: 200px;">
-        <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="halte-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
-          <button class="edit-name-btn" data-role="edit-halte-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
-        </div>
-      </td>
-      <td>
-        <select data-role="halte-tariff" data-id="${athlete.id}">
-          ${halteTariffPlans
-            .map(
-              (option) =>
-                `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`
-            )
-            .join("")}
-        </select>
-      </td>
-      <td><span data-role="halte-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
-      <td>
-        <span data-role="halte-discount-display" data-id="${athlete.id}">${displayDiscount}%</span>
-      </td>
-      <td>
-        <select data-role="halte-discount-reason" data-id="${athlete.id}">
-          <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
-          <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
-          <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
-          <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
-        </select>
-      </td>
-      <td><span data-role="halte-final-price" data-id="${athlete.id}">${price.toFixed(2)}</span> €</td>
-      <td style="min-width:110px;">
-        <select data-role="halte-paid" data-id="${athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
-          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
-          <option value="NO" ${!paid ? "selected" : ""}>No</option>
-        </select>
-      </td>
-    `;
-    ui.halteList.appendChild(row);
-  });
-
-  // Add event listeners for halte discount reason selects
-  ui.halteList.querySelectorAll('[data-role="halte-discount-reason"]').forEach(select => {
-    select.addEventListener('change', (e) => {
-      const row = e.target.closest('tr');
-      const discountDisplay = row.querySelector('[data-role="halte-discount-display"]');
-      const reason = e.target.value;
-      let discountValue = 0;
-      if (reason === 'Familiar') discountValue = 15;
-      else if (reason === 'Funcionario') discountValue = 10;
-      else if (reason === 'Mañanas') discountValue = 10;
-      discountDisplay.textContent = `${discountValue}%`;
-    });
-  });
-
-  // Add event listeners for edit halte name buttons
-  ui.halteList.querySelectorAll('[data-role="edit-halte-name"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const athleteId = e.target.dataset.id;
-      const nameSpan = ui.halteList.querySelector(`[data-role="halte-athlete-name"][data-id="${athleteId}"]`);
-      const currentName = nameSpan.textContent;
-      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
-      
-      if (newName && newName.trim() !== '' && newName !== currentName) {
-        try {
-          await updateHalteAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
-          await refreshHalteMonthly();
-        } catch (error) {
-          console.error('Error al actualizar el nombre del atleta:', error);
-          alert('Error al actualizar el nombre del atleta');
-        }
-      }
-    });
-  });
-
-  if (ui.halteListCount) {
-    ui.halteListCount.textContent = `Mostrando ${visibleCount} atletas`;
-  }
-  updatePendingSaveButtons();
+  // Cachear datos y delegar render (sin re-fetch a Firestore al buscar/filtrar)
+  const athletesFallback = Array.from(
+    new Map(listMonthRecords.map((record) => [
+      record.athleteId,
+      { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
+    ])).values()
+  );
+  halteListCacheData = { allAthletes: athletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory };
+  filterAndRenderHalteList();
 
   const totalActive = activeNow.size;
   const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
@@ -2255,10 +2160,110 @@ async function importTelasAthletesFromCsv(file, monthKey) {
   });
 }
 
+// Renderiza la lista de telas usando datos en caché — sincrónico, sin Firestore
+function filterAndRenderTelasList() {
+  if (!telasListCacheData || !ui.telasList) return;
+  const { allSortedEntries } = telasListCacheData;
+  let filtered = allSortedEntries;
+  if (telasPaidFilter === "SI") {
+    filtered = filtered.filter((e) => e.paid);
+  } else if (telasPaidFilter === "NO") {
+    filtered = filtered.filter((e) => !e.paid);
+  }
+  if (telasSearchTerm.trim() !== "") {
+    const term = telasSearchTerm.trim().toLowerCase();
+    filtered = filtered.filter((e) => e.athlete.name.toLowerCase().includes(term));
+  }
+  const visibleCount = filtered.length;
+  ui.telasList.innerHTML = "";
+  filtered.forEach((e) => {
+    const row = document.createElement("tr");
+    const tariffOptions = ["", "4/mes", "8/mes", "12/mes", "Ilimitado"];
+    const tariffOptionsHtml = tariffOptions.map((opt) => {
+      const sel = opt === e.tariff ? "selected" : "";
+      return `<option value="${opt}" ${sel}>${opt}</option>`;
+    }).join("");
+    const reasonOptions = ["", "Familiar", "Funcionario", "Mañanas", "Otro"];
+    const reasonOptionsHtml = reasonOptions.map((opt) => {
+      const sel = opt === e.discountReason ? "selected" : "";
+      return `<option value="${opt}" ${sel}>${opt}</option>`;
+    }).join("");
+    const discountDisplay = `${e.discount}%`;
+    const finalPrice = e.price * (1 - e.discount / 100);
+    const paid = e.paid;
+    row.dataset.id = e.athlete.id;
+    row.dataset.name = e.athlete.name || "";
+    row.innerHTML = `
+      <td style="max-width: 200px;">
+        <div style="display: flex; align-items: flex-start; gap: 6px;">
+          <span data-role="telas-athlete-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${e.athlete.name}</span>
+          <button class="edit-name-btn" data-role="edit-telas-name" data-id="${e.athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+        </div>
+      </td>
+      <td>
+        <select data-role="telas-tariff" data-id="${e.athlete.id}">
+          ${tariffOptionsHtml}
+        </select>
+      </td>
+      <td><span data-role="telas-price" data-id="${e.athlete.id}">${e.price.toFixed(2)}</span> €</td>
+      <td><span data-role="telas-discount-display" data-id="${e.athlete.id}">${discountDisplay}</span></td>
+      <td>
+        <select data-role="telas-discount-reason" data-id="${e.athlete.id}">
+          <option value="" ${!e.discountReason ? "selected" : ""}>Ninguno</option>
+          <option value="Familiar" ${e.discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Funcionario" ${e.discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
+          <option value="Mañanas" ${e.discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
+          <option value="Otro" ${e.discountReason === "Otro" ? "selected" : ""}>Otro</option>
+        </select>
+      </td>
+      <td><span data-role="telas-final-price" data-id="${e.athlete.id}">${finalPrice.toFixed(2)}</span> €</td>
+      <td style="min-width:110px;">
+        <select data-role="telas-paid" data-id="${e.athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
+          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
+          <option value="NO" ${!paid ? "selected" : ""}>No</option>
+        </select>
+      </td>
+    `;
+    ui.telasList.appendChild(row);
+  });
+  ui.telasList.querySelectorAll('[data-role="telas-discount-reason"]').forEach(select => {
+    select.addEventListener('change', (e) => {
+      const row = e.target.closest('tr');
+      const discountDisplay = row.querySelector('[data-role="telas-discount-display"]');
+      const reason = e.target.value;
+      let discountValue = 0;
+      if (reason === 'Familiar') discountValue = 15;
+      else if (reason === 'Funcionario') discountValue = 10;
+      else if (reason === 'Mañanas') discountValue = 10;
+      discountDisplay.textContent = `${discountValue}%`;
+    });
+  });
+  ui.telasList.querySelectorAll('[data-role="edit-telas-name"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.target.dataset.id;
+      const nameSpan = ui.telasList.querySelector(`[data-role="telas-athlete-name"][data-id="${athleteId}"]`);
+      const currentName = nameSpan.textContent;
+      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
+      if (newName && newName.trim() !== '' && newName !== currentName) {
+        try {
+          await updateTelasAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
+          await refreshTelasMonthly();
+        } catch (error) {
+          console.error('Error al actualizar el nombre del atleta:', error);
+          alert('Error al actualizar el nombre del atleta');
+        }
+      }
+    });
+  });
+  if (ui.telasListCount) {
+    ui.telasListCount.textContent = `Mostrando ${visibleCount} atletas`;
+  }
+  updatePendingSaveButtons();
+}
+
 async function refreshTelasMonthly() {
   const monthKey = selectedTelasListMonth;
   if (!monthKey || !ui.telasList) return;
-  ui.telasList.innerHTML = "";
   const allAthletes = await getTelasAthletes();
   currentTelasAthletes = allAthletes;
   const athleteMonths = await getTelasAthleteMonthsForMonth(monthKey);
@@ -2319,19 +2324,10 @@ async function refreshTelasMonthly() {
     return timeB - timeA;
   });
 
-  let filtered = entries;
-  if (telasPaidFilter === "PAID") {
-    filtered = filtered.filter((e) => e.paid);
-  } else if (telasPaidFilter === "UNPAID") {
-    filtered = filtered.filter((e) => !e.paid);
-  }
-  if (telasSearchTerm.trim() !== "") {
-    const term = telasSearchTerm.trim().toLowerCase();
-    filtered = filtered.filter((e) =>
-      e.athlete.name.toLowerCase().includes(term)
-    );
-  }
-  const visibleCount = filtered.length;
+  // Cachear datos y delegar render (sin re-fetch a Firestore al buscar/filtrar)
+  telasListCacheData = { allSortedEntries: entries };
+  filterAndRenderTelasList();
+
   const activeNow = new Set();
   let totalIncome = 0;
   for (const e of entries) {
@@ -2342,105 +2338,6 @@ async function refreshTelasMonthly() {
       }
     }
   }
-  filtered.forEach((e) => {
-    const row = document.createElement("tr");
-    const tariffOptions = ["", "4/mes", "8/mes", "12/mes", "Ilimitado"];
-    const tariffOptionsHtml = tariffOptions
-      .map((opt) => {
-        const sel = opt === e.tariff ? "selected" : "";
-        return `<option value="${opt}" ${sel}>${opt}</option>`;
-      })
-      .join("");
-    const reasonOptions = ["", "Familiar", "Funcionario", "Mañanas", "Otro"];
-    const reasonOptionsHtml = reasonOptions
-      .map((opt) => {
-        const sel = opt === e.discountReason ? "selected" : "";
-        return `<option value="${opt}" ${sel}>${opt}</option>`;
-      })
-      .join("");
-    const discountDisplay = e.discountReason
-      ? e.discountReason === "Otro"
-        ? `${e.discount}%`
-        : `${e.discount}%`
-      : `${e.discount}%`;
-    const finalPrice = e.price * (1 - e.discount / 100);
-    const paid = e.paid;
-    row.dataset.id = e.athlete.id;
-    row.dataset.name = e.athlete.name || "";
-    row.innerHTML = `
-      <td style="max-width: 200px;">
-        <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="telas-athlete-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${e.athlete.name}</span>
-          <button class="edit-name-btn" data-role="edit-telas-name" data-id="${e.athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
-        </div>
-      </td>
-      <td>
-        <select data-role="telas-tariff" data-id="${e.athlete.id}">
-          ${tariffOptionsHtml}
-        </select>
-      </td>
-      <td><span data-role="telas-price" data-id="${e.athlete.id}">${e.price.toFixed(2)}</span> €</td>
-      <td>
-        <span data-role="telas-discount-display" data-id="${e.athlete.id}">${discountDisplay}</span>
-      </td>
-      <td>
-        <select data-role="telas-discount-reason" data-id="${e.athlete.id}">
-          <option value="" ${!e.discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${e.discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
-          <option value="Funcionario" ${e.discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
-          <option value="Mañanas" ${e.discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
-          <option value="Otro" ${e.discountReason === "Otro" ? "selected" : ""}>Otro</option>
-        </select>
-      </td>
-      <td><span data-role="telas-final-price" data-id="${e.athlete.id}">${finalPrice.toFixed(2)}</span> €</td>
-      <td style="min-width:110px;">
-        <select data-role="telas-paid" data-id="${e.athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
-          <option value="SI" ${paid ? "selected" : ""}>Sí</option>
-          <option value="NO" ${!paid ? "selected" : ""}>No</option>
-        </select>
-      </td>
-    `;
-    ui.telasList.appendChild(row);
-  });
-
-  // Add event listeners for telas discount reason selects
-  ui.telasList.querySelectorAll('[data-role="telas-discount-reason"]').forEach(select => {
-    select.addEventListener('change', (e) => {
-      const row = e.target.closest('tr');
-      const discountDisplay = row.querySelector('[data-role="telas-discount-display"]');
-      const reason = e.target.value;
-      let discountValue = 0;
-      if (reason === 'Familiar') discountValue = 15;
-      else if (reason === 'Funcionario') discountValue = 10;
-      else if (reason === 'Mañanas') discountValue = 10;
-      discountDisplay.textContent = `${discountValue}%`;
-    });
-  });
-
-  // Add event listeners for edit telas name buttons
-  ui.telasList.querySelectorAll('[data-role="edit-telas-name"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const athleteId = e.target.dataset.id;
-      const nameSpan = ui.telasList.querySelector(`[data-role="telas-athlete-name"][data-id="${athleteId}"]`);
-      const currentName = nameSpan.textContent;
-      const newName = prompt('Introduce el nuevo nombre del atleta:', currentName);
-      
-      if (newName && newName.trim() !== '' && newName !== currentName) {
-        try {
-          await updateTelasAthlete(athleteId, { name: newName.trim() }, currentUser?.uid);
-          await refreshTelasMonthly();
-        } catch (error) {
-          console.error('Error al actualizar el nombre del atleta:', error);
-          alert('Error al actualizar el nombre del atleta');
-        }
-      }
-    });
-  });
-
-  if (ui.telasListCount) {
-    ui.telasListCount.textContent = `Mostrando ${visibleCount} atletas`;
-  }
-  updatePendingSaveButtons();
 
   const totalActive = activeNow.size;
   const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
@@ -6433,15 +6330,15 @@ on(ui.athleteListMonthSelect, "change", async (event) => {
 });
 
 // Athletes - Search and paid filter
-// Debounce: esperar 400ms tras la última tecla antes de relanzar Firestore (mejora rendimiento en móvil)
-on(ui.athleteSearch, "input", debounce(async (event) => {
+// Llamar a la función de render instantáneo sin Firestore
+on(ui.athleteSearch, "input", (event) => {
   athleteSearchTerm = event.target.value;
-  await refreshAthleteMonthly();
-}, 400));
+  filterAndRenderAthleteList();
+});
 
-on(ui.athletePaidFilter, "change", async (event) => {
+on(ui.athletePaidFilter, "change", (event) => {
   athletePaidFilter = event.target.value;
-  await refreshAthleteMonthly();
+  filterAndRenderAthleteList();
 });
 
 // Acrobacias - Month filters  
@@ -6456,15 +6353,15 @@ on(ui.acroListMonthSelect, "change", async (event) => {
 });
 
 // Acrobacias - Search and paid filter
-// Debounce: esperar 400ms tras la última tecla antes de relanzar Firestore (mejora rendimiento en móvil)
-on(ui.acroSearch, "input", debounce(async (event) => {
+// Llamar a la función de render instantáneo sin Firestore
+on(ui.acroSearch, "input", (event) => {
   acroSearchTerm = event.target.value;
-  await refreshAcroMonthly();
-}, 400));
+  filterAndRenderAcroList();
+});
 
-on(ui.acroPaidFilter, "change", async (event) => {
+on(ui.acroPaidFilter, "change", (event) => {
   acroPaidFilter = event.target.value;
-  await refreshAcroMonthly();
+  filterAndRenderAcroList();
 });
 
 // Halterofilia - Month filters  
@@ -6479,15 +6376,15 @@ on(ui.halteListMonthSelect, "change", async (event) => {
 });
 
 // Halterofilia - Search and paid filter
-// Debounce: esperar 400ms tras la última tecla antes de relanzar Firestore (mejora rendimiento en móvil)
-on(ui.halteSearch, "input", debounce(async (event) => {
+// Llamar a la función de render instantáneo sin Firestore
+on(ui.halteSearch, "input", (event) => {
   halteSearchTerm = event.target.value;
-  await refreshHalteMonthly();
-}, 400));
+  filterAndRenderHalteList();
+});
 
-on(ui.haltePaidFilter, "change", async (event) => {
+on(ui.haltePaidFilter, "change", (event) => {
   haltePaidFilter = event.target.value;
-  await refreshHalteMonthly();
+  filterAndRenderHalteList();
 });
 
 // Telas - Month filters  
@@ -6502,15 +6399,15 @@ on(ui.telasListMonthSelect, "change", async (event) => {
 });
 
 // Telas - Search and paid filter
-// Debounce: esperar 400ms tras la última tecla antes de relanzar Firestore (mejora rendimiento en móvil)
-on(ui.telasSearch, "input", debounce(async (event) => {
+// Llamar a la función de render instantáneo sin Firestore
+on(ui.telasSearch, "input", (event) => {
   telasSearchTerm = event.target.value;
-  await refreshTelasMonthly();
-}, 400));
+  filterAndRenderTelasList();
+});
 
-on(ui.telasPaidFilter, "change", async (event) => {
+on(ui.telasPaidFilter, "change", (event) => {
   telasPaidFilter = event.target.value;
-  await refreshTelasMonthly();
+  filterAndRenderTelasList();
 });
 
 // Single Classes - Month filters  
