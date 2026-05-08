@@ -920,7 +920,7 @@ function filterAndRenderAthleteList() {
   const filteredAthletes = searchValue
     ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
     : allAthletes;
-  let listAthletes = filteredAthletes.length > 0 ? filteredAthletes : athletesFallback;
+  let listAthletes = (!searchValue && filteredAthletes.length === 0) ? athletesFallback : filteredAthletes;
   listAthletes = listAthletes.map(athlete => {
     const current = listMonthMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
@@ -996,6 +996,11 @@ function filterAndRenderAthleteList() {
     `;
     ui.athleteList.appendChild(row);
   });
+  if (visibleCount === 0) {
+    const emptyRow = document.createElement("tr");
+    emptyRow.innerHTML = `<td colspan="7" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
+    ui.athleteList.appendChild(emptyRow);
+  }
   ui.athleteList.querySelectorAll('[data-role="discount-reason"]').forEach(select => {
     select.addEventListener('change', (e) => {
       const row = e.target.closest('tr');
@@ -1321,7 +1326,7 @@ function filterAndRenderAcroList() {
   const filteredAthletes = searchValue
     ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
     : allAthletes;
-  let listAthletes = filteredAthletes.length > 0 ? filteredAthletes : athletesFallback;
+  let listAthletes = (!searchValue && filteredAthletes.length === 0) ? athletesFallback : filteredAthletes;
   listAthletes = listAthletes.map(athlete => {
     const current = listMonthMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
@@ -1395,6 +1400,11 @@ function filterAndRenderAcroList() {
     `;
     ui.acroList.appendChild(row);
   });
+  if (visibleCount === 0) {
+    const emptyRow = document.createElement("tr");
+    emptyRow.innerHTML = `<td colspan="7" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
+    ui.acroList.appendChild(emptyRow);
+  }
   ui.acroList.querySelectorAll('[data-role="acro-discount-reason"]').forEach(select => {
     select.addEventListener('change', (e) => {
       const row = e.target.closest('tr');
@@ -1717,7 +1727,7 @@ function filterAndRenderHalteList() {
   const filteredAthletes = searchValue
     ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
     : allAthletes;
-  let listAthletes = filteredAthletes.length > 0 ? filteredAthletes : athletesFallback;
+  let listAthletes = (!searchValue && filteredAthletes.length === 0) ? athletesFallback : filteredAthletes;
   listAthletes = listAthletes.map(athlete => {
     const current = listMonthMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
@@ -1791,6 +1801,11 @@ function filterAndRenderHalteList() {
     `;
     ui.halteList.appendChild(row);
   });
+  if (visibleCount === 0) {
+    const emptyRow = document.createElement("tr");
+    emptyRow.innerHTML = `<td colspan="7" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
+    ui.halteList.appendChild(emptyRow);
+  }
   ui.halteList.querySelectorAll('[data-role="halte-discount-reason"]').forEach(select => {
     select.addEventListener('change', (e) => {
       const row = e.target.closest('tr');
@@ -2226,6 +2241,11 @@ function filterAndRenderTelasList() {
     `;
     ui.telasList.appendChild(row);
   });
+  if (visibleCount === 0) {
+    const emptyRow = document.createElement("tr");
+    emptyRow.innerHTML = `<td colspan="7" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
+    ui.telasList.appendChild(emptyRow);
+  }
   ui.telasList.querySelectorAll('[data-role="telas-discount-reason"]').forEach(select => {
     select.addEventListener('change', (e) => {
       const row = e.target.closest('tr');
