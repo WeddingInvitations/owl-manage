@@ -4252,6 +4252,66 @@ function downloadCsvTemplate(filename, type) {
   URL.revokeObjectURL(url);
 }
 
+function downloadAthleteExcel() {
+  if (!athleteListCacheData) return;
+
+  const XLSX = window.XLSX;
+  if (!XLSX) { alert("La librería Excel no está disponible"); return; }
+
+  const { allAthletes, listMonthMap, listPreviousMap, athleteHistory } = athleteListCacheData;
+  const searchValue = athleteSearchTerm.trim().toLowerCase();
+  let listAthletes = searchValue
+    ? allAthletes.filter(a => a.name?.toLowerCase().includes(searchValue))
+    : allAthletes;
+
+  const rows = [[
+    "Nombre", "Tarifa", "Precio base (€)", "Descuento (%)", "Motivo descuento", "Precio final (€)", "Pagado"
+  ]];
+
+  listAthletes.forEach(athlete => {
+    const current = listMonthMap.get(athlete.id);
+    const previous = listPreviousMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const lastPaid = history.find(r => r.paid);
+    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
+    const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || {};
+    const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
+    const discount = current?.discount ?? previous?.discount ?? lastPaid?.discount ?? 0;
+    const discountReason = current?.discountReason ?? previous?.discountReason ?? lastPaid?.discountReason ?? "";
+    let displayDiscount = discount;
+    if (discountReason === 'Familiar') displayDiscount = 15;
+    else if (discountReason === 'Funcionario') displayDiscount = 10;
+    else if (discountReason === 'Mañanas') displayDiscount = 10;
+    else if (discountReason === 'Amigo') displayDiscount = 10;
+    else if (discountReason === 'Ninguno') displayDiscount = 0;
+    const finalPrice = price * (1 - displayDiscount / 100);
+    const paid = Boolean(current?.paid);
+
+    if (athletePaidFilter === "SI" && !paid) return;
+    if (athletePaidFilter === "NO" && paid) return;
+
+    rows.push([
+      athlete.name || "",
+      tariff,
+      parseFloat(price.toFixed(2)),
+      displayDiscount,
+      discountReason || "",
+      parseFloat(finalPrice.toFixed(2)),
+      paid ? "Sí" : "No"
+    ]);
+  });
+
+  const month = selectedAthleteListMonth || "";
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Column widths
+  ws['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 8 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Atletas");
+  XLSX.writeFile(wb, `atletas-${month}.xlsx`);
+}
+
 function downloadAthleteTemplate() {
   const headers = ["nombre", "tarifa", "pagado", "precio", "descuento", "motivo_descuento"];
   const exampleRow = ["Juan Pérez", "8/mes", "SI", "80", "10", "Estudiante"];
@@ -6474,6 +6534,10 @@ on(ui.downloadExpenseTemplate, "click", () => {
 
 on(ui.downloadAthleteTemplate, "click", () => {
   downloadAthleteTemplate();
+});
+
+on(ui.athleteExcelBtn, "click", () => {
+  downloadAthleteExcel();
 });
 
 on(ui.downloadAcroTemplate, "click", () => {
