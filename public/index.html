@@ -1913,6 +1913,17 @@
               <button id="currentWeekBtn" class="btn ghost small">Semana actual</button>
             </div>
 
+            <!-- Selector de día para móvil -->
+            <div class="mobile-day-tabs" id="mobileDayTabs">
+              <button type="button" class="day-tab" data-day="Lunes">Lun</button>
+              <button type="button" class="day-tab" data-day="Martes">Mar</button>
+              <button type="button" class="day-tab" data-day="Miércoles">Mié</button>
+              <button type="button" class="day-tab" data-day="Jueves">Jue</button>
+              <button type="button" class="day-tab" data-day="Viernes">Vie</button>
+              <button type="button" class="day-tab" data-day="Sábado">Sáb</button>
+              <button type="button" class="day-tab" data-day="Domingo">Dom</button>
+            </div>
+
             <!-- Tabla de horarios -->
             <div class="schedule-container">
               <div class="table-container">
@@ -1920,13 +1931,13 @@
                   <thead>
                     <tr>
                       <th>Hora</th>
-                      <th>Lunes</th>
-                      <th>Martes</th>
-                      <th>Miércoles</th>
-                      <th>Jueves</th>
-                      <th>Viernes</th>
-                      <th>Sábado</th>
-                      <th>Domingo</th>
+                      <th data-day="Lunes">Lunes</th>
+                      <th data-day="Martes">Martes</th>
+                      <th data-day="Miércoles">Miércoles</th>
+                      <th data-day="Jueves">Jueves</th>
+                      <th data-day="Viernes">Viernes</th>
+                      <th data-day="Sábado">Sábado</th>
+                      <th data-day="Domingo">Domingo</th>
                     </tr>
                   </thead>
                   <tbody id="scheduleTableBody">
@@ -2130,20 +2141,31 @@
                   <h4>📅 Seleccionar Clases</h4>
                   <p>Haz clic en las clases que quieres asignar al profesor seleccionado. Las clases seleccionadas se marcarán en azul.</p>
                 </div>
-                
+
+                <!-- Selector de día para móvil (asignación masiva) -->
+                <div class="mobile-day-tabs" id="bulkMobileDayTabs">
+                  <button type="button" class="day-tab" data-day="Lunes">Lun</button>
+                  <button type="button" class="day-tab" data-day="Martes">Mar</button>
+                  <button type="button" class="day-tab" data-day="Miércoles">Mié</button>
+                  <button type="button" class="day-tab" data-day="Jueves">Jue</button>
+                  <button type="button" class="day-tab" data-day="Viernes">Vie</button>
+                  <button type="button" class="day-tab" data-day="Sábado">Sáb</button>
+                  <button type="button" class="day-tab" data-day="Domingo">Dom</button>
+                </div>
+
                 <div class="bulk-schedule-container">
                   <div class="table-container">
                     <table class="table schedule-table bulk-schedule-table">
                       <thead>
                         <tr>
                           <th>Hora</th>
-                          <th>Lunes</th>
-                          <th>Martes</th>
-                          <th>Miércoles</th>
-                          <th>Jueves</th>
-                          <th>Viernes</th>
-                          <th>Sábado</th>
-                          <th>Domingo</th>
+                          <th data-day="Lunes">Lunes</th>
+                          <th data-day="Martes">Martes</th>
+                          <th data-day="Miércoles">Miércoles</th>
+                          <th data-day="Jueves">Jueves</th>
+                          <th data-day="Viernes">Viernes</th>
+                          <th data-day="Sábado">Sábado</th>
+                          <th data-day="Domingo">Domingo</th>
                         </tr>
                       </thead>
                       <tbody id="bulkScheduleTableBody">

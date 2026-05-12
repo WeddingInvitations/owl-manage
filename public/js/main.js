@@ -6506,6 +6506,10 @@ let selectedBulkTeacher = null;
 let bulkCurrentWeekStart = null;
 let bulkCurrentWeekEnd = null;
 
+// Estado para selector de día móvil
+let selectedMobileDay = null;
+let selectedBulkMobileDay = null;
+
 // Utilidades de fechas para clases
 function getWeekStart(date) {
   const d = new Date(date);
@@ -6699,6 +6703,7 @@ function renderScheduleTable() {
     days.forEach((day, dayIndex) => {
       const dayCell = document.createElement("td");
       dayCell.className = "day-cell";
+      dayCell.dataset.day = day;
       
       // Buscar clases para este día y hora
       const dayClasses = classesData.filter(cls => 
@@ -6759,6 +6764,7 @@ function renderScheduleTable() {
   });
   
   console.log('Schedule table rendered with', timeSlots.length, 'time slots');
+  updateMobileDayVisibility();
 }
 
 // Abrir modal de asignación
@@ -6868,6 +6874,7 @@ function renderBulkScheduleTable() {
     days.forEach((day, dayIndex) => {
       const dayCell = document.createElement("td");
       dayCell.className = "day-cell";
+      dayCell.dataset.day = day;
       
       // Buscar clases para este día y hora
       const dayClasses = classesData.filter(cls => 
@@ -6931,6 +6938,7 @@ function renderBulkScheduleTable() {
     
     ui.bulkScheduleTableBody.appendChild(row);
   });
+  updateBulkMobileDayVisibility();
 }
 
 // Actualizar display de semana en modal de asignación masiva
@@ -7193,6 +7201,7 @@ on(ui.bulkAssignBtn, "click", async () => {
   renderBulkTeacherOptions();
   updateBulkWeekDisplay();
   renderBulkScheduleTable();
+  initializeBulkMobileDayTabs();
   updateSelectionSummary();
   
   // Resetear UI
@@ -7458,6 +7467,76 @@ on(ui.bulkAssignExecute, "click", () => {
   }
 });
 
+// ========== FUNCIONES SELECTOR DE DÍA MÓVIL ==========
+
+function getDefaultMobileDay() {
+  const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  return dayNames[new Date().getDay()];
+}
+
+function updateMobileDayVisibility() {
+  if (window.innerWidth > 768) {
+    document.querySelectorAll('.schedule-table th[data-day], .schedule-table td[data-day]').forEach(el => {
+      el.style.display = '';
+    });
+    return;
+  }
+  if (!selectedMobileDay) selectedMobileDay = getDefaultMobileDay();
+  document.querySelectorAll('.schedule-table th[data-day], .schedule-table td[data-day]').forEach(el => {
+    el.style.display = el.dataset.day === selectedMobileDay ? '' : 'none';
+  });
+  document.querySelectorAll('#mobileDayTabs .day-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.day === selectedMobileDay);
+  });
+}
+
+function initializeMobileDayTabs() {
+  if (!selectedMobileDay) selectedMobileDay = getDefaultMobileDay();
+  document.querySelectorAll('#mobileDayTabs .day-tab').forEach(tab => {
+    const newTab = tab.cloneNode(true);
+    tab.parentNode.replaceChild(newTab, tab);
+    newTab.addEventListener('click', () => {
+      selectedMobileDay = newTab.dataset.day;
+      updateMobileDayVisibility();
+    });
+  });
+  updateMobileDayVisibility();
+}
+
+function updateBulkMobileDayVisibility() {
+  if (window.innerWidth > 768) {
+    document.querySelectorAll('.bulk-schedule-table th[data-day], .bulk-schedule-table td[data-day]').forEach(el => {
+      el.style.display = '';
+    });
+    return;
+  }
+  if (!selectedBulkMobileDay) selectedBulkMobileDay = selectedMobileDay || getDefaultMobileDay();
+  document.querySelectorAll('.bulk-schedule-table th[data-day], .bulk-schedule-table td[data-day]').forEach(el => {
+    el.style.display = el.dataset.day === selectedBulkMobileDay ? '' : 'none';
+  });
+  document.querySelectorAll('#bulkMobileDayTabs .day-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.day === selectedBulkMobileDay);
+  });
+}
+
+function initializeBulkMobileDayTabs() {
+  if (!selectedBulkMobileDay) selectedBulkMobileDay = selectedMobileDay || getDefaultMobileDay();
+  document.querySelectorAll('#bulkMobileDayTabs .day-tab').forEach(tab => {
+    const newTab = tab.cloneNode(true);
+    tab.parentNode.replaceChild(newTab, tab);
+    newTab.addEventListener('click', () => {
+      selectedBulkMobileDay = newTab.dataset.day;
+      updateBulkMobileDayVisibility();
+    });
+  });
+  updateBulkMobileDayVisibility();
+}
+
+window.addEventListener('resize', () => {
+  updateMobileDayVisibility();
+  updateBulkMobileDayVisibility();
+});
+
 // Inicialización de clases
 async function initializeClasses() {
   if (!ui.weekSelect || !ui.scheduleTableBody) {
@@ -7476,6 +7555,7 @@ async function initializeClasses() {
   
   // Renderizar opciones y cargar datos
   renderWeekOptions();
+  initializeMobileDayTabs();
   
   console.log('After renderWeekOptions:');
   console.log('  weekSelect options count:', ui.weekSelect.options.length);

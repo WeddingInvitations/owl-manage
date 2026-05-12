@@ -3111,68 +3111,189 @@ span.athlete-status-unpaid,
   border: 2px solid var(--primary);
 }
 
+/* Mobile day tabs - hidden on desktop */
+.mobile-day-tabs {
+  display: none;
+}
+
 /* Responsive para las tablas de horarios */
 @media (max-width: 768px) {
-  .schedule-table {
-    font-size: 0.75rem;
+  /* Header: wrap action buttons into compact row */
+  .header-actions {
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
-  
+
+  .header-actions .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    padding: 10px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Week navigation: full-width select + compact arrows */
+  #classesView .filter-row {
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  #classesView .filter-row label {
+    display: none;
+  }
+
+  #classesView .filter-row .week-select {
+    flex: 1 1 100%;
+    font-size: 13px;
+    order: -1;
+  }
+
+  #prevWeekBtn,
+  #nextWeekBtn,
+  #currentWeekBtn {
+    flex: 1;
+    font-size: 12px;
+    padding: 8px 6px;
+  }
+
+  /* Day tabs strip */
+  .mobile-day-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 10px 0 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .mobile-day-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .day-tab {
+    flex: 1;
+    min-width: 40px;
+    padding: 9px 4px;
+    background: var(--accent);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+    color: var(--text);
+    line-height: 1.2;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .day-tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(108, 125, 255, 0.4);
+  }
+
+  .day-tab:active {
+    transform: scale(0.95);
+  }
+
+  /* Schedule table: show only time col + selected day col (controlled by JS) */
+  .schedule-table {
+    min-width: unset;
+    width: 100%;
+    font-size: 0.85rem;
+    table-layout: auto;
+  }
+
   .schedule-table th,
   .schedule-table td {
-    padding: 2px;
-  }
-  
-  .time-header {
-    padding: 8px 4px !important;
-    font-size: 0.7rem !important;
-  }
-  
-  .class-slot {
     padding: 4px;
-    min-height: 45px;
-    font-size: 0.7rem;
   }
-  
-  .class-name {
-    font-size: 0.7rem;
+
+  .schedule-container {
+    margin: 0;
+    border-radius: 10px;
+    overflow: hidden;
   }
-  
-  .teacher-name,
-  .no-teacher {
-    font-size: 0.6rem;
+
+  .time-header {
+    width: 62px;
+    min-width: 62px;
+    padding: 10px 6px !important;
+    font-size: 0.75rem !important;
   }
-  
-  .teacher-table {
+
+  .day-cell {
+    min-height: 72px;
+    padding: 6px;
+  }
+
+  .class-slot {
+    padding: 8px;
+    min-height: 60px;
     font-size: 0.8rem;
+    border-radius: 8px;
+    -webkit-tap-highlight-color: transparent;
   }
-  
-  .header-actions {
-    flex-direction: column;
-    gap: 0.5rem;
+
+  .class-name {
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+  }
+
+  .teacher-name {
+    font-size: 0.72rem;
+  }
+
+  .no-teacher {
+    font-size: 0.68rem;
+  }
+
+  /* Teacher table: hide email, phone, specialties columns */
+  .teacher-table th:nth-child(2),
+  .teacher-table td:nth-child(2),
+  .teacher-table th:nth-child(3),
+  .teacher-table td:nth-child(3),
+  .teacher-table th:nth-child(4),
+  .teacher-table td:nth-child(4) {
+    display: none;
+  }
+
+  .teacher-table {
+    font-size: 0.82rem;
+  }
+
+  .teacher-table td:last-child {
+    white-space: nowrap;
   }
 }
 
 @media (max-width: 480px) {
   .schedule-container {
-    margin: 0.5rem 0;
+    margin: 0;
   }
-  
-  .schedule-table {
-    min-width: 100%;
+
+  .time-header {
+    width: 52px;
+    min-width: 52px;
+    font-size: 0.7rem !important;
+    padding: 8px 4px !important;
   }
-  
+
   .class-slot {
-    min-height: 35px;
-    padding: 2px;
+    min-height: 55px;
+    padding: 6px;
   }
-  
+
   .class-name {
-    font-size: 0.65rem;
-    margin-bottom: 2px;
+    font-size: 0.75rem;
   }
-  
-  .teacher-name::before,
-  .no-teacher {
+
+  .teacher-name::before {
     display: none;
   }
 }
@@ -3493,26 +3614,69 @@ span.athlete-status-unpaid,
 
 /* Responsive para asignación masiva */
 @media (max-width: 768px) {
-  .bulk-assign-modal .modal-content {
-    width: 98vw;
-    padding: 1rem;
+  #bulkAssignModal {
+    padding: 0;
+    align-items: flex-start;
   }
-  
-  .bulk-assign-content {
-    gap: 1rem;
+
+  #bulkAssignModal .modal-content {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+    padding: 16px;
   }
-  
+
+  .professor-selection .info-card,
+  .week-selection .info-card,
+  .class-selection .info-card,
+  .selection-summary .info-card {
+    padding: 12px;
+    margin-bottom: 0.5rem;
+  }
+
   .bulk-schedule-container {
-    max-height: 300px;
+    max-height: 50vh;
+    min-height: 200px;
   }
-  
+
+  .week-navigation {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .week-navigation .btn {
+    flex: 1;
+    font-size: 12px;
+    padding: 8px 6px;
+  }
+
+  .current-week-text {
+    flex: 1 1 100%;
+    text-align: center;
+    font-size: 0.85rem;
+    min-width: unset;
+    padding: 0.4rem;
+    order: -1;
+  }
+
   .selected-classes-list {
     max-height: 80px;
   }
-  
+
   .selected-class-item {
     font-size: 0.7rem;
     padding: 0.2rem 0.5rem;
+  }
+
+  .bulk-assign-modal .form-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .bulk-assign-modal .form-actions .btn {
+    width: 100%;
   }
 }
 
