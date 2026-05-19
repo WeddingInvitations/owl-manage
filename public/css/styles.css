@@ -2954,7 +2954,7 @@ span.athlete-status-unpaid,
   line-height: 18px;
   text-align: center;
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.7;
   transition: opacity 0.2s ease, background 0.2s ease;
   z-index: 3;
 }
@@ -2965,6 +2965,7 @@ span.athlete-status-unpaid,
 
 .delete-class-btn:hover {
   background: #ef4444 !important;
+  opacity: 1;
 }
 
 .class-info {
