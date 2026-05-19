@@ -6829,9 +6829,16 @@ function renderScheduleTable() {
                 <span class="teacher-name">${teacher ? teacher.name : 'Sin asignar'}</span>
               </div>
             </div>
+            <button class="delete-class-btn" title="Eliminar clase" data-class-id="${cls.id}" data-class-name="${cls.name}">✕</button>
           `;
           
           classSlot.addEventListener('click', () => openAssignmentModal(cls, day, timeSlot, formatDate(weekDates[dayIndex]), assignment));
+          
+          // Prevent delete button from opening assignment modal
+          classSlot.querySelector('.delete-class-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteClassConfirm(cls.id, cls.name);
+          });
           
           classesContainer.appendChild(classSlot);
         });
@@ -7188,6 +7195,17 @@ window.deleteTeacherConfirm = async function(teacherId) {
     }
   }
 };
+
+async function deleteClassConfirm(classId, className) {
+  if (!confirm(`¿Estás seguro de que quieres eliminar la clase "${className}" del horario?`)) return;
+  try {
+    await deleteClass(classId);
+    await refreshClassesView();
+  } catch (error) {
+    console.error("Error deleting class:", error);
+    alert("Error al eliminar la clase");
+  }
+}
 
 // Refrescar vista de clases
 async function refreshClassesView() {
