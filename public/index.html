@@ -1186,6 +1186,9 @@
                   autocomplete="off"
                   placeholder="Buscar..."
                 />
+                <select id="athleteTariffFilter">
+                  <option value="ALL">Todas las tarifas</option>
+                </select>
                 <select id="athletePaidFilter">
                   <option value="ALL">Todos</option>
                   <option value="SI">Pagado</option>
@@ -1902,7 +1905,8 @@
               <h2>Gestión de Clases y Turnos</h2>
               <div class="header-actions">
                 <button id="bulkAssignBtn" class="btn success">🎯 Asignar Profesor</button>
-                <button id="importClassesBtn" class="btn primary">Importar Horarios</button>
+                <button id="addClassBtn" class="btn primary">+ Añadir Clase</button>
+                <button id="importClassesBtn" class="btn secondary">Importar Horarios</button>
                 <button id="addTeacherBtn" class="btn secondary">Añadir Profesor</button>
               </div>
             </div>
@@ -2101,6 +2105,60 @@
               </div>
             </form>
             <div id="importStatus" class="status-message"></div>
+          </div>
+        </div>
+
+        <div id="addClassModal" class="modal hidden">
+          <div class="modal-content card">
+            <div class="detail-header">
+              <h3>Añadir Nueva Clase</h3>
+              <button id="addClassModalClose" class="btn ghost small">Cerrar</button>
+            </div>
+            <form id="addClassForm" class="stack">
+              <label>
+                Nombre de la clase
+                <input id="addClassName" type="text" required placeholder="Ej: CrossFit, Acrobacias..." />
+              </label>
+              <label>
+                Día de la semana
+                <select id="addClassDay" required>
+                  <option value="">Seleccionar día...</option>
+                  <option value="Lunes">Lunes</option>
+                  <option value="Martes">Martes</option>
+                  <option value="Miércoles">Miércoles</option>
+                  <option value="Jueves">Jueves</option>
+                  <option value="Viernes">Viernes</option>
+                  <option value="Sábado">Sábado</option>
+                  <option value="Domingo">Domingo</option>
+                </select>
+              </label>
+              <label>
+                Hora
+                <select id="addClassTime" required>
+                  <option value="">Seleccionar hora...</option>
+                  <option value="07:00h">07:00h</option>
+                  <option value="08:00h">08:00h</option>
+                  <option value="09:00h">09:00h</option>
+                  <option value="10:00h">10:00h</option>
+                  <option value="11:00h">11:00h</option>
+                  <option value="12:00h">12:00h</option>
+                  <option value="13:00h">13:00h</option>
+                  <option value="14:30h">14:30h</option>
+                  <option value="15:30h">15:30h</option>
+                  <option value="16:00h">16:00h</option>
+                  <option value="17:00h">17:00h</option>
+                  <option value="18:00h">18:00h</option>
+                  <option value="19:00h">19:00h</option>
+                  <option value="20:00h">20:00h</option>
+                  <option value="21:00h">21:00h</option>
+                </select>
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn primary">Añadir Clase</button>
+                <button type="button" id="cancelAddClass" class="btn ghost">Cancelar</button>
+              </div>
+            </form>
+            <div id="addClassStatus" class="status-message hidden"></div>
           </div>
         </div>
 

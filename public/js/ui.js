@@ -239,6 +239,7 @@ export const ui = {
   athleteSummaryDrop: $("athleteSummaryDrop"),
   athleteSearch: $("athleteSearch"),
   athleteSearchList: $("athleteSearchList"),
+  athleteTariffFilter: $("athleteTariffFilter"),
   athletePaidFilter: $("athletePaidFilter"),
   athleteSaveAllBtn: $("athleteSaveAllBtn"),
   athleteExcelBtn: $("athleteExcelBtn"),
@@ -333,6 +334,16 @@ export const ui = {
   previewContent: $("previewContent"),
   cancelImport: $("cancelImport"),
   importStatus: $("importStatus"),
+
+  addClassBtn: $("addClassBtn"),
+  addClassModal: $("addClassModal"),
+  addClassModalClose: $("addClassModalClose"),
+  addClassForm: $("addClassForm"),
+  addClassName: $("addClassName"),
+  addClassDay: $("addClassDay"),
+  addClassTime: $("addClassTime"),
+  cancelAddClass: $("cancelAddClass"),
+  addClassStatus: $("addClassStatus"),
   
   // Modal de asignación masiva
   bulkAssignModal: $("bulkAssignModal"),

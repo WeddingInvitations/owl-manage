@@ -282,6 +282,7 @@ let selectedOrderMonth = "";
 let athleteSearchTerm = "";
 let selectedAthletePaymentMonth = "";
 let athletePaidFilter = "ALL";
+let athleteTariffFilter = "ALL";
 let selectedAthleteCsvMonth = "";
 
 // Acrobacias state
@@ -957,6 +958,7 @@ function filterAndRenderAthleteList() {
     const paid = Boolean(current?.paid);
     if (athletePaidFilter === "SI" && !paid) return;
     if (athletePaidFilter === "NO" && paid) return;
+    if (athleteTariffFilter !== "ALL" && tariff !== athleteTariffFilter) return;
     visibleCount += 1;
     const planDuration = plan.durationMonths || 1;
     const planLabel = planDuration === 1 ? "Mensual" : planDuration === 3 ? "Trimestral" : planDuration === 6 ? "Semestral" : "Anual";
@@ -3518,6 +3520,16 @@ setAthletePriceFromTariff();
 renderAthletePaymentMonthOptions();
 renderAthleteListMonthOptions();
 renderAthleteCsvMonthOptions();
+
+// Poblar el filtro de tarifas con las tarifas disponibles
+if (ui.athleteTariffFilter) {
+  tariffPlans.forEach(plan => {
+    const opt = document.createElement("option");
+    opt.value = plan.key;
+    opt.textContent = plan.key;
+    ui.athleteTariffFilter.appendChild(opt);
+  });
+}
 if (ui.athleteModal) {
   ui.athleteModal.classList.add("hidden");
 }
@@ -4289,6 +4301,7 @@ function downloadAthleteExcel() {
 
     if (athletePaidFilter === "SI" && !paid) return;
     if (athletePaidFilter === "NO" && paid) return;
+    if (athleteTariffFilter !== "ALL" && tariff !== athleteTariffFilter) return;
 
     rows.push([
       athlete.name || "",
@@ -6416,6 +6429,11 @@ on(ui.athleteSearch, "input", (event) => {
   filterAndRenderAthleteList();
 });
 
+on(ui.athleteTariffFilter, "change", (event) => {
+  athleteTariffFilter = event.target.value;
+  filterAndRenderAthleteList();
+});
+
 on(ui.athletePaidFilter, "change", (event) => {
   athletePaidFilter = event.target.value;
   filterAndRenderAthleteList();
@@ -7436,6 +7454,61 @@ on(ui.importModalClose, "click", () => {
 
 on(ui.cancelImport, "click", () => {
   ui.importClassesModal.classList.add("hidden");
+});
+
+// Add single class handlers
+on(ui.addClassBtn, "click", () => {
+  if (ui.addClassForm) ui.addClassForm.reset();
+  if (ui.addClassStatus) {
+    ui.addClassStatus.textContent = "";
+    ui.addClassStatus.classList.add("hidden");
+  }
+  ui.addClassModal?.classList.remove("hidden");
+});
+
+on(ui.addClassModalClose, "click", () => {
+  ui.addClassModal?.classList.add("hidden");
+});
+
+on(ui.cancelAddClass, "click", () => {
+  ui.addClassModal?.classList.add("hidden");
+});
+
+on(ui.addClassForm, "submit", async (event) => {
+  event.preventDefault();
+  const name = ui.addClassName?.value?.trim();
+  const day = ui.addClassDay?.value;
+  const time = ui.addClassTime?.value;
+  if (!name || !day || !time) return;
+
+  const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const dayIndex = days.indexOf(day);
+
+  if (ui.addClassStatus) {
+    ui.addClassStatus.textContent = "Guardando...";
+    ui.addClassStatus.className = "status-message info";
+    ui.addClassStatus.classList.remove("hidden");
+  }
+
+  try {
+    await createClass({ name, day, time, dayIndex }, currentUser?.uid);
+    if (ui.addClassStatus) {
+      ui.addClassStatus.textContent = "Clase añadida correctamente.";
+      ui.addClassStatus.className = "status-message success";
+    }
+    if (ui.addClassForm) ui.addClassForm.reset();
+    await refreshClassesView();
+    setTimeout(() => {
+      ui.addClassModal?.classList.add("hidden");
+      if (ui.addClassStatus) ui.addClassStatus.classList.add("hidden");
+    }, 1200);
+  } catch (error) {
+    console.error("Error adding class:", error);
+    if (ui.addClassStatus) {
+      ui.addClassStatus.textContent = `Error: ${error.message || error}`;
+      ui.addClassStatus.className = "status-message error";
+    }
+  }
 });
 
 on(ui.classesFile, "change", (event) => {
