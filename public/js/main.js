@@ -956,6 +956,7 @@ function filterAndRenderAthleteList() {
     else if (discountReason === 'Amigo') displayDiscount = 10;
     else if (discountReason === 'Ninguno') displayDiscount = 0;
     const paid = Boolean(current?.paid);
+    const paymentMethod = current?.paymentMethod || previous?.paymentMethod || lastPaid?.paymentMethod || "Efectivo";
     if (athletePaidFilter === "SI" && !paid) return;
     if (athletePaidFilter === "NO" && paid) return;
     if (athleteTariffFilter !== "ALL" && tariff !== athleteTariffFilter) return;
@@ -995,12 +996,18 @@ function filterAndRenderAthleteList() {
           <option value="NO" ${!paid ? "selected" : ""}>No</option>
         </select>
       </td>
+      <td style="min-width:110px;">
+        <select data-role="payment-method" data-id="${athlete.id}">
+          <option value="Efectivo" ${paymentMethod === "Efectivo" ? "selected" : ""}>Efectivo</option>
+          <option value="Tarjeta" ${paymentMethod === "Tarjeta" ? "selected" : ""}>Tarjeta</option>
+        </select>
+      </td>
     `;
     ui.athleteList.appendChild(row);
   });
   if (visibleCount === 0) {
     const emptyRow = document.createElement("tr");
-    emptyRow.innerHTML = `<td colspan="7" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
+    emptyRow.innerHTML = `<td colspan="8" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
     ui.athleteList.appendChild(emptyRow);
   }
   ui.athleteList.querySelectorAll('[data-role="discount-reason"]').forEach(select => {
@@ -1362,6 +1369,7 @@ function filterAndRenderAcroList() {
     else if (discountReason === 'Mañanas') displayDiscount = 10;
     else if (discountReason === 'Ninguno') displayDiscount = 0;
     const paid = Boolean(current?.paid);
+    const paymentMethod = current?.paymentMethod || previous?.paymentMethod || lastPaid?.paymentMethod || "Efectivo";
     if (acroPaidFilter === "SI" && !paid) return;
     if (acroPaidFilter === "NO" && paid) return;
     visibleCount += 1;
@@ -1399,12 +1407,18 @@ function filterAndRenderAcroList() {
           <option value="NO" ${!paid ? "selected" : ""}>No</option>
         </select>
       </td>
+      <td style="min-width:110px;">
+        <select data-role="acro-payment-method" data-id="${athlete.id}">
+          <option value="Efectivo" ${paymentMethod === "Efectivo" ? "selected" : ""}>Efectivo</option>
+          <option value="Tarjeta" ${paymentMethod === "Tarjeta" ? "selected" : ""}>Tarjeta</option>
+        </select>
+      </td>
     `;
     ui.acroList.appendChild(row);
   });
   if (visibleCount === 0) {
     const emptyRow = document.createElement("tr");
-    emptyRow.innerHTML = `<td colspan="7" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
+    emptyRow.innerHTML = `<td colspan="8" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
     ui.acroList.appendChild(emptyRow);
   }
   ui.acroList.querySelectorAll('[data-role="acro-discount-reason"]').forEach(select => {
@@ -1763,6 +1777,7 @@ function filterAndRenderHalteList() {
     else if (discountReason === 'Mañanas') displayDiscount = 10;
     else if (discountReason === 'Ninguno') displayDiscount = 0;
     const paid = Boolean(current?.paid);
+    const paymentMethod = current?.paymentMethod || previous?.paymentMethod || lastPaid?.paymentMethod || "Efectivo";
     if (haltePaidFilter === "SI" && !paid) return;
     if (haltePaidFilter === "NO" && paid) return;
     visibleCount += 1;
@@ -1800,12 +1815,18 @@ function filterAndRenderHalteList() {
           <option value="NO" ${!paid ? "selected" : ""}>No</option>
         </select>
       </td>
+      <td style="min-width:110px;">
+        <select data-role="halte-payment-method" data-id="${athlete.id}">
+          <option value="Efectivo" ${paymentMethod === "Efectivo" ? "selected" : ""}>Efectivo</option>
+          <option value="Tarjeta" ${paymentMethod === "Tarjeta" ? "selected" : ""}>Tarjeta</option>
+        </select>
+      </td>
     `;
     ui.halteList.appendChild(row);
   });
   if (visibleCount === 0) {
     const emptyRow = document.createElement("tr");
-    emptyRow.innerHTML = `<td colspan="7" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
+    emptyRow.innerHTML = `<td colspan="8" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
     ui.halteList.appendChild(emptyRow);
   }
   ui.halteList.querySelectorAll('[data-role="halte-discount-reason"]').forEach(select => {
@@ -2208,6 +2229,7 @@ function filterAndRenderTelasList() {
     const discountDisplay = `${e.discount}%`;
     const finalPrice = e.price * (1 - e.discount / 100);
     const paid = e.paid;
+    const paymentMethod = e.paymentMethod || "Efectivo";
     row.dataset.id = e.athlete.id;
     row.dataset.name = e.athlete.name || "";
     row.innerHTML = `
@@ -2240,12 +2262,18 @@ function filterAndRenderTelasList() {
           <option value="NO" ${!paid ? "selected" : ""}>No</option>
         </select>
       </td>
+      <td style="min-width:110px;">
+        <select data-role="telas-payment-method" data-id="${e.athlete.id}">
+          <option value="Efectivo" ${paymentMethod === "Efectivo" ? "selected" : ""}>Efectivo</option>
+          <option value="Tarjeta" ${paymentMethod === "Tarjeta" ? "selected" : ""}>Tarjeta</option>
+        </select>
+      </td>
     `;
     ui.telasList.appendChild(row);
   });
   if (visibleCount === 0) {
     const emptyRow = document.createElement("tr");
-    emptyRow.innerHTML = `<td colspan="7" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
+    emptyRow.innerHTML = `<td colspan="8" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
     ui.telasList.appendChild(emptyRow);
   }
   ui.telasList.querySelectorAll('[data-role="telas-discount-reason"]').forEach(select => {
@@ -2315,6 +2343,7 @@ async function refreshTelasMonthly() {
     let price = 0;
     let isPaymentMonth = false;
     let lastUpdate = null;
+    let paymentMethod = "Efectivo";
     if (am) {
       tariff = am.tariff || "";
       paid = am.paid || false;
@@ -2323,6 +2352,7 @@ async function refreshTelasMonthly() {
       price = am.price || 0;
       isPaymentMonth = am.isPaymentMonth || false;
       lastUpdate = am.updatedAt || am.createdAt;
+      paymentMethod = am.paymentMethod || "Efectivo";
     }
     entries.push({
       athlete,
@@ -2333,6 +2363,7 @@ async function refreshTelasMonthly() {
       price,
       isPaymentMonth,
       lastUpdate,
+      paymentMethod,
     });
   }
 
@@ -2547,6 +2578,7 @@ async function refreshSingleClassesMonthly() {
     let price = 0;
     let isPaymentMonth = false;
     let lastUpdate = null;
+    let paymentMethod = "Efectivo";
     if (am) {
       tariff = am.tariff || "";
       paid = am.paid === true || am.paid === "SI";
@@ -2555,6 +2587,7 @@ async function refreshSingleClassesMonthly() {
       price = am.price || 0;
       isPaymentMonth = am.isPaymentMonth || false;
       lastUpdate = am.updatedAt || am.createdAt;
+      paymentMethod = am.paymentMethod || "Efectivo";
     }
     entries.push({
       athlete,
@@ -2565,6 +2598,7 @@ async function refreshSingleClassesMonthly() {
       price,
       isPaymentMonth,
       lastUpdate,
+      paymentMethod,
     });
   }
 
@@ -2656,6 +2690,12 @@ async function refreshSingleClassesMonthly() {
         <select data-role="singleclasses-paid" data-id="${e.athlete.id}" class="${paid ? "select-paid" : "select-unpaid"}">
           <option value="SI" ${paid ? "selected" : ""}>Sí</option>
           <option value="NO" ${!paid ? "selected" : ""}>No</option>
+        </select>
+      </td>
+      <td style="min-width:110px;">
+        <select data-role="singleclasses-payment-method" data-id="${e.athlete.id}">
+          <option value="Efectivo" ${paymentMethod === "Efectivo" ? "selected" : ""}>Efectivo</option>
+          <option value="Tarjeta" ${paymentMethod === "Tarjeta" ? "selected" : ""}>Tarjeta</option>
         </select>
       </td>
     `;
@@ -3597,6 +3637,7 @@ async function saveAthleteRow(row) {
   const tariffSelect = row?.querySelector("[data-role='tariff']");
   const paidSelect = row?.querySelector("[data-role='paid']");
   const discountReasonInput = row?.querySelector("[data-role='discount-reason']");
+  const paymentMethodSelect = row?.querySelector("[data-role='payment-method']");
 
   if (!athleteId || !tariffSelect || !paidSelect) {
     throw new Error("Fila inválida");
@@ -3606,6 +3647,7 @@ async function saveAthleteRow(row) {
   const newPaid = paidSelect.value === "SI";
   const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
   const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const newPaymentMethod = paymentMethodSelect ? paymentMethodSelect.value : "Efectivo";
   const plan = tariffPlanMap.get(newTariff) || tariffPlanMap.get("8/mes");
   const basePrice = plan.priceTotal;
   const newPrice = basePrice * (1 - newDiscount / 100);
@@ -3625,6 +3667,7 @@ async function saveAthleteRow(row) {
         discount: newDiscount,
         discountReason: newDiscountReason,
         paid: newPaid,
+        paymentMethod: newPaymentMethod,
         active: newPaid,
         durationMonths: plan.durationMonths,
         priceMonthly: plan.priceMonthly,
@@ -3641,6 +3684,7 @@ async function saveAcroRow(row) {
   const tariffSelect = row?.querySelector("[data-role='acro-tariff']");
   const paidSelect = row?.querySelector("[data-role='acro-paid']");
   const discountReasonInput = row?.querySelector("[data-role='acro-discount-reason']");
+  const paymentMethodSelect = row?.querySelector("[data-role='acro-payment-method']");
 
   if (!athleteId || !tariffSelect || !paidSelect) {
     throw new Error("Fila inválida");
@@ -3650,6 +3694,7 @@ async function saveAcroRow(row) {
   const newPaid = paidSelect.value === "SI";
   const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
   const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const newPaymentMethod = paymentMethodSelect ? paymentMethodSelect.value : "Efectivo";
   const plan = acroTariffPlanMap.get(newTariff) || acroTariffPlanMap.get("4/mes");
   const basePrice = plan.priceTotal;
   const newPrice = basePrice * (1 - newDiscount / 100);
@@ -3669,6 +3714,7 @@ async function saveAcroRow(row) {
         discount: newDiscount,
         discountReason: newDiscountReason,
         paid: newPaid,
+        paymentMethod: newPaymentMethod,
         active: newPaid,
         durationMonths: plan.durationMonths,
         priceMonthly: plan.priceMonthly,
@@ -3685,6 +3731,7 @@ async function saveHalteRow(row) {
   const tariffSelect = row?.querySelector("[data-role='halte-tariff']");
   const paidSelect = row?.querySelector("[data-role='halte-paid']");
   const discountReasonInput = row?.querySelector("[data-role='halte-discount-reason']");
+  const paymentMethodSelect = row?.querySelector("[data-role='halte-payment-method']");
 
   if (!athleteId || !tariffSelect || !paidSelect) {
     throw new Error("Fila inválida");
@@ -3694,6 +3741,7 @@ async function saveHalteRow(row) {
   const newPaid = paidSelect.value === "SI";
   const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
   const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const newPaymentMethod = paymentMethodSelect ? paymentMethodSelect.value : "Efectivo";
   const plan = halteTariffPlanMap.get(newTariff) || halteTariffPlanMap.get("Pequeña");
   const basePrice = plan.priceTotal;
   const newPrice = basePrice * (1 - newDiscount / 100);
@@ -3713,6 +3761,7 @@ async function saveHalteRow(row) {
         discount: newDiscount,
         discountReason: newDiscountReason,
         paid: newPaid,
+        paymentMethod: newPaymentMethod,
         active: newPaid,
         durationMonths: plan.durationMonths,
         priceMonthly: plan.priceMonthly,
@@ -3729,6 +3778,7 @@ async function saveTelasRow(row) {
   const tariffSelect = row?.querySelector("[data-role='telas-tariff']");
   const paidSelect = row?.querySelector("[data-role='telas-paid']");
   const discountReasonInput = row?.querySelector("[data-role='telas-discount-reason']");
+  const paymentMethodSelect = row?.querySelector("[data-role='telas-payment-method']");
 
   if (!athleteId || !tariffSelect || !paidSelect) {
     throw new Error("Fila inválida");
@@ -3738,6 +3788,7 @@ async function saveTelasRow(row) {
   const newPaid = paidSelect.value === "SI";
   const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
   const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const newPaymentMethod = paymentMethodSelect ? paymentMethodSelect.value : "Efectivo";
   const plan = telasTariffPlanMap.get(newTariff) || telasTariffPlanMap.get("4/mes");
   const basePrice = plan.priceTotal;
   const newPrice = basePrice * (1 - newDiscount / 100);
@@ -3757,6 +3808,7 @@ async function saveTelasRow(row) {
         discount: newDiscount,
         discountReason: newDiscountReason,
         paid: newPaid,
+        paymentMethod: newPaymentMethod,
         active: newPaid,
         durationMonths: plan.durationMonths,
         priceMonthly: plan.priceMonthly,
@@ -3773,6 +3825,7 @@ async function saveSingleClassesRow(row) {
   const tariffSelect = row?.querySelector("[data-role='singleclasses-tariff']");
   const paidSelect = row?.querySelector("[data-role='singleclasses-paid']");
   const discountReasonInput = row?.querySelector("[data-role='singleclasses-discount-reason']");
+  const paymentMethodSelect = row?.querySelector("[data-role='singleclasses-payment-method']");
 
   if (!athleteId || !tariffSelect || !paidSelect) {
     throw new Error("Fila inválida");
@@ -3782,6 +3835,7 @@ async function saveSingleClassesRow(row) {
   const newPaid = paidSelect.value === "SI";
   const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
   const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const newPaymentMethod = paymentMethodSelect ? paymentMethodSelect.value : "Efectivo";
   const plan = singleClassesTariffPlanMap.get(newTariff) || singleClassesTariffPlanMap.get("Clase Crossfit");
   const basePrice = plan.priceTotal;
   const newPrice = basePrice * (1 - newDiscount / 100);
@@ -3801,6 +3855,7 @@ async function saveSingleClassesRow(row) {
         discount: newDiscount,
         discountReason: newDiscountReason,
         paid: newPaid,
+        paymentMethod: newPaymentMethod,
         active: newPaid,
         durationMonths: plan.durationMonths,
         priceMonthly: plan.priceMonthly,
@@ -3814,7 +3869,7 @@ async function saveSingleClassesRow(row) {
 if (ui.athleteList) {
   ui.athleteList.addEventListener("change", (event) => {
     const target = event.target;
-    if (!target.matches("[data-role='tariff'], [data-role='discount-reason'], [data-role='paid']")) {
+    if (!target.matches("[data-role='tariff'], [data-role='discount-reason'], [data-role='paid'], [data-role='payment-method']")) {
       return;
     }
     const row = target.closest("tr");
@@ -3916,7 +3971,7 @@ if (ui.singleClassesCsvModal) {
 if (ui.acroList) {
   ui.acroList.addEventListener("change", (event) => {
     const target = event.target;
-    if (!target.matches("[data-role='acro-tariff'], [data-role='acro-discount-reason'], [data-role='acro-paid']")) {
+    if (!target.matches("[data-role='acro-tariff'], [data-role='acro-discount-reason'], [data-role='acro-paid'], [data-role='acro-payment-method']")) {
       return;
     }
     const row = target.closest("tr");
@@ -3966,7 +4021,7 @@ if (ui.acroSaveAllBtn) {
 if (ui.halteList) {
   ui.halteList.addEventListener("change", (event) => {
     const target = event.target;
-    if (!target.matches("[data-role='halte-tariff'], [data-role='halte-discount-reason'], [data-role='halte-paid']")) {
+    if (!target.matches("[data-role='halte-tariff'], [data-role='halte-discount-reason'], [data-role='halte-paid'], [data-role='halte-payment-method']")) {
       return;
     }
     const row = target.closest("tr");
@@ -4016,7 +4071,7 @@ if (ui.halteSaveAllBtn) {
 if (ui.telasList) {
   ui.telasList.addEventListener("change", (event) => {
     const target = event.target;
-    if (!target.matches("[data-role='telas-tariff'], [data-role='telas-discount-reason'], [data-role='telas-paid']")) {
+    if (!target.matches("[data-role='telas-tariff'], [data-role='telas-discount-reason'], [data-role='telas-paid'], [data-role='telas-payment-method']")) {
       return;
     }
     const row = target.closest("tr");
@@ -4066,7 +4121,7 @@ if (ui.telasSaveAllBtn) {
 if (ui.singleClassesList) {
   ui.singleClassesList.addEventListener("change", (event) => {
     const target = event.target;
-    if (!target.matches("[data-role='singleclasses-tariff'], [data-role='singleclasses-discount-reason'], [data-role='singleclasses-paid']")) {
+    if (!target.matches("[data-role='singleclasses-tariff'], [data-role='singleclasses-discount-reason'], [data-role='singleclasses-paid'], [data-role='singleclasses-payment-method']")) {
       return;
     }
     const row = target.closest("tr");
@@ -5838,6 +5893,7 @@ on(ui.athleteForm, "submit", async (event) => {
   const finalPrice = basePrice * (1 - discount / 100);
   const price = finalPrice; // Use final price with discount applied
   const paid = ui.athletePaid.value === "SI";
+  const paymentMethod = ui.athletePaymentMethod?.value || "Efectivo";
   const startMonth = ui.athletePaymentMonth?.value || selectedAthletePaymentMonth || selectedAthleteMonth;
   const duration = plan.durationMonths || 1;
   for (let i = 0; i < duration; i += 1) {
@@ -5853,6 +5909,7 @@ on(ui.athleteForm, "submit", async (event) => {
         discount,
         discountReason,
         paid,
+        paymentMethod,
         active: paid,
         durationMonths: plan.durationMonths,
         priceMonthly: plan.priceMonthly,
@@ -5979,6 +6036,7 @@ on(ui.acroForm, "submit", async (event) => {
   const finalPrice = basePrice * (1 - discount / 100);
   const price = finalPrice; // Use final price with discount applied
   const paid = ui.acroPaid.value === "SI";
+  const paymentMethod = ui.acroPaymentMethod?.value || "Efectivo";
   const startMonth = ui.acroPaymentMonth?.value || selectedAcroPaymentMonth || selectedAcroMonth;
   const duration = plan.durationMonths || 1;
   
@@ -5995,6 +6053,7 @@ on(ui.acroForm, "submit", async (event) => {
         discount,
         discountReason,
         paid,
+        paymentMethod,
         active: paid,
         durationMonths: plan.durationMonths,
         priceMonthly: plan.priceMonthly,
@@ -6093,6 +6152,7 @@ on(ui.halteForm, "submit", async (event) => {
   let discount = parseFloat(ui.halteDiscount.value) || 0;
   const finalPrice = parseFloat(ui.halteFinalPrice.value) || basePrice;
   const paid = ui.haltePaid.value;
+  const paymentMethod = ui.haltePaymentMethod?.value || "Efectivo";
   const monthKey = ui.haltePaymentMonth.value || selectedHaltePaymentMonth || getMonthKey(new Date());
 
   if (athleteId) {
@@ -6107,6 +6167,7 @@ on(ui.halteForm, "submit", async (event) => {
         discountReason,
         finalPrice,
         paid,
+        paymentMethod,
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -6203,6 +6264,7 @@ on(ui.telasForm, "submit", async (event) => {
   let discount = parseFloat(ui.telasDiscount.value) || 0;
   const finalPrice = parseFloat(ui.telasFinalPrice.value) || basePrice;
   const paid = ui.telasPaid.value === "SI";
+  const paymentMethod = ui.telasPaymentMethod?.value || "Efectivo";
   const monthKey = ui.telasPaymentMonth.value || selectedTelasPaymentMonth || getMonthKey(new Date());
 
   if (athleteId) {
@@ -6217,6 +6279,7 @@ on(ui.telasForm, "submit", async (event) => {
         discountReason,
         finalPrice,
         paid,
+        paymentMethod,
         durationMonths: 1,
         priceMonthly: basePrice,
         isPaymentMonth: true,
@@ -6316,6 +6379,7 @@ on(ui.singleClassesForm, "submit", async (event) => {
   let discount = parseFloat(ui.singleClassesDiscount.value) || 0;
   const finalPrice = parseFloat(ui.singleClassesFinalPrice.value) || basePrice;
   const paid = ui.singleClassesPaid.value === "SI";
+  const paymentMethod = ui.singleClassesPaymentMethod?.value || "Efectivo";
   const monthKey = ui.singleClassesPaymentMonth.value || selectedSingleClassesPaymentMonth || getMonthKey(new Date());
 
   if (athleteId) {
@@ -6330,6 +6394,7 @@ on(ui.singleClassesForm, "submit", async (event) => {
         discountReason,
         finalPrice,
         paid,
+        paymentMethod,
         durationMonths: 1,
         priceMonthly: basePrice,
         isPaymentMonth: true,
