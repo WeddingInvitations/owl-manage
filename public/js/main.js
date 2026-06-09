@@ -2621,7 +2621,7 @@ async function refreshSingleClassesMonthly() {
   if (singleClassesSearchTerm.trim() !== "") {
     const term = singleClassesSearchTerm.trim().toLowerCase();
     filtered = filtered.filter((e) =>
-      e.athlete.name.toLowerCase().includes(term)
+      (e.athlete.name || "").toLowerCase().includes(term)
     );
   }
   const visibleCount = filtered.length;
@@ -2636,6 +2636,8 @@ async function refreshSingleClassesMonthly() {
     }
   }
   filtered.forEach((e) => {
+    const athleteName = e.athlete.name || "Sin nombre";
+    const paymentMethod = e.paymentMethod || "Efectivo";
     const row = document.createElement("tr");
     const tariffOptions = ["", "Clase Crossfit", "Bono 10 Clases Crossfit", "Clase Acrobacias", "Open Acrobacias 1h", "Open Acrobacias 2h"];
     const tariffOptionsHtml = tariffOptions
@@ -2659,11 +2661,11 @@ async function refreshSingleClassesMonthly() {
     const finalPrice = e.price * (1 - e.discount / 100);
     const paid = e.paid;
     row.dataset.id = e.athlete.id;
-    row.dataset.name = e.athlete.name || "";
+    row.dataset.name = athleteName;
     row.innerHTML = `
       <td style="max-width: 200px;">
         <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="singleclasses-athlete-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${e.athlete.name}</span>
+          <span data-role="singleclasses-athlete-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${athleteName}</span>
           <button class="edit-name-btn" data-role="edit-singleclasses-name" data-id="${e.athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
         </div>
       </td>
