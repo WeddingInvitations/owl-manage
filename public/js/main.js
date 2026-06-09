@@ -2696,8 +2696,8 @@ async function refreshSingleClassesMonthly() {
       </td>
       <td style="min-width:110px;">
         <select data-role="singleclasses-payment-method" data-id="${e.athlete.id}">
-          <option value="Efectivo" ${paymentMethod === "Efectivo" ? "selected" : ""}>Efectivo</option>
-          <option value="Tarjeta" ${paymentMethod === "Tarjeta" ? "selected" : ""}>Tarjeta</option>
+          <option value="Efectivo" ${(e.paymentMethod || "Efectivo") === "Efectivo" ? "selected" : ""}>Efectivo</option>
+          <option value="Tarjeta" ${(e.paymentMethod || "Efectivo") === "Tarjeta" ? "selected" : ""}>Tarjeta</option>
         </select>
       </td>
     `;
