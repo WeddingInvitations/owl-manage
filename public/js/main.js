@@ -479,6 +479,8 @@ const tariffPlans = [
   { key: "8/mes", durationMonths: 1, priceTotal: 70 },
   { key: "Fundador", durationMonths: 1, priceTotal: 70 },
   { key: "SPL", durationMonths: 1, priceTotal: 70 },
+  { key: "4/mes", durationMonths: 1, priceTotal: 40 },
+  { key: "6/mes", durationMonths: 1, priceTotal: 50 },
   { key: "12/mes", durationMonths: 1, priceTotal: 80 },
   { key: "Ilimitado", durationMonths: 1, priceTotal: 100 },
   { key: "Trimestre 8/mes", durationMonths: 3, priceTotal: 200 },
