@@ -533,6 +533,16 @@ ui.cajaFilterPeriod?.addEventListener("change", () => {
   refreshCajaList();
 });
 ui.cajaPeriodSelect?.addEventListener("change", refreshCajaList);
+ui.cajaTodayBtn?.addEventListener("click", () => {
+  if (ui.cajaFilterPeriod) {
+    ui.cajaFilterPeriod.value = "day";
+  }
+  if (ui.cajaPeriodDate) {
+    ui.cajaPeriodDate.value = new Date().toISOString().slice(0, 10);
+  }
+  populatePeriodSelect("day");
+  refreshCajaList();
+});
 ui.cajaFilterItem?.addEventListener("change", refreshCajaList);
 
 // Función de inicialización de Caja
@@ -547,6 +557,9 @@ export async function initializeCaja() {
   // Configurar período por defecto como día
   if (ui.cajaFilterPeriod) {
     ui.cajaFilterPeriod.value = "day";
+  }
+  if (ui.cajaPeriodDate) {
+    ui.cajaPeriodDate.value = new Date().toISOString().slice(0, 10);
   }
   
   // Popular el selector de períodos

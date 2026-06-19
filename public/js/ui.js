@@ -542,6 +542,7 @@ ui.cajaVentaCantidad = $("cajaVentaCantidad");
 ui.cajaVentaImporte = $("cajaVentaImporte");
 ui.cajaFilterPeriod = $("cajaPeriodFilter");
 ui.cajaPeriodDate = $("cajaPeriodDate");
+ui.cajaTodayBtn = $("cajaTodayBtn");
 ui.cajaPeriodSelect = $("cajaPeriodSelect");
 ui.cajaFilterItem = $("cajaObjectFilter");
 ui.cajaSummaryList = $("cajaSummaryList");
