@@ -2275,6 +2275,63 @@
           </div>
         </div>
 
+        <div id="editClassModal" class="modal hidden">
+          <div class="modal-content card">
+            <div class="detail-header">
+              <h3>Editar Clase</h3>
+              <button id="editClassModalClose" class="btn ghost small">Cerrar</button>
+            </div>
+            <form id="editClassForm" class="stack">
+              <input id="editClassId" type="hidden" />
+              <label>
+                Tipo / nombre de la clase
+                <select id="editClassName" required>
+                  <option value="">Seleccionar tipo...</option>
+                </select>
+              </label>
+              <label>
+                Día de la semana
+                <select id="editClassDay" required>
+                  <option value="">Seleccionar día...</option>
+                  <option value="Lunes">Lunes</option>
+                  <option value="Martes">Martes</option>
+                  <option value="Miércoles">Miércoles</option>
+                  <option value="Jueves">Jueves</option>
+                  <option value="Viernes">Viernes</option>
+                  <option value="Sábado">Sábado</option>
+                  <option value="Domingo">Domingo</option>
+                </select>
+              </label>
+              <label>
+                Hora
+                <select id="editClassTime" required>
+                  <option value="">Seleccionar hora...</option>
+                  <option value="07:00h">07:00h</option>
+                  <option value="08:00h">08:00h</option>
+                  <option value="09:00h">09:00h</option>
+                  <option value="10:00h">10:00h</option>
+                  <option value="11:00h">11:00h</option>
+                  <option value="12:00h">12:00h</option>
+                  <option value="13:00h">13:00h</option>
+                  <option value="14:30h">14:30h</option>
+                  <option value="15:30h">15:30h</option>
+                  <option value="16:00h">16:00h</option>
+                  <option value="17:00h">17:00h</option>
+                  <option value="18:00h">18:00h</option>
+                  <option value="19:00h">19:00h</option>
+                  <option value="20:00h">20:00h</option>
+                  <option value="21:00h">21:00h</option>
+                </select>
+              </label>
+              <div class="form-actions">
+                <button type="submit" class="btn primary">Guardar cambios</button>
+                <button type="button" id="cancelEditClass" class="btn ghost">Cancelar</button>
+              </div>
+            </form>
+            <div id="editClassStatus" class="status-message hidden"></div>
+          </div>
+        </div>
+
         <div id="bulkAssignModal" class="modal hidden">
           <div class="modal-content card bulk-assign-modal">
             <div class="detail-header">

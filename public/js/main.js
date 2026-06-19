@@ -6818,7 +6818,7 @@ async function loadAssignmentsForBulkWeek() {
 // Función para normalizar nombres de clases para data-attributes
 function normalizeClassType(className) {
   if (!className) return '';
-  return className.toLowerCase()
+  const normalized = className.toLowerCase()
     .replace(/á/g, 'a')
     .replace(/é/g, 'e')
     .replace(/í/g, 'i')
@@ -6826,6 +6826,16 @@ function normalizeClassType(className) {
     .replace(/ú/g, 'u')
     .replace(/ñ/g, 'n')
     .trim();
+
+  // Alias para cubrir nombres escritos de forma ligeramente distinta.
+  const aliases = {
+    'classic strenght': 'classic strength',
+    'classic strengt': 'classic strength',
+    'halteorfilia': 'halterofilia',
+    'halterofilia ': 'halterofilia',
+  };
+
+  return aliases[normalized] || normalized;
 }
 
 // Renderizar tabla de horarios
@@ -6899,18 +6909,26 @@ function renderScheduleTable() {
           }
           
           classSlot.innerHTML = `
+            <div class="class-slot-actions">
+              <button class="edit-class-btn" title="Editar clase" data-class-id="${cls.id}">✎</button>
+              <button class="delete-class-btn" title="Eliminar clase" data-class-id="${cls.id}" data-class-name="${cls.name}">✕</button>
+            </div>
             <div class="class-info">
               <div class="class-name">${cls.name}</div>
               <div class="teacher-info">
                 <span class="teacher-name">${teacher ? teacher.name : 'Sin asignar'}</span>
               </div>
             </div>
-            <button class="delete-class-btn" title="Eliminar clase" data-class-id="${cls.id}" data-class-name="${cls.name}">✕</button>
           `;
           
           classSlot.addEventListener('click', () => openAssignmentModal(cls, day, timeSlot, formatDate(weekDates[dayIndex]), assignment));
           
           // Prevent delete button from opening assignment modal
+          classSlot.querySelector('.edit-class-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openEditClassModal(cls);
+          });
+
           classSlot.querySelector('.delete-class-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             deleteClassConfirm(cls.id, cls.name);
@@ -7283,6 +7301,54 @@ async function deleteClassConfirm(classId, className) {
   }
 }
 
+function renderEditClassNameOptions(currentName = "") {
+  const editClassNameSelect = ui.editClassName || document.getElementById("editClassName");
+  if (!editClassNameSelect) return;
+
+  const uniqueNames = Array.from(
+    new Set((classesData || []).map((cls) => String(cls?.name || "").trim()).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+
+  editClassNameSelect.innerHTML = '<option value="">Seleccionar tipo...</option>';
+  uniqueNames.forEach((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    editClassNameSelect.appendChild(option);
+  });
+
+  if (currentName && !uniqueNames.includes(currentName)) {
+    const option = document.createElement("option");
+    option.value = currentName;
+    option.textContent = currentName;
+    editClassNameSelect.appendChild(option);
+  }
+}
+
+function openEditClassModal(classData) {
+  const editClassModal = ui.editClassModal || document.getElementById("editClassModal");
+  const editClassId = ui.editClassId || document.getElementById("editClassId");
+  const editClassName = ui.editClassName || document.getElementById("editClassName");
+  const editClassDay = ui.editClassDay || document.getElementById("editClassDay");
+  const editClassTime = ui.editClassTime || document.getElementById("editClassTime");
+  const editClassStatus = ui.editClassStatus || document.getElementById("editClassStatus");
+
+  if (!editClassModal || !classData) return;
+
+  renderEditClassNameOptions(classData.name || "");
+
+  if (editClassId) editClassId.value = classData.id || "";
+  if (editClassName) editClassName.value = classData.name || "";
+  if (editClassDay) editClassDay.value = classData.day || "";
+  if (editClassTime) editClassTime.value = classData.time || "";
+  if (editClassStatus) {
+    editClassStatus.textContent = "";
+    editClassStatus.className = "status-message hidden";
+  }
+
+  editClassModal.classList.remove("hidden");
+}
+
 // Refrescar vista de clases
 async function refreshClassesView() {
   console.log('Refreshing classes view...');
@@ -7566,6 +7632,90 @@ on(ui.addClassModalClose, "click", () => {
 
 on(ui.cancelAddClass, "click", () => {
   ui.addClassModal?.classList.add("hidden");
+});
+
+on(ui.editClassModalClose || document.getElementById("editClassModalClose"), "click", () => {
+  (ui.editClassModal || document.getElementById("editClassModal"))?.classList.add("hidden");
+});
+
+on(ui.cancelEditClass || document.getElementById("cancelEditClass"), "click", () => {
+  (ui.editClassModal || document.getElementById("editClassModal"))?.classList.add("hidden");
+});
+
+on(ui.editClassForm || document.getElementById("editClassForm"), "submit", async (event) => {
+  event.preventDefault();
+
+  const editClassModal = ui.editClassModal || document.getElementById("editClassModal");
+  const editClassId = ui.editClassId || document.getElementById("editClassId");
+  const editClassName = ui.editClassName || document.getElementById("editClassName");
+  const editClassDay = ui.editClassDay || document.getElementById("editClassDay");
+  const editClassTime = ui.editClassTime || document.getElementById("editClassTime");
+  const editClassStatus = ui.editClassStatus || document.getElementById("editClassStatus");
+
+  const classId = editClassId?.value;
+  const newName = editClassName?.value?.trim();
+  const newDay = editClassDay?.value;
+  const newTime = editClassTime?.value;
+  const validDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const dayIndex = validDays.indexOf(newDay);
+
+  if (!classId || !newName || !newDay || !newTime || dayIndex === -1) {
+    if (editClassStatus) {
+      editClassStatus.textContent = "Completa todos los campos para guardar.";
+      editClassStatus.className = "status-message error";
+      editClassStatus.classList.remove("hidden");
+    }
+    return;
+  }
+
+  if (editClassStatus) {
+    editClassStatus.textContent = "Guardando cambios...";
+    editClassStatus.className = "status-message info";
+    editClassStatus.classList.remove("hidden");
+  }
+
+  try {
+    await updateClass(
+      classId,
+      {
+        name: newName,
+        day: newDay,
+        time: newTime,
+        dayIndex,
+      },
+      currentUser?.uid
+    );
+    await refreshClassesView();
+    showToast("Clase actualizada correctamente", "success");
+
+    if (editClassStatus) {
+      editClassStatus.textContent = "Cambios guardados.";
+      editClassStatus.className = "status-message success";
+    }
+
+    setTimeout(() => {
+      editClassModal?.classList.add("hidden");
+      if (editClassStatus) editClassStatus.classList.add("hidden");
+    }, 900);
+  } catch (error) {
+    console.error("Error updating class:", error);
+    if (editClassStatus) {
+      editClassStatus.textContent = `Error: ${error.message || error}`;
+      editClassStatus.className = "status-message error";
+    }
+  }
+});
+
+on(ui.scheduleTableBody, "click", (event) => {
+  const editButton = event.target.closest(".edit-class-btn");
+  if (!editButton) return;
+  event.stopPropagation();
+  const classId = editButton.dataset.classId;
+  if (!classId) return;
+  const classData = (classesData || []).find((cls) => cls.id === classId);
+  if (classData) {
+    openEditClassModal(classData);
+  }
 });
 
 on(ui.addClassForm, "submit", async (event) => {

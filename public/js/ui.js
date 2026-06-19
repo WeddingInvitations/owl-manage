@@ -346,6 +346,16 @@ export const ui = {
   addClassTime: $("addClassTime"),
   cancelAddClass: $("cancelAddClass"),
   addClassStatus: $("addClassStatus"),
+
+  editClassModal: $("editClassModal"),
+  editClassModalClose: $("editClassModalClose"),
+  editClassForm: $("editClassForm"),
+  editClassId: $("editClassId"),
+  editClassName: $("editClassName"),
+  editClassDay: $("editClassDay"),
+  editClassTime: $("editClassTime"),
+  cancelEditClass: $("cancelEditClass"),
+  editClassStatus: $("editClassStatus"),
   
   // Modal de asignación masiva
   bulkAssignModal: $("bulkAssignModal"),
