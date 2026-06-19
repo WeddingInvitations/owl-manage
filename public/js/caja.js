@@ -74,6 +74,7 @@ function populatePeriodSelect(periodType) {
       months.push({ value: `${year}-${month}`, label: `${monthName} ${year}` });
     }
     if (periodDate) periodDate.classList.add("hidden");
+    if (periodSelect) periodSelect.classList.remove("hidden");
     periodSelect.innerHTML = months.map(m => 
       `<option value="${m.value}">${m.label}</option>`
     ).join("");
@@ -93,6 +94,7 @@ function populatePeriodSelect(periodType) {
       weeks.push({ value: startStr, label: label });
     }
     if (periodDate) periodDate.classList.add("hidden");
+    if (periodSelect) periodSelect.classList.remove("hidden");
     periodSelect.innerHTML = weeks.map(w => 
       `<option value="${w.value}">${w.label}</option>`
     ).join("");
