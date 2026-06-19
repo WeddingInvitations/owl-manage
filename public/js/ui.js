@@ -534,6 +534,18 @@ ui.cajaFilterPeriod = $("cajaPeriodFilter");
 ui.cajaPeriodSelect = $("cajaPeriodSelect");
 ui.cajaFilterItem = $("cajaObjectFilter");
 
+// Inventario
+ui.inventoryView = $("inventoryView");
+ui.inventoryForm = $("inventoryForm");
+ui.inventoryProduct = $("inventoryProduct");
+ui.inventoryDate = $("inventoryDate");
+ui.inventoryUnits = $("inventoryUnits");
+ui.inventoryNote = $("inventoryNote");
+ui.inventoryStatus = $("inventoryStatus");
+ui.inventoryRefreshBtn = $("inventoryRefreshBtn");
+ui.inventoryList = $("inventoryList");
+ui.inventoryMovementsList = $("inventoryMovementsList");
+
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {
     if (currentUi.logoutBtn) {
@@ -631,6 +643,8 @@ export function updateMenuVisibility(currentUi, role) {
       "paymentsView": "contabilidad",
       "expensesView": "contabilidad",
       "cajaView": "contabilidad",
+      "inventoryView": "contabilidad",
+      "ordersView": "contabilidad",
       "employeePaymentsView": "contabilidad",
       // Usuarios
       "athletesView": "usuarios",

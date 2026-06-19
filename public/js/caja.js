@@ -7,11 +7,18 @@ import {
   orderBy,
   where,
   serverTimestamp,
-  Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { ui } from "./ui.js";
 import { auth } from "./firebase.js";
-import { addPayment } from "./data.js";
+import {
+  addPayment,
+  addInventoryStock,
+  consumeInventoryStock,
+  getInventoryItems,
+  getInventoryMovements,
+} from "./data.js";
+
+let inventoryInitialized = false;
 
 // Helpers para fechas
 function getDateRange(period, baseDate) {
@@ -201,6 +208,102 @@ async function populateItemFilter() {
   }
 }
 
+function formatMovementDate(movement) {
+  if (movement.date) return movement.date;
+  if (movement.createdAt && typeof movement.createdAt.toDate === "function") {
+    return movement.createdAt.toDate().toISOString().slice(0, 10);
+  }
+  return "-";
+}
+
+function renderInventoryList(items) {
+  if (!ui.inventoryList) return;
+
+  ui.inventoryList.innerHTML = "";
+  if (!items.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="3" class="muted">No hay productos en inventario.</td>';
+    ui.inventoryList.appendChild(tr);
+    return;
+  }
+
+  items.forEach((item) => {
+    const tr = document.createElement("tr");
+    const stock = Number(item.stock || 0);
+    const updatedAt = item.updatedAt?.toDate?.() || item.createdAt?.toDate?.() || null;
+    const updatedLabel = updatedAt
+      ? updatedAt.toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })
+      : "-";
+
+    tr.innerHTML = `
+      <td>${item.name || "-"}</td>
+      <td><span class="inventory-stock-pill ${stock <= 5 ? "low" : "ok"}">${stock}</span></td>
+      <td>${updatedLabel}</td>
+    `;
+    ui.inventoryList.appendChild(tr);
+  });
+}
+
+function renderInventoryMovements(movements) {
+  if (!ui.inventoryMovementsList) return;
+
+  ui.inventoryMovementsList.innerHTML = "";
+  if (!movements.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="6" class="muted">Sin movimientos registrados.</td>';
+    ui.inventoryMovementsList.appendChild(tr);
+    return;
+  }
+
+  movements.forEach((movement) => {
+    const tr = document.createElement("tr");
+    const change = Number(movement.quantityChange || 0);
+    tr.innerHTML = `
+      <td>${formatMovementDate(movement)}</td>
+      <td>${movement.itemName || "-"}</td>
+      <td class="${change < 0 ? "inventory-negative" : "inventory-positive"}">${change > 0 ? "+" : ""}${change}</td>
+      <td>${Number(movement.stockAfter || 0)}</td>
+      <td>${movement.movementType || "-"}</td>
+      <td>${movement.note || "-"}</td>
+    `;
+    ui.inventoryMovementsList.appendChild(tr);
+  });
+}
+
+function updateInventoryProductOptions() {
+  if (!ui.inventoryProduct || !ui.cajaVentaObjeto) return;
+
+  const currentValue = ui.inventoryProduct.value;
+  const cajaOptions = Array.from(ui.cajaVentaObjeto.options || []);
+  const inventoryOptions = cajaOptions.filter((option) => {
+    const value = String(option.value || "").trim();
+    return value && value !== "OTRO";
+  });
+
+  ui.inventoryProduct.innerHTML = '<option value="">Seleccionar producto...</option>';
+  inventoryOptions.forEach((option) => {
+    const newOption = document.createElement("option");
+    newOption.value = option.value;
+    newOption.textContent = option.value;
+    ui.inventoryProduct.appendChild(newOption);
+  });
+
+  if (currentValue && inventoryOptions.some((option) => option.value === currentValue)) {
+    ui.inventoryProduct.value = currentValue;
+  }
+}
+
+async function refreshInventoryView() {
+  const [items, movements] = await Promise.all([
+    getInventoryItems(),
+    getInventoryMovements(100),
+  ]);
+
+  updateInventoryProductOptions();
+  renderInventoryList(items);
+  renderInventoryMovements(movements);
+}
+
 // Función para calcular el importe basado en producto y cantidad
 function calculateImporte() {
   const selectElement = ui.cajaVentaObjeto;
@@ -292,15 +395,49 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
     item = customItem;
   }
   
-  const amount = ui.cajaVentaCantidad.value;
+  const amount = Number(ui.cajaVentaCantidad.value);
   const date = ui.cajaVentaFecha.value;
   const importe = parseFloat(ui.cajaVentaImporte.value);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    alert("La cantidad debe ser mayor que 0");
+    return;
+  }
+
+  let inventoryConsumed = false;
+  try {
+    await consumeInventoryStock({
+      itemName: item,
+      units: amount,
+      date,
+      note: "Venta en caja",
+      userId: auth.currentUser?.uid,
+    });
+    inventoryConsumed = true;
+  } catch (error) {
+    alert(error?.message || "No se pudo descontar stock. Revisa inventario.");
+    return;
+  }
   
-  // Guardar la venta
-  await addSale({ item, amount, date, importe, userId: auth.currentUser?.uid });
-  
-  // Crear automáticamente un ingreso con el concepto "Ventas Caja"
-  await addPayment("Ventas Caja", importe, date, auth.currentUser?.uid);
+  try {
+    // Guardar la venta
+    await addSale({ item, amount, date, importe, userId: auth.currentUser?.uid });
+    
+    // Crear automáticamente un ingreso con el concepto "Ventas Caja"
+    await addPayment("Ventas Caja", importe, date, auth.currentUser?.uid);
+  } catch (error) {
+    if (inventoryConsumed) {
+      await addInventoryStock({
+        itemName: item,
+        units: amount,
+        date,
+        note: "Rollback por error al guardar venta",
+        userId: auth.currentUser?.uid,
+      });
+    }
+    alert(error?.message || "No se pudo guardar la venta");
+    return;
+  }
   
   ui.cajaModal.classList.add("hidden");
   // Actualizar filtro de objetos y lista
@@ -341,4 +478,65 @@ export async function initializeCaja() {
   await refreshCajaList();
   
   console.log("✅ Caja inicializada");
+}
+
+export async function initializeInventory() {
+  if (!ui.inventoryView) {
+    return;
+  }
+
+  if (!inventoryInitialized) {
+    ui.inventoryRefreshBtn?.addEventListener("click", async () => {
+      await refreshInventoryView();
+      if (ui.inventoryStatus) {
+        ui.inventoryStatus.textContent = "Inventario actualizado";
+      }
+    });
+
+    ui.inventoryForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const itemName = ui.inventoryProduct?.value?.trim() || "";
+      const units = Number(ui.inventoryUnits?.value || 0);
+      const date = ui.inventoryDate?.value || new Date().toISOString().slice(0, 10);
+      const note = ui.inventoryNote?.value?.trim() || "";
+
+      if (!itemName) {
+        if (ui.inventoryStatus) ui.inventoryStatus.textContent = "Introduce un producto";
+        return;
+      }
+
+      if (!Number.isFinite(units) || units <= 0) {
+        if (ui.inventoryStatus) ui.inventoryStatus.textContent = "Las unidades deben ser mayores que 0";
+        return;
+      }
+
+      if (ui.inventoryStatus) ui.inventoryStatus.textContent = "Guardando entrada...";
+      try {
+        await addInventoryStock({
+          itemName,
+          units,
+          date,
+          note,
+          userId: auth.currentUser?.uid,
+        });
+        ui.inventoryForm.reset();
+        if (ui.inventoryDate) {
+          ui.inventoryDate.value = new Date().toISOString().slice(0, 10);
+        }
+        if (ui.inventoryStatus) ui.inventoryStatus.textContent = "Entrada registrada correctamente";
+        await refreshInventoryView();
+      } catch (error) {
+        if (ui.inventoryStatus) {
+          ui.inventoryStatus.textContent = error?.message || "Error al registrar entrada";
+        }
+      }
+    });
+
+    inventoryInitialized = true;
+  }
+
+  if (ui.inventoryDate && !ui.inventoryDate.value) {
+    ui.inventoryDate.value = new Date().toISOString().slice(0, 10);
+  }
+  await refreshInventoryView();
 }

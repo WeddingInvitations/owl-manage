@@ -13,6 +13,8 @@ import {
   updateDoc,
   deleteDoc,
   Timestamp,
+  runTransaction,
+  limit,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 // --- Pagos empleados ---
@@ -155,6 +157,136 @@ export async function getOrder(orderId) {
     return { id: docSnap.id, ...docSnap.data() };
   }
   return null;
+}
+
+function normalizeInventoryItemName(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+function getInventoryDocId(itemName) {
+  return normalizeInventoryItemName(itemName)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "ITEM";
+}
+
+async function adjustInventoryStock({ itemName, quantityDelta, date, note, movementType, userId }) {
+  const normalizedName = normalizeInventoryItemName(itemName);
+  const delta = Number(quantityDelta);
+
+  if (!normalizedName) {
+    throw new Error("El nombre de producto es obligatorio");
+  }
+  if (!Number.isFinite(delta) || delta === 0) {
+    throw new Error("El movimiento de stock debe ser distinto de 0");
+  }
+
+  const docId = getInventoryDocId(normalizedName);
+  const inventoryRef = doc(db, "inventory", docId);
+  const movementDate = date || new Date().toISOString().slice(0, 10);
+
+  const result = await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(inventoryRef);
+    const currentData = snap.exists() ? snap.data() : null;
+    const currentStock = Number(currentData?.stock || 0);
+    const nextStock = currentStock + delta;
+
+    if (nextStock < 0) {
+      throw new Error(`Stock insuficiente para ${normalizedName}. Stock actual: ${currentStock}`);
+    }
+
+    const payload = {
+      name: currentData?.name || normalizedName,
+      nameKey: normalizedName,
+      stock: nextStock,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    };
+
+    if (snap.exists()) {
+      transaction.update(inventoryRef, payload);
+    } else {
+      transaction.set(inventoryRef, {
+        ...payload,
+        createdAt: serverTimestamp(),
+        createdBy: userId || null,
+      });
+    }
+
+    return {
+      itemName: payload.name,
+      itemKey: normalizedName,
+      stockBefore: currentStock,
+      stockAfter: nextStock,
+      movementDate,
+    };
+  });
+
+  await addDoc(collection(db, "inventory_movements"), {
+    itemName: result.itemName,
+    itemKey: result.itemKey,
+    quantityChange: delta,
+    stockBefore: result.stockBefore,
+    stockAfter: result.stockAfter,
+    movementType,
+    date: result.movementDate,
+    note: note || "",
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+
+  return result;
+}
+
+export async function addInventoryStock({ itemName, units, date, note, userId }) {
+  const quantity = Number(units);
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    throw new Error("Las unidades deben ser mayores que 0");
+  }
+  return adjustInventoryStock({
+    itemName,
+    quantityDelta: quantity,
+    date,
+    note,
+    movementType: "RESTOCK",
+    userId,
+  });
+}
+
+export async function consumeInventoryStock({ itemName, units, date, note, userId }) {
+  const quantity = Number(units);
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    throw new Error("Las unidades vendidas deben ser mayores que 0");
+  }
+  return adjustInventoryStock({
+    itemName,
+    quantityDelta: -quantity,
+    date,
+    note,
+    movementType: "SALE",
+    userId,
+  });
+}
+
+export async function getInventoryItems() {
+  const snap = await getDocs(collection(db, "inventory"));
+  const items = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  items.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "es", { sensitivity: "base" }));
+  return items;
+}
+
+export async function getInventoryMovements(maxItems = 100) {
+  const q = query(
+    collection(db, "inventory_movements"),
+    orderBy("createdAt", "desc"),
+    limit(maxItems)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
 }
 
 export async function openCheckin(userId, userEmail, userName = "", deviceInfo = {}) {

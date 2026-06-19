@@ -13,6 +13,7 @@ const viewsInitialized = {
   classesView: false,
   employeePaymentsView: false,
   cajaView: false,
+  inventoryView: false,
   paymentsView: false,
   expensesView: false
 };
@@ -32,7 +33,7 @@ import { showToast } from "./toast.js";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import { initializeCaja } from "./caja.js?v=20250401";
+import { initializeCaja, initializeInventory } from "./caja.js?v=20250401";
 import {
   addPayment,
   addExpense,
@@ -2942,6 +2943,7 @@ function updateMobileNavActive(viewId) {
       "rolesView", 
       "profileView",
       "cajaView",
+      "inventoryView",
       "employeePaymentsView",
       "ordersView",
       "singleClassesView",
@@ -3463,6 +3465,11 @@ async function initializeViewIfNeeded(viewId) {
     case "cajaView":
       await initializeCaja();
       viewsInitialized.cajaView = true;
+      break;
+
+    case "inventoryView":
+      await initializeInventory();
+      viewsInitialized.inventoryView = true;
       break;
       
     case "paymentsView":

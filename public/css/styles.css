@@ -1320,6 +1320,36 @@ select:focus {
   color: var(--muted) !important;
 }
 
+.inventory-stock-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.inventory-stock-pill.ok {
+  background: rgba(16, 185, 129, 0.16);
+  color: #059669;
+}
+
+.inventory-stock-pill.low {
+  background: rgba(239, 68, 68, 0.16);
+  color: #dc2626;
+}
+
+.inventory-positive {
+  color: #059669;
+  font-weight: 700;
+}
+
+.inventory-negative {
+  color: #dc2626;
+  font-weight: 700;
+}
+
 /* Estilos específicos para tablas de atletas */
 #athleteList td:nth-child(2),
 #acroList td:nth-child(2) {

@@ -83,6 +83,12 @@
               </svg>
               Caja
             </button>
+            <button class="menu-btn" data-view="inventoryView">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3H3V3zm0 5h14v8a1 1 0 01-1 1H4a1 1 0 01-1-1V8zm4 2a1 1 0 000 2h6a1 1 0 100-2H7z"/>
+              </svg>
+              Inventario
+            </button>
             <button class="menu-btn" data-view="employeePaymentsView">
               <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
@@ -702,9 +708,6 @@
                     <option value="MONSTER" data-price="2">MONSTER - 2,00€</option>
                     <option value="BANGS" data-price="1">BANGS - 1,00€</option>
                     <option value="TAPES" data-price="2">TAPES - 2,00€</option>
-                    <option value="BONO AGUA" data-price="10">BONO AGUA (24 uds) - 10,00€</option>
-                    <option value="BONO TAPES" data-price="18">BONO TAPES (10 uds) - 18,00€</option>
-                    <option value="BONO MONSTER" data-price="18">BONO MONSTER (10 uds) - 18,00€</option>
                     <option value="OTRO" data-price="0">Otro (personalizado)</option>
                   </select>
                 </label>
@@ -726,6 +729,74 @@
                 </label>
                 <button class="btn" type="submit">Guardar venta</button>
               </form>
+            </div>
+          </div>
+        </section>
+
+        <section id="inventoryView" class="view hidden">
+          <div class="card">
+            <div class="detail-header">
+              <h2>Inventario</h2>
+              <div class="filter-row">
+                <button id="inventoryRefreshBtn" class="btn ghost" type="button">Actualizar</button>
+              </div>
+            </div>
+            <form id="inventoryForm" class="stack">
+              <label>
+                Producto
+                <select id="inventoryProduct" required>
+                  <option value="">Seleccionar producto...</option>
+                </select>
+              </label>
+              <label>
+                Fecha
+                <input id="inventoryDate" type="date" required />
+              </label>
+              <label>
+                Unidades que entran
+                <input id="inventoryUnits" type="number" min="1" step="1" required />
+              </label>
+              <label>
+                Nota (opcional)
+                <input id="inventoryNote" type="text" placeholder="Ej: pedido semanal" />
+              </label>
+              <button class="btn" type="submit">Registrar entrada</button>
+              <p id="inventoryStatus" class="muted"></p>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>Stock actual</h3>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Stock</th>
+                    <th>Última actualización</th>
+                  </tr>
+                </thead>
+                <tbody id="inventoryList"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Movimientos recientes</h3>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Producto</th>
+                    <th>Movimiento</th>
+                    <th>Stock resultante</th>
+                    <th>Tipo</th>
+                    <th>Nota</th>
+                  </tr>
+                </thead>
+                <tbody id="inventoryMovementsList"></tbody>
+              </table>
             </div>
           </div>
         </section>
