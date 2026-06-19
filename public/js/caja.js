@@ -48,7 +48,23 @@ function populatePeriodSelect(periodType) {
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
   
-  if (periodType === "month") {
+  if (periodType === "day") {
+    const days = [];
+    for (let i = 0; i < 31; i++) {
+      const d = new Date(currentYear, currentMonth, currentDate.getDate() - i);
+      const value = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString("es-ES", {
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      days.push({ value, label });
+    }
+    ui.cajaPeriodSelect.innerHTML = days.map((day) =>
+      `<option value="${day.value}">${day.label}</option>`
+    ).join("");
+  } else if (periodType === "month") {
     // Generar últimos 12 meses
     const months = [];
     for (let i = 0; i < 12; i++) {
@@ -80,6 +96,59 @@ function populatePeriodSelect(periodType) {
     ui.cajaPeriodSelect.innerHTML = weeks.map(w => 
       `<option value="${w.value}">${w.label}</option>`
     ).join("");
+  }
+}
+
+function renderSalesSummary(sales) {
+  if (!ui.cajaSummaryList) return;
+
+  const grouped = new Map();
+  let totalUnits = 0;
+  let totalEuros = 0;
+
+  (sales || []).forEach((sale) => {
+    const item = String(sale.item || sale.objeto || "Sin producto").trim();
+    const amount = Number(sale.amount ?? sale.cantidad ?? 0);
+    const euros = Number(sale.importe ?? 0);
+
+    totalUnits += Number.isFinite(amount) ? amount : 0;
+    totalEuros += Number.isFinite(euros) ? euros : 0;
+
+    if (!grouped.has(item)) {
+      grouped.set(item, { units: 0, euros: 0 });
+    }
+    const entry = grouped.get(item);
+    entry.units += Number.isFinite(amount) ? amount : 0;
+    entry.euros += Number.isFinite(euros) ? euros : 0;
+  });
+
+  const rows = Array.from(grouped.entries())
+    .map(([item, values]) => ({ item, ...values }))
+    .sort((a, b) => b.euros - a.euros);
+
+  ui.cajaSummaryList.innerHTML = "";
+
+  if (rows.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="3" class="muted">No hay ventas en el periodo seleccionado.</td>';
+    ui.cajaSummaryList.appendChild(tr);
+  } else {
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${row.item}</td>
+        <td>${row.units}</td>
+        <td>${row.euros.toFixed(2)}</td>
+      `;
+      ui.cajaSummaryList.appendChild(tr);
+    });
+  }
+
+  if (ui.cajaSummaryTotalUnits) {
+    ui.cajaSummaryTotalUnits.textContent = String(totalUnits);
+  }
+  if (ui.cajaSummaryTotalEuros) {
+    ui.cajaSummaryTotalEuros.textContent = `${totalEuros.toFixed(2)} €`;
   }
 }
 
@@ -131,10 +200,14 @@ async function refreshCajaList() {
     endDate.setDate(startDate.getDate() + 6);
     start = selectedPeriod;
     end = endDate.toISOString().slice(0, 10);
+  } else if (periodType === 'day') {
+    start = selectedPeriod;
+    end = selectedPeriod;
   }
   
   console.log(`Cargando ventas: ${start} a ${end}`);
   const sales = await loadSales({ startDate: start, endDate: end, item: filterItem === 'ALL' ? '' : filterItem });
+  renderSalesSummary(sales);
   renderSalesList(sales);
 }
 
@@ -463,13 +536,13 @@ export async function initializeCaja() {
   
   console.log("🚀 Inicializando Caja...");
   
-  // Configurar período por defecto como mes
+  // Configurar período por defecto como día
   if (ui.cajaFilterPeriod) {
-    ui.cajaFilterPeriod.value = "month";
+    ui.cajaFilterPeriod.value = "day";
   }
   
   // Popular el selector de períodos
-  populatePeriodSelect("month");
+  populatePeriodSelect("day");
   
   // Popular el selector de objetos
   await populateItemFilter();

@@ -659,9 +659,10 @@
         <section id="cajaView" class="view hidden">
           <div class="card">
             <div class="detail-header">
-              <h2>Caja · Ventas diarias</h2>
+              <h2>Caja · Ventas</h2>
               <div class="filter-row">
                 <select id="cajaPeriodFilter">
+                  <option value="day">Día</option>
                   <option value="week">Semana</option>
                   <option value="month">Mes</option>
                 </select>
@@ -672,6 +673,28 @@
                 <button id="cajaAddBtn" class="btn" type="button">Añadir venta</button>
               </div>
             </div>
+
+            <div class="card" style="margin: 12px 0; padding: 12px;">
+              <div class="detail-header" style="margin-bottom: 8px;">
+                <h3 style="margin: 0;">Resumen del periodo</h3>
+                <p class="muted" id="cajaSummaryTotals" style="margin: 0;">
+                  Unidades: <span id="cajaSummaryTotalUnits">0</span> · Total: <span id="cajaSummaryTotalEuros">0.00 €</span>
+                </p>
+              </div>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Unidades vendidas</th>
+                      <th>Recaudado (€)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cajaSummaryList"></tbody>
+                </table>
+              </div>
+            </div>
+
             <div class="table-responsive">
               <table class="table">
                 <thead>

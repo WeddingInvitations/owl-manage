@@ -543,6 +543,9 @@ ui.cajaVentaImporte = $("cajaVentaImporte");
 ui.cajaFilterPeriod = $("cajaPeriodFilter");
 ui.cajaPeriodSelect = $("cajaPeriodSelect");
 ui.cajaFilterItem = $("cajaObjectFilter");
+ui.cajaSummaryList = $("cajaSummaryList");
+ui.cajaSummaryTotalUnits = $("cajaSummaryTotalUnits");
+ui.cajaSummaryTotalEuros = $("cajaSummaryTotalEuros");
 
 // Inventario
 ui.inventoryView = $("inventoryView");
