@@ -43,27 +43,25 @@ function getDateRange(period, baseDate) {
 // Popular el selector de períodos según el tipo (mes o semana)
 function populatePeriodSelect(periodType) {
   if (!ui.cajaPeriodSelect) return;
+  const periodSelect = ui.cajaPeriodSelect || document.getElementById("cajaPeriodSelect");
+  const periodDate = ui.cajaPeriodDate || document.getElementById("cajaPeriodDate");
+  if (!periodSelect && !periodDate) return;
   
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
   
   if (periodType === "day") {
-    const days = [];
-    for (let i = 0; i < 31; i++) {
-      const d = new Date(currentYear, currentMonth, currentDate.getDate() - i);
-      const value = d.toISOString().slice(0, 10);
-      const label = d.toLocaleDateString("es-ES", {
-        weekday: "short",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-      days.push({ value, label });
+    if (periodSelect) {
+      periodSelect.classList.add("hidden");
+      periodSelect.innerHTML = "";
     }
-    ui.cajaPeriodSelect.innerHTML = days.map((day) =>
-      `<option value="${day.value}">${day.label}</option>`
-    ).join("");
+    if (periodDate) {
+      periodDate.classList.remove("hidden");
+      periodDate.value = periodDate.value || currentDate.toISOString().slice(0, 10);
+      periodDate.max = currentDate.toISOString().slice(0, 10);
+      periodDate.min = new Date(currentYear, currentMonth - 12, 1).toISOString().slice(0, 10);
+    }
   } else if (periodType === "month") {
     // Generar últimos 12 meses
     const months = [];
@@ -75,7 +73,8 @@ function populatePeriodSelect(periodType) {
       const monthName = monthNames[d.getMonth()];
       months.push({ value: `${year}-${month}`, label: `${monthName} ${year}` });
     }
-    ui.cajaPeriodSelect.innerHTML = months.map(m => 
+    if (periodDate) periodDate.classList.add("hidden");
+    periodSelect.innerHTML = months.map(m => 
       `<option value="${m.value}">${m.label}</option>`
     ).join("");
   } else if (periodType === "week") {
@@ -93,7 +92,8 @@ function populatePeriodSelect(periodType) {
       const label = `Semana del ${startOfWeek.getDate()}/${startOfWeek.getMonth() + 1} al ${endOfWeek.getDate()}/${endOfWeek.getMonth() + 1}`;
       weeks.push({ value: startStr, label: label });
     }
-    ui.cajaPeriodSelect.innerHTML = weeks.map(w => 
+    if (periodDate) periodDate.classList.add("hidden");
+    periodSelect.innerHTML = weeks.map(w => 
       `<option value="${w.value}">${w.label}</option>`
     ).join("");
   }
@@ -176,7 +176,9 @@ function renderSalesList(sales) {
 
 async function refreshCajaList() {
   const periodType = ui.cajaFilterPeriod?.value || 'month';
-  const selectedPeriod = ui.cajaPeriodSelect?.value;
+  const selectedPeriod = periodType === 'day'
+    ? (ui.cajaPeriodDate?.value || ui.cajaPeriodSelect?.value)
+    : ui.cajaPeriodSelect?.value;
   const filterItem = ui.cajaFilterItem?.value;
   
   if (!selectedPeriod) {
@@ -263,6 +265,9 @@ async function loadUniqueItems() {
 
 // Poblar selector de objetos
 async function populateItemFilter() {
+  if (ui.cajaPeriodDate && !ui.cajaPeriodDate.value) {
+    ui.cajaPeriodDate.value = new Date().toISOString().slice(0, 10);
+  }
   if (!ui.cajaFilterItem) return;
   
   const items = await loadUniqueItems();
@@ -270,6 +275,7 @@ async function populateItemFilter() {
   
   let html = '<option value="ALL">Todos los objetos</option>';
   items.forEach(item => {
+ui.cajaPeriodDate?.addEventListener("change", refreshCajaList);
     html += `<option value="${item}">${item}</option>`;
   });
   
