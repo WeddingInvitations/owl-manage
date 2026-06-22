@@ -459,6 +459,10 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   
   const selectedValue = ui.cajaVentaObjeto.value;
+  const selectedOption = ui.cajaVentaObjeto.options[ui.cajaVentaObjeto.selectedIndex];
+  const shouldTrackStock = selectedValue === "OTRO"
+    ? true
+    : selectedOption?.dataset.trackStock !== "false";
   let item = selectedValue;
   
   // Si es OTRO, usar el nombre personalizado
@@ -486,18 +490,20 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
   }
 
   let inventoryConsumed = false;
-  try {
-    await consumeInventoryStock({
-      itemName: item,
-      units: amount,
-      date,
-      note: "Venta en caja",
-      userId: auth.currentUser?.uid,
-    });
-    inventoryConsumed = true;
-  } catch (error) {
-    alert(error?.message || "No se pudo descontar stock. Revisa inventario.");
-    return;
+  if (shouldTrackStock) {
+    try {
+      await consumeInventoryStock({
+        itemName: item,
+        units: amount,
+        date,
+        note: "Venta en caja",
+        userId: auth.currentUser?.uid,
+      });
+      inventoryConsumed = true;
+    } catch (error) {
+      alert(error?.message || "No se pudo descontar stock. Revisa inventario.");
+      return;
+    }
   }
   
   try {
