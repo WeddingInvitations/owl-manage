@@ -460,9 +460,12 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
   
   const selectedValue = ui.cajaVentaObjeto.value;
   const selectedOption = ui.cajaVentaObjeto.options[ui.cajaVentaObjeto.selectedIndex];
+  const nonStockItems = new Set(["BONO AGUA"]);
+  const selectedKey = String(selectedValue || "").trim().toUpperCase();
+  const isNonStockItem = nonStockItems.has(selectedKey);
   const shouldTrackStock = selectedValue === "OTRO"
     ? true
-    : selectedOption?.dataset.trackStock !== "false";
+    : !isNonStockItem && selectedOption?.dataset.trackStock !== "false";
   let item = selectedValue;
   
   // Si es OTRO, usar el nombre personalizado
@@ -501,8 +504,12 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
       });
       inventoryConsumed = true;
     } catch (error) {
-      alert(error?.message || "No se pudo descontar stock. Revisa inventario.");
-      return;
+      const message = String(error?.message || "");
+      const isStockError = message.toLowerCase().includes("stock insuficiente");
+      if (!isStockError) {
+        alert(error?.message || "No se pudo descontar stock. Revisa inventario.");
+        return;
+      }
     }
   }
   
