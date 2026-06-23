@@ -277,7 +277,6 @@ async function populateItemFilter() {
   
   let html = '<option value="ALL">Todos los objetos</option>';
   items.forEach(item => {
-ui.cajaPeriodDate?.addEventListener("change", refreshCajaList);
     html += `<option value="${item}">${item}</option>`;
   });
   
