@@ -705,6 +705,7 @@
                     <th>Producto</th>
                     <th>Cantidad</th>
                     <th>Importe (€)</th>
+                    <th>Pago</th>
                   </tr>
                 </thead>
                 <tbody id="cajaList"></tbody>
@@ -735,6 +736,13 @@
                     <option value="BANGS" data-price="1">BANGS - 1,00€</option>
                     <option value="TAPES" data-price="2">TAPES - 2,00€</option>
                     <option value="OTRO" data-price="0">Otro (personalizado)</option>
+                  </select>
+                </label>
+                <label>
+                  Pago
+                  <select id="cajaVentaMetodo" required>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Tarjeta">Tarjeta</option>
                   </select>
                 </label>
                 <label id="cajaVentaObjetoOtroLabel" class="hidden">

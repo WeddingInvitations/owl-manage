@@ -540,6 +540,7 @@ ui.cajaVentaPrecioUnitario = $("cajaVentaPrecioUnitario");
 ui.cajaVentaPrecioUnitarioLabel = $("cajaVentaPrecioUnitarioLabel");
 ui.cajaVentaCantidad = $("cajaVentaCantidad");
 ui.cajaVentaImporte = $("cajaVentaImporte");
+ui.cajaVentaMetodo = $("cajaVentaMetodo");
 ui.cajaFilterPeriod = $("cajaPeriodFilter");
 ui.cajaPeriodDate = $("cajaPeriodDate");
 ui.cajaTodayBtn = $("cajaTodayBtn");

@@ -170,8 +170,9 @@ function renderSalesList(sales) {
     const item = sale.item || sale.objeto || '';
     const amount = sale.amount ?? sale.cantidad ?? '';
     const importe = sale.importe !== undefined ? Number(sale.importe).toFixed(2) : '';
+    const method = sale.paymentMethod || sale.method || 'Efectivo';
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${date}</td><td>${item}</td><td>${amount}</td><td>${importe}</td>`;
+    tr.innerHTML = `<td>${date}</td><td>${item}</td><td>${amount}</td><td>${importe}</td><td>${method}</td>`;
     ui.cajaList.appendChild(tr);
   });
 }
@@ -216,12 +217,13 @@ async function refreshCajaList() {
 }
 
 // Añadir venta
-export async function addSale({ item, amount, date, importe, userId }) {
+export async function addSale({ item, amount, date, importe, paymentMethod, userId }) {
   await addDoc(collection(db, "sales"), {
     item,
     amount: Number(amount),
     date,
     importe: Number(importe),
+    paymentMethod: paymentMethod || "Efectivo",
     createdAt: serverTimestamp(),
     createdBy: userId || null,
   });
@@ -485,6 +487,7 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
   const amount = Number(ui.cajaVentaCantidad.value);
   const date = ui.cajaVentaFecha.value;
   const importe = parseFloat(ui.cajaVentaImporte.value);
+  const paymentMethod = ui.cajaVentaMetodo?.value || "Efectivo";
 
   if (!Number.isFinite(amount) || amount <= 0) {
     alert("La cantidad debe ser mayor que 0");
@@ -514,7 +517,7 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
   
   try {
     // Guardar la venta
-    await addSale({ item, amount, date, importe, userId: auth.currentUser?.uid });
+    await addSale({ item, amount, date, importe, paymentMethod, userId: auth.currentUser?.uid });
     
     // Crear automáticamente un ingreso con el concepto "Ventas Caja"
     await addPayment("Ventas Caja", importe, date, auth.currentUser?.uid);
