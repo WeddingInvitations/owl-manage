@@ -461,7 +461,7 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
   
   const selectedValue = ui.cajaVentaObjeto.value;
   const selectedOption = ui.cajaVentaObjeto.options[ui.cajaVentaObjeto.selectedIndex];
-  const nonStockItems = new Set(["BONO AGUA"]);
+  const nonStockItems = new Set(["BONO AGUA", "BONO MONSTER"]);
   const selectedKey = String(selectedValue || "").trim().toUpperCase();
   const isNonStockItem = nonStockItems.has(selectedKey);
   const shouldTrackStock = selectedValue === "OTRO"
