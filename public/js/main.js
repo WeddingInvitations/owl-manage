@@ -6850,8 +6850,8 @@ function getAvailableMonths() {
   return Array.from(monthsSet).sort().reverse();
 }
 
-// Renderizar el selector de meses
-function renderMonthlySummaryMonths() {
+// Renderizar el selector de meses del resumen de clases
+function renderClassMonthlySummaryMonths() {
   const monthSelectElement = ui.monthlySummaryMonth || document.getElementById('monthlySummaryMonth');
   
   if (!monthSelectElement) {
@@ -6906,7 +6906,7 @@ function renderMonthlySummaryMonths() {
 }
 
 // Renderizar resumen mensual de clases
-function renderMonthlySummary() {
+function renderClassMonthlySummary() {
   const tablebody = ui.monthlySummaryTableBody || document.getElementById('monthlySummaryTableBody');
   
   if (!tablebody) {
@@ -7518,8 +7518,8 @@ async function refreshClassesView() {
   await loadAllAssignmentsData(); // Cargar todas las asignaciones para resumen mensual
   renderWeekOptions();
   renderScheduleTable();
-  renderMonthlySummaryMonths();
-  renderMonthlySummary();
+  renderClassMonthlySummaryMonths();
+  renderClassMonthlySummary();
   renderTeachersList();
   console.log('Classes view refreshed');
 }
@@ -7574,7 +7574,7 @@ on(ui.currentWeekBtn, "click", async () => {
 on(ui.monthlySummaryMonth, "change", (event) => {
   selectedMonthlySummaryMonth = event.target.value;
   console.log('Mes seleccionado en resumen:', selectedMonthlySummaryMonth);
-  renderMonthlySummary();
+  renderClassMonthlySummary();
 });
 
 on(ui.addTeacherBtn, "click", () => {
