@@ -705,6 +705,7 @@
                     <th>Producto</th>
                     <th>Cantidad</th>
                     <th>Importe (€)</th>
+                    <th>Pago</th>
                   </tr>
                 </thead>
                 <tbody id="cajaList"></tbody>
@@ -729,11 +730,20 @@
                   Producto
                   <select id="cajaVentaObjeto" required>
                     <option value="">Seleccionar producto...</option>
-                    <option value="AGUA" data-price="0.50">AGUA - 0,50€</option>
+                    <option value="AGUA" data-price="1">AGUA - 1,00€</option>
+                    <option value="BONO AGUA" data-price="18" data-track-stock="false">BONO AGUA - 18,00€</option>
+                    <option value="BONO MONSTER" data-price="18" data-track-stock="false">BONO MONSTER - 18,00€</option>
                     <option value="MONSTER" data-price="2">MONSTER - 2,00€</option>
                     <option value="BANGS" data-price="1">BANGS - 1,00€</option>
                     <option value="TAPES" data-price="2">TAPES - 2,00€</option>
                     <option value="OTRO" data-price="0">Otro (personalizado)</option>
+                  </select>
+                </label>
+                <label>
+                  Pago
+                  <select id="cajaVentaMetodo" required>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Tarjeta">Tarjeta</option>
                   </select>
                 </label>
                 <label id="cajaVentaObjetoOtroLabel" class="hidden">
@@ -2654,7 +2664,6 @@
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
     <script type="module" src="js/main.js?v=20260609a" defer></script>
-    <script type="module" src="js/caja.js?v=20250401" defer></script>
     
     <!-- Script de debugging simplificado -->
     <script>

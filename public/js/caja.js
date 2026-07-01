@@ -170,8 +170,9 @@ function renderSalesList(sales) {
     const item = sale.item || sale.objeto || '';
     const amount = sale.amount ?? sale.cantidad ?? '';
     const importe = sale.importe !== undefined ? Number(sale.importe).toFixed(2) : '';
+    const method = sale.paymentMethod || sale.method || 'Efectivo';
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${date}</td><td>${item}</td><td>${amount}</td><td>${importe}</td>`;
+    tr.innerHTML = `<td>${date}</td><td>${item}</td><td>${amount}</td><td>${importe}</td><td>${method}</td>`;
     ui.cajaList.appendChild(tr);
   });
 }
@@ -216,12 +217,13 @@ async function refreshCajaList() {
 }
 
 // Añadir venta
-export async function addSale({ item, amount, date, importe, userId }) {
+export async function addSale({ item, amount, date, importe, paymentMethod, userId }) {
   await addDoc(collection(db, "sales"), {
     item,
     amount: Number(amount),
     date,
     importe: Number(importe),
+    paymentMethod: paymentMethod || "Efectivo",
     createdAt: serverTimestamp(),
     createdBy: userId || null,
   });
@@ -277,7 +279,6 @@ async function populateItemFilter() {
   
   let html = '<option value="ALL">Todos los objetos</option>';
   items.forEach(item => {
-ui.cajaPeriodDate?.addEventListener("change", refreshCajaList);
     html += `<option value="${item}">${item}</option>`;
   });
   
@@ -459,6 +460,13 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   
   const selectedValue = ui.cajaVentaObjeto.value;
+  const selectedOption = ui.cajaVentaObjeto.options[ui.cajaVentaObjeto.selectedIndex];
+  const nonStockItems = new Set(["BONO AGUA", "BONO MONSTER"]);
+  const selectedKey = String(selectedValue || "").trim().toUpperCase();
+  const isNonStockItem = nonStockItems.has(selectedKey);
+  const shouldTrackStock = selectedValue === "OTRO"
+    ? true
+    : !isNonStockItem && selectedOption?.dataset.trackStock !== "false";
   let item = selectedValue;
   
   // Si es OTRO, usar el nombre personalizado
@@ -479,6 +487,7 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
   const amount = Number(ui.cajaVentaCantidad.value);
   const date = ui.cajaVentaFecha.value;
   const importe = parseFloat(ui.cajaVentaImporte.value);
+  const paymentMethod = ui.cajaVentaMetodo?.value || "Efectivo";
 
   if (!Number.isFinite(amount) || amount <= 0) {
     alert("La cantidad debe ser mayor que 0");
@@ -486,23 +495,29 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
   }
 
   let inventoryConsumed = false;
-  try {
-    await consumeInventoryStock({
-      itemName: item,
-      units: amount,
-      date,
-      note: "Venta en caja",
-      userId: auth.currentUser?.uid,
-    });
-    inventoryConsumed = true;
-  } catch (error) {
-    alert(error?.message || "No se pudo descontar stock. Revisa inventario.");
-    return;
+  if (shouldTrackStock) {
+    try {
+      await consumeInventoryStock({
+        itemName: item,
+        units: amount,
+        date,
+        note: "Venta en caja",
+        userId: auth.currentUser?.uid,
+      });
+      inventoryConsumed = true;
+    } catch (error) {
+      const message = String(error?.message || "");
+      const isStockError = message.toLowerCase().includes("stock insuficiente");
+      if (!isStockError) {
+        alert(error?.message || "No se pudo descontar stock. Revisa inventario.");
+        return;
+      }
+    }
   }
   
   try {
     // Guardar la venta
-    await addSale({ item, amount, date, importe, userId: auth.currentUser?.uid });
+    await addSale({ item, amount, date, importe, paymentMethod, userId: auth.currentUser?.uid });
     
     // Crear automáticamente un ingreso con el concepto "Ventas Caja"
     await addPayment("Ventas Caja", importe, date, auth.currentUser?.uid);
