@@ -6830,14 +6830,18 @@ async function loadAllAssignmentsData() {
 // Obtener meses únicos disponibles de las asignaciones
 function getAvailableMonths() {
   const monthsSet = new Set();
-  allAssignmentsData.forEach(assignment => {
-    if (assignment.date) {
-      const month = assignment.date.substring(0, 7); // Formato YYYY-MM
-      monthsSet.add(month);
-    }
-  });
   
-  // Agregar el mes actual si no está presente
+  // Agregar meses de las asignaciones existentes
+  if (allAssignmentsData && allAssignmentsData.length > 0) {
+    allAssignmentsData.forEach(assignment => {
+      if (assignment.date) {
+        const month = assignment.date.substring(0, 7); // Formato YYYY-MM
+        monthsSet.add(month);
+      }
+    });
+  }
+  
+  // Agregar el mes actual siempre
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   monthsSet.add(currentMonth);
@@ -6848,56 +6852,85 @@ function getAvailableMonths() {
 
 // Renderizar el selector de meses
 function renderMonthlySummaryMonths() {
-  if (!ui.monthlySummaryMonth) {
-    console.warn('monthlySummaryMonth element not found');
+  const monthSelectElement = ui.monthlySummaryMonth || document.getElementById('monthlySummaryMonth');
+  
+  if (!monthSelectElement) {
+    console.error('monthlySummaryMonth element not found in DOM');
     return;
   }
   
-  const months = getAvailableMonths();
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   
+  // Inicializar mes seleccionado si no está definido
   if (!selectedMonthlySummaryMonth) {
     selectedMonthlySummaryMonth = currentMonth;
   }
+  
+  const months = getAvailableMonths();
+  console.log('Meses disponibles:', months, 'Mes seleccionado:', selectedMonthlySummaryMonth);
   
   const monthFormatter = new Intl.DateTimeFormat("es-ES", {
     month: "long",
     year: "numeric"
   });
   
-  ui.monthlySummaryMonth.innerHTML = "";
+  monthSelectElement.innerHTML = "";
   
+  // Crear opción para cada mes disponible
   months.forEach(month => {
     const [year, monthNum] = month.split('-');
-    const date = new Date(`${year}-${monthNum}-01`);
+    const date = new Date(`${year}-${monthNum}-01T00:00:00`);
     const label = monthFormatter.format(date);
+    const optionText = label.charAt(0).toUpperCase() + label.slice(1);
+    
     const option = document.createElement("option");
     option.value = month;
-    option.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+    option.textContent = optionText;
+    
+    // Seleccionar el mes correspondiente
     if (month === selectedMonthlySummaryMonth) {
       option.selected = true;
     }
-    ui.monthlySummaryMonth.appendChild(option);
+    
+    monthSelectElement.appendChild(option);
   });
+  
+  // Asegurar que el select tenga un valor seleccionado
+  if (!monthSelectElement.value) {
+    monthSelectElement.value = currentMonth;
+    selectedMonthlySummaryMonth = currentMonth;
+  }
+  
+  console.log('Selector de meses renderizado. Valor actual:', monthSelectElement.value);
 }
 
 // Renderizar resumen mensual de clases
 function renderMonthlySummary() {
-  if (!ui.monthlySummaryTableBody) {
-    console.warn('monthlySummaryTableBody element not found');
+  const tablebody = ui.monthlySummaryTableBody || document.getElementById('monthlySummaryTableBody');
+  
+  if (!tablebody) {
+    console.error('monthlySummaryTableBody element not found');
     return;
   }
   
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  
+  // Inicializar mes seleccionado si no está definido
   if (!selectedMonthlySummaryMonth) {
-    selectedMonthlySummaryMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    selectedMonthlySummaryMonth = currentMonth;
   }
+  
+  console.log('Renderizando resumen para mes:', selectedMonthlySummaryMonth);
   
   // Filtrar asignaciones por mes
   const monthAssignments = allAssignmentsData.filter(assignment => {
     if (!assignment.date) return false;
     return assignment.date.substring(0, 7) === selectedMonthlySummaryMonth;
   });
+  
+  console.log('Asignaciones para el mes:', monthAssignments.length);
   
   // Contar clases por profesor
   const classCountByTeacher = {};
@@ -6910,13 +6943,14 @@ function renderMonthlySummary() {
     }
   });
   
-  // Renderizar tabla
-  ui.monthlySummaryTableBody.innerHTML = "";
+  // Limpiar tabla
+  tablebody.innerHTML = "";
   
+  // Si no hay clases o no hay profesores
   if (Object.keys(classCountByTeacher).length === 0) {
     const tr = document.createElement("tr");
     tr.innerHTML = '<td colspan="2" style="text-align: center; padding: 20px;">No hay clases asignadas en este mes</td>';
-    ui.monthlySummaryTableBody.appendChild(tr);
+    tablebody.appendChild(tr);
     return;
   }
   
@@ -6924,8 +6958,8 @@ function renderMonthlySummary() {
   const sortedTeacherIds = Object.keys(classCountByTeacher).sort((a, b) => {
     const teacherA = teachersData.find(t => t.id === a);
     const teacherB = teachersData.find(t => t.id === b);
-    const nameA = (teacherA?.name || '').toLowerCase();
-    const nameB = (teacherB?.name || '').toLowerCase();
+    const nameA = (teacherA?.name || 'Desconocido').toLowerCase();
+    const nameB = (teacherB?.name || 'Desconocido').toLowerCase();
     return nameA.localeCompare(nameB);
   });
   
@@ -6939,7 +6973,7 @@ function renderMonthlySummary() {
       <td>${teacher?.name || 'Desconocido'}</td>
       <td style="text-align: center;"><strong>${classCount}</strong></td>
     `;
-    ui.monthlySummaryTableBody.appendChild(tr);
+    tablebody.appendChild(tr);
   });
 }
 
