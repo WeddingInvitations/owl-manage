@@ -2093,6 +2093,31 @@
             </div>
           </div>
 
+          <!-- Resumen Mensual de Clases -->
+          <div class="card">
+            <div class="detail-header">
+              <h3>📊 Resumen Mensual de Clases por Profesor</h3>
+              <div class="filter-row">
+                <label for="monthlySummaryMonth">Mes:</label>
+                <select id="monthlySummaryMonth" class="month-select"></select>
+              </div>
+            </div>
+            
+            <div class="table-container">
+              <table class="table monthly-summary-table">
+                <thead>
+                  <tr>
+                    <th>Profesor</th>
+                    <th>Número de Clases</th>
+                  </tr>
+                </thead>
+                <tbody id="monthlySummaryTableBody">
+                  <!-- Resumen generado dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <!-- Lista de profesores -->
           <div class="card">
             <div class="detail-header">

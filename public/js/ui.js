@@ -298,6 +298,10 @@ export const ui = {
   teacherStatusFilter: $("teacherStatusFilter"),
   teacherList: $("teacherList"),
   
+  // Resumen mensual de clases
+  monthlySummaryMonth: $("monthlySummaryMonth"),
+  monthlySummaryTableBody: $("monthlySummaryTableBody"),
+  
   // Modales de clases
   teacherModal: $("teacherModal"),
   teacherModalTitle: $("teacherModalTitle"),
