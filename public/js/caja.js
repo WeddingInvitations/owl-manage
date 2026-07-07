@@ -12,6 +12,7 @@ import { ui } from "./ui.js";
 import { auth } from "./firebase.js";
 import {
   addPayment,
+  addOrUpdateCajaPayment,
   addInventoryStock,
   consumeInventoryStock,
   getInventoryItems,
@@ -519,8 +520,8 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
     // Guardar la venta
     await addSale({ item, amount, date, importe, paymentMethod, userId: auth.currentUser?.uid });
     
-    // Crear automáticamente un ingreso con el concepto "Ventas Caja"
-    await addPayment("Ventas Caja", importe, date, auth.currentUser?.uid);
+    // Crear o actualizar el ingreso de "Ventas Caja" acumulando el monto por día
+    await addOrUpdateCajaPayment(importe, date, auth.currentUser?.uid);
   } catch (error) {
     if (inventoryConsumed) {
       await addInventoryStock({

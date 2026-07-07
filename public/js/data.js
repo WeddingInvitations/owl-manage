@@ -93,6 +93,43 @@ export async function getPayment(paymentId) {
   return null;
 }
 
+// Función especial para pagos de caja: busca un pago existente de "Ventas Caja" 
+// para la fecha dada y lo actualiza sumando el monto, o crea uno nuevo si no existe
+export async function addOrUpdateCajaPayment(amount, date, userId) {
+  const concept = "Ventas Caja";
+  
+  // Buscar si ya existe un pago de "Ventas Caja" para esta fecha
+  const q = query(
+    collection(db, "payments"),
+    where("concept", "==", concept),
+    where("date", "==", date)
+  );
+  
+  const snapshot = await getDocs(q);
+  
+  if (!snapshot.empty) {
+    // Ya existe un pago de caja para esta fecha, actualizarlo
+    const existingDoc = snapshot.docs[0];
+    const existingData = existingDoc.data();
+    const newAmount = Number(existingData.amount || 0) + Number(amount);
+    
+    await updateDoc(doc(db, "payments", existingDoc.id), {
+      amount: newAmount,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+  } else {
+    // No existe, crear uno nuevo
+    await addDoc(collection(db, "payments"), {
+      concept,
+      amount: Number(amount),
+      date,
+      createdAt: serverTimestamp(),
+      createdBy: userId || null,
+    });
+  }
+}
+
 export async function addExpense(concept, amount, date, userId) {
   await addDoc(collection(db, "expenses"), {
     concept,
