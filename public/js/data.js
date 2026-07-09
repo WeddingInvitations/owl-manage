@@ -326,6 +326,10 @@ export async function getInventoryMovements(maxItems = 100) {
   return snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
 }
 
+export async function deleteInventoryItem(itemId) {
+  await deleteDoc(doc(db, "inventory", itemId));
+}
+
 export async function openCheckin(userId, userEmail, userName = "", deviceInfo = {}) {
   const docRef = await addDoc(collection(db, "checkins"), {
     userId,

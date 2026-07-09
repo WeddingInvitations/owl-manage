@@ -17,6 +17,7 @@ import {
   consumeInventoryStock,
   getInventoryItems,
   getInventoryMovements,
+  deleteInventoryItem,
 } from "./data.js";
 
 let inventoryInitialized = false;
@@ -305,7 +306,7 @@ function renderInventoryList(items) {
   ui.inventoryList.innerHTML = "";
   if (!items.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = '<td colspan="3" class="muted">No hay productos en inventario.</td>';
+    tr.innerHTML = '<td colspan="4" class="muted">No hay productos en inventario.</td>';
     ui.inventoryList.appendChild(tr);
     return;
   }
@@ -318,11 +319,35 @@ function renderInventoryList(items) {
       ? updatedAt.toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })
       : "-";
 
-    tr.innerHTML = `
-      <td>${item.name || "-"}</td>
-      <td><span class="inventory-stock-pill ${stock <= 5 ? "low" : "ok"}">${stock}</span></td>
-      <td>${updatedLabel}</td>
-    `;
+    const productNameCell = document.createElement("td");
+    productNameCell.textContent = item.name || "-";
+    tr.appendChild(productNameCell);
+
+    const stockCell = document.createElement("td");
+    const stockPill = document.createElement("span");
+    stockPill.className = `inventory-stock-pill ${stock <= 5 ? "low" : "ok"}`;
+    stockPill.textContent = stock;
+    stockCell.appendChild(stockPill);
+    tr.appendChild(stockCell);
+
+    const updatedCell = document.createElement("td");
+    updatedCell.textContent = updatedLabel;
+    tr.appendChild(updatedCell);
+
+    const actionsCell = document.createElement("td");
+    const actionsDiv = document.createElement("div");
+    actionsDiv.className = "record-actions";
+    
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "btn-icon btn-delete";
+    deleteBtn.innerHTML = "🗑️";
+    deleteBtn.title = "Eliminar producto";
+    deleteBtn.onclick = () => handleDeleteInventoryItem(item.id, item.name);
+    
+    actionsDiv.appendChild(deleteBtn);
+    actionsCell.appendChild(actionsDiv);
+    tr.appendChild(actionsCell);
+
     ui.inventoryList.appendChild(tr);
   });
 }
@@ -385,6 +410,45 @@ async function refreshInventoryView() {
   updateInventoryProductOptions();
   renderInventoryList(items);
   renderInventoryMovements(movements);
+}
+
+function handleDeleteInventoryItem(itemId, itemName) {
+  if (!ui.inventoryDeleteModal || !ui.inventoryDeleteInfo || !ui.inventoryDeleteId) return;
+  
+  ui.inventoryDeleteId.value = itemId;
+  ui.inventoryDeleteInfo.textContent = `Producto: ${itemName}`;
+  ui.inventoryDeleteModal.classList.remove("hidden");
+}
+
+if (ui.inventoryDeleteCancel) {
+  ui.inventoryDeleteCancel.addEventListener("click", () => {
+    if (ui.inventoryDeleteModal) {
+      ui.inventoryDeleteModal.classList.add("hidden");
+    }
+  });
+}
+
+if (ui.inventoryDeleteConfirm) {
+  ui.inventoryDeleteConfirm.addEventListener("click", async () => {
+    const itemId = ui.inventoryDeleteId?.value;
+    if (!itemId) return;
+
+    try {
+      await deleteInventoryItem(itemId);
+      if (ui.inventoryDeleteModal) {
+        ui.inventoryDeleteModal.classList.add("hidden");
+      }
+      await refreshInventoryView();
+      if (ui.inventoryStatus) {
+        ui.inventoryStatus.textContent = "Producto eliminado correctamente";
+        setTimeout(() => {
+          if (ui.inventoryStatus) ui.inventoryStatus.textContent = "";
+        }, 3000);
+      }
+    } catch (error) {
+      alert(error?.message || "No se pudo eliminar el producto");
+    }
+  });
 }
 
 // Función para calcular el importe basado en producto y cantidad

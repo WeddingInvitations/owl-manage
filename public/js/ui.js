@@ -565,6 +565,11 @@ ui.inventoryStatus = $("inventoryStatus");
 ui.inventoryRefreshBtn = $("inventoryRefreshBtn");
 ui.inventoryList = $("inventoryList");
 ui.inventoryMovementsList = $("inventoryMovementsList");
+ui.inventoryDeleteModal = $("inventoryDeleteModal");
+ui.inventoryDeleteInfo = $("inventoryDeleteInfo");
+ui.inventoryDeleteId = $("inventoryDeleteId");
+ui.inventoryDeleteConfirm = $("inventoryDeleteConfirm");
+ui.inventoryDeleteCancel = $("inventoryDeleteCancel");
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {

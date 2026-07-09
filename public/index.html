@@ -809,6 +809,7 @@
                     <th>Producto</th>
                     <th>Stock</th>
                     <th>Última actualización</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody id="inventoryList"></tbody>
@@ -832,6 +833,21 @@
                 </thead>
                 <tbody id="inventoryMovementsList"></tbody>
               </table>
+            </div>
+          </div>
+
+          <div id="inventoryDeleteModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Eliminar producto del inventario</h3>
+              </div>
+              <p>¿Estás seguro de que quieres eliminar este producto del inventario?</p>
+              <p id="inventoryDeleteInfo" class="muted"></p>
+              <input id="inventoryDeleteId" type="hidden" />
+              <div class="btn-group">
+                <button id="inventoryDeleteConfirm" class="btn danger" type="button">Eliminar</button>
+                <button id="inventoryDeleteCancel" class="btn ghost" type="button">Cancelar</button>
+              </div>
             </div>
           </div>
         </section>
