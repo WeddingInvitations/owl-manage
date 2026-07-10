@@ -96,17 +96,16 @@ exports.wodBusterProxy = functions.https.onCall(async (data, context) => {
     console.log(`WodBuster Proxy: ${method} ${url}`);
     console.log('API Key (primeros 10 chars):', WODBUSTER_CONFIG.apiKey.substring(0, 10) + '...');
     
-    // Probar con formato "Authorization: API Key {apikey}"
-    const authHeader = `API Key ${WODBUSTER_CONFIG.apiKey}`;
-    console.log('Authorization header format:', authHeader.substring(0, 20) + '...');
-    
+    // Probar múltiples formatos de autenticación comunes
     const response = await fetch(url, {
       method: method,
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
+        'API_ACCESS_KEY': WODBUSTER_CONFIG.apiKey,
+        'Accept': 'application/json'
       },
     });
+    
+    console.log('Headers enviados: X-API-Key y API-Key');
 
     console.log('WodBuster Response Status:', response.status, response.statusText);
     

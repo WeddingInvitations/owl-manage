@@ -49,11 +49,13 @@ function renderWodBusterUsers(users) {
     statusCell.appendChild(statusBadge);
     tr.appendChild(statusCell);
     
-    // Fecha de registro (usar fijarPeriodoDesde o fechaBono como aproximación)
+    // Fecha de pago vigente (pagadoHasta solo mes y año)
     const dateCell = document.createElement("td");
-    if (user.fijarPeriodoDesde || user.fechaBono) {
-      const date = new Date(user.fijarPeriodoDesde || user.fechaBono);
-      dateCell.textContent = date.toLocaleDateString("es-ES");
+    if (user.pagadoHasta) {
+      const date = new Date(user.pagadoHasta);
+      // Formato: "julio 2026"
+      const monthYear = date.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+      dateCell.textContent = monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
     } else {
       dateCell.textContent = "-";
     }
@@ -85,14 +87,39 @@ async function refreshWodBusterUsers() {
     }
     
     // Los datos de usuarios están en response.Data según la documentación
-    const userList = response.Data || [];
+    const allUsers = response.Data || [];
     
-    console.log('Lista de usuarios extraída:', userList);
+    // Calcular el último día del mes actual
+    const today = new Date();
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    lastDayOfMonth.setHours(0, 0, 0, 0); // Establecer a medianoche
     
-    renderWodBusterUsers(userList);
+    console.log('Último día del mes actual:', lastDayOfMonth.toISOString());
+    
+    // Filtrar usuarios activos Y con pago vigente hasta fin de mes
+    const activeUsers = allUsers.filter(user => {
+      // Debe estar activo
+      if (user.esAlumno !== true) return false;
+      
+      // Debe tener pagadoHasta
+      if (!user.pagadoHasta) return false;
+      
+      // Debe tener una tarifa asignada (idTarifa no null)
+      if (user.idTarifa === null || user.idTarifa === undefined) return false;
+      
+      // Convertir pagadoHasta a Date
+      const pagadoHasta = new Date(user.pagadoHasta);
+      
+      // pagadoHasta debe ser >= último día del mes
+      return pagadoHasta >= lastDayOfMonth;
+    });
+    
+    console.log(`Total usuarios: ${allUsers.length}, Usuarios activos y con pago vigente: ${activeUsers.length}`);
+    
+    renderWodBusterUsers(activeUsers);
     
     if (ui.wodBusterStatus) {
-      ui.wodBusterStatus.textContent = `Última actualización: ${new Date().toLocaleString("es-ES")}`;
+      ui.wodBusterStatus.textContent = `Última actualización: ${new Date().toLocaleString("es-ES")} - ${activeUsers.length} usuarios activos con pago vigente`;
     }
   } catch (error) {
     console.error("Error cargando usuarios de WodBuster:", error);
