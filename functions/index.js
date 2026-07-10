@@ -74,3 +74,81 @@ exports.createUserWithRole = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+// Proxy para la API de WodBuster (solución CORS)
+exports.wodBusterProxy = functions.https.onCall(async (data, context) => {
+  // Verificar autenticación
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Autenticación requerida");
+  }
+
+  const endpoint = data.endpoint || '/api/users/Get';
+  const method = data.method || 'GET';
+  
+  const WODBUSTER_CONFIG = {
+    apiKey: 'abc97d4d-2378-4d97-b39e-90b7ce54522c',
+    baseUrl: 'https://owl.wodbuster.com',
+  };
+
+  const url = `${WODBUSTER_CONFIG.baseUrl}${endpoint}`;
+
+  try {
+    console.log(`WodBuster Proxy: ${method} ${url}`);
+    console.log('API Key (primeros 10 chars):', WODBUSTER_CONFIG.apiKey.substring(0, 10) + '...');
+    
+    // Probar con formato "Authorization: API Key {apikey}"
+    const authHeader = `API Key ${WODBUSTER_CONFIG.apiKey}`;
+    console.log('Authorization header format:', authHeader.substring(0, 20) + '...');
+    
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+      },
+    });
+
+    console.log('WodBuster Response Status:', response.status, response.statusText);
+    
+    // Leer la respuesta siempre (incluso si hay error)
+    const responseText = await response.text();
+    console.log('WodBuster Response Body:', responseText);
+    
+    if (!response.ok) {
+      // Si la respuesta es JSON con error, parsearlo
+      let errorData;
+      try {
+        errorData = JSON.parse(responseText);
+      } catch (e) {
+        errorData = { message: responseText || response.statusText };
+      }
+      
+      console.error(`WodBuster API Error ${response.status}:`, errorData);
+      
+      // Retornar el error de forma estructurada para el cliente
+      return {
+        EsOk: false,
+        errorCode: response.status,
+        errorMessage: errorData.errorMessage || errorData.message || errorData.error || response.statusText,
+        errorDetails: errorData
+      };
+    }
+
+    // Parsear respuesta exitosa
+    const responseData = JSON.parse(responseText);
+    console.log('WodBuster API Success:', responseData);
+    
+    return responseData;
+  } catch (error) {
+    console.error('Error en proxy WodBuster:', error);
+    
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    
+    throw new functions.https.HttpsError(
+      "internal",
+      `Error al conectar con WodBuster: ${error.message}`
+    );
+  }
+});

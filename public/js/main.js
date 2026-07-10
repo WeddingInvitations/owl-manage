@@ -15,7 +15,8 @@ const viewsInitialized = {
   cajaView: false,
   inventoryView: false,
   paymentsView: false,
-  expensesView: false
+  expensesView: false,
+  wodBusterView: false
 };
 
 // OwlManage MVP
@@ -34,6 +35,7 @@ import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { initializeCaja, initializeInventory } from "./caja.js?v=20260622a";
+import { initializeWodBuster } from "./wodbuster.js";
 import {
   addPayment,
   addExpense,
@@ -3481,6 +3483,11 @@ async function initializeViewIfNeeded(viewId) {
     case "expensesView":
       setDefaultMonthForPaymentExpense();
       viewsInitialized.expensesView = true;
+      break;
+      
+    case "wodBusterView":
+      await initializeWodBuster();
+      viewsInitialized.wodBusterView = true;
       break;
   }
 }

@@ -16,6 +16,8 @@ import {
   runTransaction,
   limit,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+import { functions } from "./firebase.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-functions.js";
 
 // --- Pagos empleados ---
 export async function addEmployeePayment({ name, amount, method, date, userId }) {
@@ -1888,4 +1890,43 @@ export async function importClassesFromCSV(csvContent, userId) {
   
   console.log(`Importadas ${results.length} clases:`, classes);
   return results.length;
+}
+
+// ========== WODBUSTER API INTEGRATION ==========
+
+// Configuración de la API de WodBuster (usada por Cloud Function)
+const WODBUSTER_CONFIG = {
+  apiKey: 'abc97d4d-2378-4d97-b39e-90b7ce54522c',
+  baseUrl: 'https://owl.wodbuster.com',
+};
+
+// Obtener usuarios de WodBuster usando Cloud Function como proxy (solución CORS)
+export async function getWodBusterUsers() {
+  try {
+    console.log('Llamando a Cloud Function wodBusterProxy...');
+    
+    const wodBusterProxy = httpsCallable(functions, 'wodBusterProxy');
+    const result = await wodBusterProxy({ 
+      endpoint: '/api/users/Get',
+      method: 'GET'
+    });
+    
+    console.log('Respuesta de Cloud Function:', result.data);
+    return result.data;
+  } catch (error) {
+    console.error('Error llamando a Cloud Function WodBuster:', error);
+    throw new Error('No se pudieron obtener los usuarios de WodBuster: ' + error.message);
+  }
+}
+
+// Configurar la URL base de WodBuster (para cambiarla si es necesaria)
+export function setWodBusterBaseUrl(newBaseUrl) {
+  WODBUSTER_CONFIG.baseUrl = newBaseUrl;
+  console.log('NOTA: La URL base debe actualizarse también en la Cloud Function');
+}
+
+// Configurar la API Key de WodBuster (para cambiarla si es necesaria)
+export function setWodBusterApiKey(newApiKey) {
+  WODBUSTER_CONFIG.apiKey = newApiKey;
+  console.log('NOTA: La API Key debe actualizarse también en la Cloud Function');
 }

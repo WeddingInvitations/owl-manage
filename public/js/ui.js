@@ -581,6 +581,18 @@ ui.inventoryRemoveStatus = $("inventoryRemoveStatus");
 ui.inventoryRemoveConfirm = $("inventoryRemoveConfirm");
 ui.inventoryRemoveCancel = $("inventoryRemoveCancel");
 
+// WodBuster
+ui.wodBusterView = $("wodBusterView");
+ui.wodBusterRefreshBtn = $("wodBusterRefreshBtn");
+ui.wodBusterStatus = $("wodBusterStatus");
+ui.wodBusterUsersList = $("wodBusterUsersList");
+ui.wodBusterUsersCount = $("wodBusterUsersCount");
+ui.wodBusterConfigModal = $("wodBusterConfigModal");
+ui.wodBusterBaseUrl = $("wodBusterBaseUrl");
+ui.wodBusterApiKey = $("wodBusterApiKey");
+ui.wodBusterConfigSave = $("wodBusterConfigSave");
+ui.wodBusterConfigCancel = $("wodBusterConfigCancel");
+
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {
     if (currentUi.logoutBtn) {
