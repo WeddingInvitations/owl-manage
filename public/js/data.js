@@ -309,6 +309,21 @@ export async function consumeInventoryStock({ itemName, units, date, note, userI
   });
 }
 
+export async function removeInventoryStock({ itemName, units, date, note, userId }) {
+  const quantity = Number(units);
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    throw new Error("Las unidades a restar deben ser mayores que 0");
+  }
+  return adjustInventoryStock({
+    itemName,
+    quantityDelta: -quantity,
+    date,
+    note,
+    movementType: "REMOVAL",
+    userId,
+  });
+}
+
 export async function getInventoryItems() {
   const snap = await getDocs(collection(db, "inventory"));
   const items = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
