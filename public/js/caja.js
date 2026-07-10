@@ -15,6 +15,7 @@ import {
   addOrUpdateCajaPayment,
   addInventoryStock,
   consumeInventoryStock,
+  removeInventoryStock,
   getInventoryItems,
   getInventoryMovements,
   deleteInventoryItem,
@@ -338,12 +339,19 @@ function renderInventoryList(items) {
     const actionsDiv = document.createElement("div");
     actionsDiv.className = "record-actions";
     
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "btn-icon";
+    removeBtn.innerHTML = "➖";
+    removeBtn.title = "Restar unidades";
+    removeBtn.onclick = () => handleRemoveInventoryUnits(item.id, item.name, stock);
+    
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "btn-icon btn-delete";
     deleteBtn.innerHTML = "🗑️";
     deleteBtn.title = "Eliminar producto";
     deleteBtn.onclick = () => handleDeleteInventoryItem(item.id, item.name);
     
+    actionsDiv.appendChild(removeBtn);
     actionsDiv.appendChild(deleteBtn);
     actionsCell.appendChild(actionsDiv);
     tr.appendChild(actionsCell);
@@ -412,12 +420,83 @@ async function refreshInventoryView() {
   renderInventoryMovements(movements);
 }
 
+function handleRemoveInventoryUnits(itemId, itemName, currentStock) {
+  if (!ui.inventoryRemoveModal || !ui.inventoryRemoveInfo || !ui.inventoryRemoveId) return;
+  
+  ui.inventoryRemoveId.value = itemId;
+  ui.inventoryRemoveName.value = itemName;
+  ui.inventoryRemoveInfo.textContent = `Producto: ${itemName} (Stock actual: ${currentStock})`;
+  if (ui.inventoryRemoveUnits) ui.inventoryRemoveUnits.value = "";
+  if (ui.inventoryRemoveUnits) ui.inventoryRemoveUnits.max = currentStock;
+  if (ui.inventoryRemoveNote) ui.inventoryRemoveNote.value = "";
+  if (ui.inventoryRemoveDate) ui.inventoryRemoveDate.value = new Date().toISOString().slice(0, 10);
+  if (ui.inventoryRemoveStatus) ui.inventoryRemoveStatus.textContent = "";
+  ui.inventoryRemoveModal.classList.remove("hidden");
+}
+
 function handleDeleteInventoryItem(itemId, itemName) {
   if (!ui.inventoryDeleteModal || !ui.inventoryDeleteInfo || !ui.inventoryDeleteId) return;
   
   ui.inventoryDeleteId.value = itemId;
   ui.inventoryDeleteInfo.textContent = `Producto: ${itemName}`;
   ui.inventoryDeleteModal.classList.remove("hidden");
+}
+
+if (ui.inventoryRemoveCancel) {
+  ui.inventoryRemoveCancel.addEventListener("click", () => {
+    if (ui.inventoryRemoveModal) {
+      ui.inventoryRemoveModal.classList.add("hidden");
+    }
+  });
+}
+
+if (ui.inventoryRemoveConfirm) {
+  ui.inventoryRemoveConfirm.addEventListener("click", async () => {
+    const itemName = ui.inventoryRemoveName?.value;
+    const units = Number(ui.inventoryRemoveUnits?.value || 0);
+    const date = ui.inventoryRemoveDate?.value || new Date().toISOString().slice(0, 10);
+    const note = ui.inventoryRemoveNote?.value?.trim() || "";
+
+    if (!itemName) {
+      if (ui.inventoryRemoveStatus) ui.inventoryRemoveStatus.textContent = "Error: Producto no identificado";
+      return;
+    }
+
+    if (!Number.isFinite(units) || units <= 0) {
+      if (ui.inventoryRemoveStatus) ui.inventoryRemoveStatus.textContent = "Las unidades deben ser mayores que 0";
+      return;
+    }
+
+    if (!note) {
+      if (ui.inventoryRemoveStatus) ui.inventoryRemoveStatus.textContent = "Debes indicar el motivo";
+      return;
+    }
+
+    if (ui.inventoryRemoveStatus) ui.inventoryRemoveStatus.textContent = "Restando unidades...";
+    try {
+      await removeInventoryStock({
+        itemName,
+        units,
+        date,
+        note,
+        userId: auth.currentUser?.uid,
+      });
+      if (ui.inventoryRemoveModal) {
+        ui.inventoryRemoveModal.classList.add("hidden");
+      }
+      await refreshInventoryView();
+      if (ui.inventoryStatus) {
+        ui.inventoryStatus.textContent = `Restadas ${units} unidades de ${itemName}`;
+        setTimeout(() => {
+          if (ui.inventoryStatus) ui.inventoryStatus.textContent = "";
+        }, 3000);
+      }
+    } catch (error) {
+      if (ui.inventoryRemoveStatus) {
+        ui.inventoryRemoveStatus.textContent = error?.message || "Error al restar unidades";
+      }
+    }
+  });
 }
 
 if (ui.inventoryDeleteCancel) {

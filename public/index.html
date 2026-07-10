@@ -850,6 +850,34 @@
               </div>
             </div>
           </div>
+
+          <div id="inventoryRemoveModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Restar unidades del inventario</h3>
+              </div>
+              <p id="inventoryRemoveInfo" class="muted"></p>
+              <input id="inventoryRemoveId" type="hidden" />
+              <input id="inventoryRemoveName" type="hidden" />
+              <label>
+                Unidades a restar
+                <input id="inventoryRemoveUnits" type="number" min="1" step="1" required />
+              </label>
+              <label>
+                Fecha
+                <input id="inventoryRemoveDate" type="date" required />
+              </label>
+              <label>
+                Motivo
+                <input id="inventoryRemoveNote" type="text" placeholder="Ej: Botella cogida sin pagar" required />
+              </label>
+              <p id="inventoryRemoveStatus" class="muted"></p>
+              <div class="btn-group">
+                <button id="inventoryRemoveConfirm" class="btn" type="button">Restar unidades</button>
+                <button id="inventoryRemoveCancel" class="btn ghost" type="button">Cancelar</button>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section id="checkinsView" class="view hidden">

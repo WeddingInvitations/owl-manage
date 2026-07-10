@@ -570,6 +570,16 @@ ui.inventoryDeleteInfo = $("inventoryDeleteInfo");
 ui.inventoryDeleteId = $("inventoryDeleteId");
 ui.inventoryDeleteConfirm = $("inventoryDeleteConfirm");
 ui.inventoryDeleteCancel = $("inventoryDeleteCancel");
+ui.inventoryRemoveModal = $("inventoryRemoveModal");
+ui.inventoryRemoveInfo = $("inventoryRemoveInfo");
+ui.inventoryRemoveId = $("inventoryRemoveId");
+ui.inventoryRemoveName = $("inventoryRemoveName");
+ui.inventoryRemoveUnits = $("inventoryRemoveUnits");
+ui.inventoryRemoveDate = $("inventoryRemoveDate");
+ui.inventoryRemoveNote = $("inventoryRemoveNote");
+ui.inventoryRemoveStatus = $("inventoryRemoveStatus");
+ui.inventoryRemoveConfirm = $("inventoryRemoveConfirm");
+ui.inventoryRemoveCancel = $("inventoryRemoveCancel");
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {
