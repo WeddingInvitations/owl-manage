@@ -584,6 +584,7 @@ ui.inventoryRemoveCancel = $("inventoryRemoveCancel");
 // WodBuster
 ui.wodBusterView = $("wodBusterView");
 ui.wodBusterRefreshBtn = $("wodBusterRefreshBtn");
+ui.wodBusterSyncExcelBtn = $("wodBusterSyncExcelBtn");
 ui.wodBusterStatus = $("wodBusterStatus");
 ui.wodBusterUsersList = $("wodBusterUsersList");
 ui.wodBusterUsersCount = $("wodBusterUsersCount");
@@ -592,6 +593,22 @@ ui.wodBusterBaseUrl = $("wodBusterBaseUrl");
 ui.wodBusterApiKey = $("wodBusterApiKey");
 ui.wodBusterConfigSave = $("wodBusterConfigSave");
 ui.wodBusterConfigCancel = $("wodBusterConfigCancel");
+
+// Sincronización Excel
+ui.excelFileInput = $("excelFileInput");
+ui.syncExcelModal = $("syncExcelModal");
+ui.syncProgressSection = $("syncProgressSection");
+ui.syncProgressText = $("syncProgressText");
+ui.syncResultSection = $("syncResultSection");
+ui.syncTotalUsers = $("syncTotalUsers");
+ui.syncPercentage = $("syncPercentage");
+ui.syncSyncedUsers = $("syncSyncedUsers");
+ui.syncUnsyncedUsers = $("syncUnsyncedUsers");
+ui.syncColumnMapping = $("syncColumnMapping");
+ui.syncUnsyncedList = $("syncUnsyncedList");
+ui.syncUnsyncedListItems = $("syncUnsyncedListItems");
+ui.syncDownloadReportBtn = $("syncDownloadReportBtn");
+ui.syncCloseModalBtn = $("syncCloseModalBtn");
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {

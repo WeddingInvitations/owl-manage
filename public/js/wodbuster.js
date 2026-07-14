@@ -1,7 +1,16 @@
 import { ui } from "./ui.js";
 import { getWodBusterUsers, setWodBusterBaseUrl, setWodBusterApiKey } from "./data.js";
+import { 
+  readExcelFile, 
+  syncUsersWithExcel, 
+  generateSyncReport, 
+  downloadExcel,
+  detectExcelColumns 
+} from "./syncExcel.js";
 
 let wodBusterInitialized = false;
+let currentWodBusterUsers = []; // Almacenar usuarios cargados
+let lastSyncResult = null; // Para permitir regenerar el reporte
 
 // Renderizar lista de usuarios de WodBuster
 function renderWodBusterUsers(users) {
@@ -26,7 +35,9 @@ function renderWodBusterUsers(users) {
     
     // Nombre (WodBuster no tiene campo name en la respuesta, usar email como referencia)
     const nameCell = document.createElement("td");
-    nameCell.textContent = user.name || user.email || "-";
+    // Priorizar nombreCompleto (si fue sincronizado), luego name, luego email
+    const displayName = user.nombreCompleto || user.nombre || user.name || user.email || "-";
+    nameCell.textContent = displayName;
     tr.appendChild(nameCell);
     
     // Email (según documentación: email)
@@ -36,7 +47,9 @@ function renderWodBusterUsers(users) {
     
     // Teléfono (no disponible en la documentación)
     const phoneCell = document.createElement("td");
-    phoneCell.textContent = user.telefono || user.phone || "-";
+    // Priorizar telefonoExcel (si fue sincronizado), luego telefono, luego phone
+    const displayPhone = user.telefonoExcel || user.telefono || user.phone || "-";
+    phoneCell.textContent = displayPhone;
     tr.appendChild(phoneCell);
     
     // Estado (según documentación: esAlumno indica si es alumno activo)
@@ -116,6 +129,9 @@ async function refreshWodBusterUsers() {
     
     console.log(`Total usuarios: ${allUsers.length}, Usuarios activos y con pago vigente: ${activeUsers.length}`);
     
+    // Guardar usuarios para sincronización posterior
+    currentWodBusterUsers = activeUsers;
+    
     renderWodBusterUsers(activeUsers);
     
     if (ui.wodBusterStatus) {
@@ -151,6 +167,190 @@ async function refreshWodBusterUsers() {
   }
 }
 
+// Función para manejar la sincronización con Excel
+async function handleExcelSync() {
+  // Verificar que hay usuarios cargados
+  if (!currentWodBusterUsers || currentWodBusterUsers.length === 0) {
+    alert('Primero debes cargar los usuarios de WodBuster usando el botón "Actualizar"');
+    return;
+  }
+  
+  // Abrir selector de archivo
+  if (ui.excelFileInput) {
+    ui.excelFileInput.click();
+  }
+}
+
+// Función para procesar el archivo Excel seleccionado
+async function processExcelFile(file) {
+  if (!file) return;
+  
+  // Mostrar modal y sección de progreso
+  if (ui.syncExcelModal) {
+    ui.syncExcelModal.classList.remove("hidden");
+  }
+  
+  if (ui.syncProgressSection) {
+    ui.syncProgressSection.style.display = "block";
+  }
+  
+  if (ui.syncResultSection) {
+    ui.syncResultSection.style.display = "none";
+  }
+  
+  if (ui.syncDownloadReportBtn) {
+    ui.syncDownloadReportBtn.style.display = "none";
+  }
+  
+  try {
+    // Actualizar progreso
+    const fileType = file.name.toLowerCase().endsWith('.csv') ? 'CSV' : 'Excel';
+    updateSyncProgress(`Leyendo archivo ${fileType}...`);
+    
+    // Leer Excel/CSV
+    const excelData = await readExcelFile(file);
+    
+    if (!excelData || excelData.length === 0) {
+      throw new Error('El archivo está vacío o no tiene datos válidos');
+    }
+    
+    updateSyncProgress(`Archivo leído: ${excelData.length} registros encontrados`);
+    
+    // Detectar columnas automáticamente
+    const columnInfo = detectExcelColumns(excelData);
+    
+    if (!columnInfo) {
+      throw new Error('No se pudo detectar la estructura del Excel');
+    }
+    
+    updateSyncProgress('Mapeando usuarios...');
+    
+    // Sincronizar usuarios
+    const syncResult = syncUsersWithExcel(
+      currentWodBusterUsers,
+      excelData,
+      columnInfo.mapping
+    );
+    
+    // Guardar resultado para permitir regenerar el reporte
+    lastSyncResult = syncResult;
+    
+    // Actualizar los usuarios actuales con los datos sincronizados
+    currentWodBusterUsers = syncResult.usuariosSincronizados.concat(syncResult.usuariosNoSincronizados);
+    
+    // Actualizar la tabla con los nuevos datos
+    renderWodBusterUsers(currentWodBusterUsers);
+    
+    updateSyncProgress('Sincronización completada');
+    
+    // Mostrar resultados
+    displaySyncResults(syncResult, columnInfo);
+    
+    // Ocultar progreso, mostrar resultados
+    if (ui.syncProgressSection) {
+      ui.syncProgressSection.style.display = "none";
+    }
+    
+    if (ui.syncResultSection) {
+      ui.syncResultSection.style.display = "block";
+    }
+    
+    if (ui.syncDownloadReportBtn) {
+      ui.syncDownloadReportBtn.style.display = "inline-block";
+    }
+    
+  } catch (error) {
+    console.error('Error en sincronización:', error);
+    alert(`Error al procesar el archivo: ${error.message}`);
+    
+    // Cerrar modal en caso de error
+    if (ui.syncExcelModal) {
+      ui.syncExcelModal.classList.add("hidden");
+    }
+  }
+}
+
+// Actualizar texto de progreso
+function updateSyncProgress(message) {
+  if (ui.syncProgressText) {
+    const timestamp = new Date().toLocaleTimeString('es-ES');
+    ui.syncProgressText.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+  }
+  console.log('Sync progress:', message);
+}
+
+// Mostrar resultados de la sincronización
+function displaySyncResults(syncResult, columnInfo) {
+  // Resumen numérico
+  if (ui.syncTotalUsers) {
+    ui.syncTotalUsers.textContent = syncResult.total;
+  }
+  
+  if (ui.syncPercentage) {
+    ui.syncPercentage.textContent = `${syncResult.porcentajeSincronizacion}%`;
+  }
+  
+  if (ui.syncSyncedUsers) {
+    ui.syncSyncedUsers.textContent = syncResult.sincronizados;
+  }
+  
+  if (ui.syncUnsyncedUsers) {
+    ui.syncUnsyncedUsers.textContent = syncResult.noSincronizados;
+  }
+  
+  // Mapeo de columnas
+  if (ui.syncColumnMapping && columnInfo) {
+    const mappingHtml = `
+      <p style="margin: 0 0 0.5rem 0; font-weight: 600;">Columnas detectadas en el Excel:</p>
+      <ul style="margin: 0; padding-left: 1.5rem;">
+        <li><strong>Email:</strong> ${columnInfo.mapping.email || 'No detectado'}</li>
+        <li><strong>Nombre:</strong> ${columnInfo.mapping.nombre || 'No detectado'}</li>
+        <li><strong>Apellidos:</strong> ${columnInfo.mapping.apellidos || 'No detectado'}</li>
+        <li><strong>Teléfono:</strong> ${columnInfo.mapping.telefono || 'No detectado'}</li>
+      </ul>
+      <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
+        Columnas disponibles: ${columnInfo.columns.join(', ')}
+      </p>
+    `;
+    ui.syncColumnMapping.innerHTML = mappingHtml;
+  }
+  
+  // Lista de usuarios no sincronizados
+  if (syncResult.noSincronizados > 0 && ui.syncUnsyncedList && ui.syncUnsyncedListItems) {
+    ui.syncUnsyncedList.style.display = "block";
+    
+    ui.syncUnsyncedListItems.innerHTML = syncResult.usuariosNoSincronizados
+      .map(user => `<li><strong>${user.email || 'Sin email'}</strong> - ${user.motivo}</li>`)
+      .join('');
+  } else if (ui.syncUnsyncedList) {
+    ui.syncUnsyncedList.style.display = "none";
+  }
+}
+
+// Descargar reporte Excel
+function downloadSyncReport() {
+  if (!lastSyncResult) {
+    alert('No hay resultados de sincronización para descargar');
+    return;
+  }
+  
+  try {
+    const reportBlob = generateSyncReport(lastSyncResult);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const filename = `sincronizacion_wodbuster_${timestamp}.xlsx`;
+    
+    downloadExcel(reportBlob, filename);
+    
+    // Mostrar mensaje de éxito
+    if (ui.syncProgressText) {
+      ui.syncProgressText.innerHTML += `<div style="color: var(--success-color);">[${new Date().toLocaleTimeString('es-ES')}] ✅ Reporte descargado: ${filename}</div>`;
+    }
+  } catch (error) {
+    console.error('Error al generar reporte:', error);
+    alert(`Error al generar el reporte: ${error.message}`);
+  }
+}
+
 // Inicializar vista de WodBuster
 export async function initializeWodBuster() {
   if (!ui.wodBusterView) {
@@ -162,6 +362,45 @@ export async function initializeWodBuster() {
     if (ui.wodBusterRefreshBtn) {
       ui.wodBusterRefreshBtn.addEventListener("click", async () => {
         await refreshWodBusterUsers();
+      });
+    }
+    
+    // Event listener para botón de sincronizar con Excel
+    if (ui.wodBusterSyncExcelBtn) {
+      ui.wodBusterSyncExcelBtn.addEventListener("click", () => {
+        handleExcelSync();
+      });
+    }
+    
+    // Event listener para cuando se selecciona un archivo
+    if (ui.excelFileInput) {
+      ui.excelFileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          processExcelFile(file);
+        }
+        // Limpiar el input para permitir seleccionar el mismo archivo de nuevo
+        e.target.value = '';
+      });
+    }
+    
+    // Event listener para cerrar modal de sincronización
+    if (ui.syncCloseModalBtn) {
+      ui.syncCloseModalBtn.addEventListener("click", () => {
+        if (ui.syncExcelModal) {
+          ui.syncExcelModal.classList.add("hidden");
+        }
+        // Reset progress text
+        if (ui.syncProgressText) {
+          ui.syncProgressText.innerHTML = 'Iniciando...';
+        }
+      });
+    }
+    
+    // Event listener para descargar reporte
+    if (ui.syncDownloadReportBtn) {
+      ui.syncDownloadReportBtn.addEventListener("click", () => {
+        downloadSyncReport();
       });
     }
 
