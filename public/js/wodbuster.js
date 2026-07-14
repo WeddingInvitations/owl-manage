@@ -8,7 +8,8 @@ import {
   updateWodBusterUser,
   deleteWodBusterUser,
   syncMultipleWodBusterUsers,
-  getMonthLabel
+  getMonthLabel,
+  updateWodBusterUserAPI
 } from "./data.js";
 import { 
   readExcelFile, 
@@ -23,6 +24,7 @@ let currentWodBusterUsers = []; // Almacenar usuarios cargados
 let lastSyncResult = null; // Para permitir regenerar el reporte
 let currentUserId = null; // Usuario actual logueado
 let selectedWodBusterMonth = null; // Mes seleccionado para filtrado
+let currentEditingUser = null; // Datos originales del usuario en edición
 
 // Función para establecer el ID del usuario actual
 export function setCurrentUserId(userId) {
@@ -782,6 +784,7 @@ function openAddUserModal() {
     // Limpiar formulario
     ui.wodBusterUserModalTitle.textContent = "Añadir Usuario WodBuster";
     ui.wodBusterUserDocId.value = "";
+    ui.wodBusterUserId.value = "";
     ui.wodBusterUserName.value = "";
     ui.wodBusterUserEmail.value = "";
     ui.wodBusterUserPhone.value = "";
@@ -800,9 +803,13 @@ function openAddUserModal() {
 // Abrir modal para editar usuario existente
 function openEditUserModal(user) {
   if (ui.wodBusterUserModal) {
+    // Guardar datos originales del usuario para el update
+    currentEditingUser = user;
+    
     // Rellenar formulario con datos del usuario
     ui.wodBusterUserModalTitle.textContent = "Editar Usuario WodBuster";
     ui.wodBusterUserDocId.value = user.docId || "";
+    ui.wodBusterUserId.value = user.id || ""; // ID de WodBuster
     ui.wodBusterUserName.value = user.nombreCompleto || user.nombre || "";
     ui.wodBusterUserEmail.value = user.email || "";
     ui.wodBusterUserPhone.value = user.telefonoExcel || user.telefono || "";
@@ -874,19 +881,63 @@ async function saveWodBusterUser() {
     }
     
     const docId = ui.wodBusterUserDocId.value;
+    const wodBusterId = ui.wodBusterUserId?.value; // ID del usuario en WodBuster (si existe)
     
     if (docId) {
-      // Actualizar usuario existente
+      // Actualizar usuario existente en Firestore
       await updateWodBusterUser(docId, userData, currentUserId);
-      console.log('Usuario actualizado:', email);
+      console.log('Usuario actualizado en Firestore:', email);
+      
+      // Si tiene ID de WodBuster, actualizar también en la API
+      if (wodBusterId && currentEditingUser) {
+        try {
+          // Enviar todos los campos del usuario original + los modificados
+          const apiData = {
+            id: parseInt(wodBusterId),
+            nombre: userData.nombre,
+            apellidos: userData.apellidos,
+            email: userData.email,
+            telefono: userData.telefono || '',
+            tarifa: userData.tarifaExcel || '',
+            esAlumno: userData.esAlumno,
+            pagadoHasta: userData.pagadoHasta,
+            // Campos que pueden ser requeridos por la API (usar originales si existen)
+            clasesSueltas: currentEditingUser.clasesSueltas || 0,
+            idTarifa: currentEditingUser.idTarifa || null,
+            // Otros campos que puedan existir en el usuario original
+            ...(currentEditingUser.fechaAlta && { fechaAlta: currentEditingUser.fechaAlta }),
+            ...(currentEditingUser.observaciones && { observaciones: currentEditingUser.observaciones }),
+          };
+          
+          console.log('Enviando a WodBuster API:', apiData);
+          const apiResponse = await updateWodBusterUserAPI(apiData);
+          
+          if (apiResponse && apiResponse.EsOk !== false) {
+            console.log('Usuario actualizado en WodBuster API correctamente');
+          } else {
+            console.warn('La API de WodBuster retornó error:', apiResponse);
+            alert('Usuario guardado localmente, pero hubo un problema al actualizar en WodBuster. Revisa la consola.');
+          }
+        } catch (apiError) {
+          console.error('Error actualizando en WodBuster API:', apiError);
+          alert('Usuario guardado localmente, pero no se pudo actualizar en WodBuster: ' + apiError.message);
+        }
+      }
     } else {
-      // Crear nuevo usuario
+      // Crear nuevo usuario en Firestore
       const newDocId = await addWodBusterUser(userData, currentUserId);
       console.log('Usuario creado con ID:', newDocId);
+      
+      // Nota: Para crear usuarios nuevos en WodBuster API, necesitarías un endpoint /api/users/Create
+      // Por ahora solo se guarda localmente
+      console.log('Usuario creado solo localmente (no se sincroniza con WodBuster en creación)');
     }
     
     // Cerrar modal
     ui.wodBusterUserModal.classList.add("hidden");
+    
+    // Limpiar datos de edición
+    currentEditingUser = null;
     
     // Refrescar lista
     await refreshWodBusterUsers();

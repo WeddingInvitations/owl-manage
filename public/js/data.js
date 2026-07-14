@@ -1919,6 +1919,26 @@ export async function getWodBusterUsers() {
   }
 }
 
+// Actualizar usuario en WodBuster API
+export async function updateWodBusterUserAPI(userData) {
+  try {
+    console.log('Actualizando usuario en WodBuster API:', userData);
+    
+    const wodBusterProxy = httpsCallable(functions, 'wodBusterProxy');
+    const result = await wodBusterProxy({ 
+      endpoint: '/api/users/Update',
+      method: 'PUT',
+      body: userData
+    });
+    
+    console.log('Respuesta de actualización WodBuster:', result.data);
+    return result.data;
+  } catch (error) {
+    console.error('Error actualizando usuario en WodBuster:', error);
+    throw new Error('No se pudo actualizar el usuario en WodBuster: ' + error.message);
+  }
+}
+
 // Configurar la URL base de WodBuster (para cambiarla si es necesaria)
 export function setWodBusterBaseUrl(newBaseUrl) {
   WODBUSTER_CONFIG.baseUrl = newBaseUrl;

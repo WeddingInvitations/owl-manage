@@ -84,6 +84,7 @@ exports.wodBusterProxy = functions.https.onCall(async (data, context) => {
 
   const endpoint = data.endpoint || '/api/users/Get';
   const method = data.method || 'GET';
+  const body = data.body || null;
   
   const WODBUSTER_CONFIG = {
     apiKey: 'abc97d4d-2378-4d97-b39e-90b7ce54522c',
@@ -95,15 +96,26 @@ exports.wodBusterProxy = functions.https.onCall(async (data, context) => {
   try {
     console.log(`WodBuster Proxy: ${method} ${url}`);
     console.log('API Key (primeros 10 chars):', WODBUSTER_CONFIG.apiKey.substring(0, 10) + '...');
+    if (body) {
+      console.log('Request body:', JSON.stringify(body));
+    }
     
-    // Probar múltiples formatos de autenticación comunes
-    const response = await fetch(url, {
+    // Configurar headers y body según el método
+    const fetchOptions = {
       method: method,
       headers: {
         'API_ACCESS_KEY': WODBUSTER_CONFIG.apiKey,
         'Accept': 'application/json'
       },
-    });
+    };
+    
+    // Añadir body para métodos que lo soportan
+    if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+      fetchOptions.headers['Content-Type'] = 'application/json';
+      fetchOptions.body = JSON.stringify(body);
+    }
+    
+    const response = await fetch(url, fetchOptions);
     
     console.log('Headers enviados: X-API-Key y API-Key');
 

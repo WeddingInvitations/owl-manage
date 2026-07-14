@@ -603,6 +603,7 @@ ui.wodBusterConfigCancel = $("wodBusterConfigCancel");
 ui.wodBusterUserModal = $("wodBusterUserModal");
 ui.wodBusterUserModalTitle = $("wodBusterUserModalTitle");
 ui.wodBusterUserDocId = $("wodBusterUserDocId");
+ui.wodBusterUserId = $("wodBusterUserId");
 ui.wodBusterUserName = $("wodBusterUserName");
 ui.wodBusterUserEmail = $("wodBusterUserEmail");
 ui.wodBusterUserPhone = $("wodBusterUserPhone");
