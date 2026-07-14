@@ -22,6 +22,59 @@ let currentWodBusterUsers = []; // Almacenar usuarios cargados
 let lastSyncResult = null; // Para permitir regenerar el reporte
 let currentUserId = null; // Usuario actual logueado
 
+// Mapa de precios por tarifa
+const tariffPrices = {
+  // CrossFit Mensuales
+  "Open Box": 70,
+  "8/mes": 70,
+  "Fundador": 70,
+  "SPL": 70,
+  "Familiar": 40,
+  "4/mes": 40,
+  "6/mes": 50,
+  "12/mes": 80,
+  "Ilimitado": 100,
+  // CrossFit Trimestrales
+  "Trimestre 8/mes": 200,
+  "Trimestre 12/mes": 230,
+  "Trimestre ilimitado": 285,
+  // CrossFit Semestrales
+  "Semestre 8/mes": 380,
+  "Semestre 12/mes": 430,
+  "Semestre ilimitado": 540,
+  // CrossFit Anuales
+  "Anual 8/mes": 715,
+  "Anual 12/mes": 815,
+  "Anual ilimitado": 1020,
+  // Acrobacias
+  "Acro 4/mes": 45,
+  "Acro 8/mes": 65,
+  "Acro Open Mensual": 70,
+  "Acro 12/mes": 85,
+  "Acro Ilimitado": 105,
+  // Halterofilia
+  "Halte Pequeña": 30,
+  "Halte Grande": 50,
+  // Telas
+  "Telas 4/mes": 45,
+  "Telas 8/mes": 65,
+  "Telas 12/mes": 85,
+  "Telas Ilimitado": 105,
+  // Clases Sueltas
+  "Clase Crossfit": 15,
+  "Bono 10 Clases Crossfit": 135,
+  "Clase Acrobacias": 15,
+  "Bono 10 Clases Acrobacias": 135,
+  "Open Acrobacias 1h": 10,
+  "Open Acrobacias 2h": 15
+};
+
+// Función para obtener el precio de una tarifa
+function getTariffPrice(tarifa) {
+  if (!tarifa) return null;
+  return tariffPrices[tarifa] || null;
+}
+
 // Renderizar lista de usuarios de WodBuster
 function renderWodBusterUsers(users) {
   if (!ui.wodBusterUsersList) return;
@@ -30,7 +83,7 @@ function renderWodBusterUsers(users) {
   
   if (!users || users.length === 0) {
     const tr = document.createElement("tr");
-    tr.innerHTML = '<td colspan="8" class="muted">No se encontraron usuarios.</td>';
+    tr.innerHTML = '<td colspan="9" class="muted">No se encontraron usuarios.</td>';
     ui.wodBusterUsersList.appendChild(tr);
     return;
   }
@@ -68,6 +121,18 @@ function renderWodBusterUsers(users) {
     tarifaCell.textContent = displayTarifa;
     tarifaCell.style.fontSize = "0.9em";
     tr.appendChild(tarifaCell);
+    
+    // Precio (calculado según la tarifa)
+    const priceCell = document.createElement("td");
+    const price = user.precio || getTariffPrice(user.tarifaExcel);
+    if (price !== null && price !== undefined) {
+      priceCell.textContent = `${price}€`;
+      priceCell.style.fontWeight = "600";
+    } else {
+      priceCell.textContent = "-";
+      priceCell.classList.add("muted");
+    }
+    tr.appendChild(priceCell);
     
     // Estado (según documentación: esAlumno indica si es alumno activo)
     const statusCell = document.createElement("td");
@@ -203,6 +268,7 @@ async function refreshWodBusterUsers() {
             telefono: existing.telefono || existing.telefonoExcel || '',
             telefonoExcel: existing.telefonoExcel || existing.telefono || '',
             tarifaExcel: existing.tarifaExcel || '',
+            precio: existing.precio || getTariffPrice(existing.tarifaExcel),
             docId: existing.docId  // Preservar docId de BD
           });
         }
@@ -256,7 +322,7 @@ async function refreshWodBusterUsers() {
         
         ui.wodBusterUsersList.innerHTML = `
           <tr>
-            <td colspan="8" class="error">
+            <td colspan="9" class="error">
               ${errorMessage}
             </td>
           </tr>
@@ -293,6 +359,9 @@ async function saveSyncedUsersToFirestore(syncedUsers) {
   for (const user of syncedUsers) {
     try {
       // Preparar datos para guardar
+      const tarifa = user.tarifaExcel || '';
+      const precio = user.precio || getTariffPrice(tarifa);
+      
       const userData = {
         nombreCompleto: user.nombreCompleto || '',
         nombre: user.nombre || '',
@@ -300,7 +369,8 @@ async function saveSyncedUsersToFirestore(syncedUsers) {
         email: user.email,
         telefono: user.telefonoExcel || user.telefono || '',
         telefonoExcel: user.telefonoExcel || user.telefono || '',
-        tarifaExcel: user.tarifaExcel || '',
+        tarifaExcel: tarifa,
+        precio: precio,
         esAlumno: user.esAlumno !== undefined ? user.esAlumno : true,
         pagadoHasta: user.pagadoHasta || null,
         id: user.id || null, // ID de WodBuster
@@ -609,12 +679,16 @@ async function saveWodBusterUser() {
     }
     
     // Preparar datos del usuario
+    const tarifa = ui.wodBusterUserTariff.value;
+    const precio = getTariffPrice(tarifa);
+    
     const userData = {
       nombreCompleto: name,
       email: email,
       telefono: ui.wodBusterUserPhone.value.trim(),
       telefonoExcel: ui.wodBusterUserPhone.value.trim(),
-      tarifaExcel: ui.wodBusterUserTariff.value,
+      tarifaExcel: tarifa,
+      precio: precio,
       esAlumno: ui.wodBusterUserStatus.value === "true",
       pagadoHasta: ui.wodBusterUserPaymentDate.value ? new Date(ui.wodBusterUserPaymentDate.value).toISOString() : null
     };
