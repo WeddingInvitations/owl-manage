@@ -2037,15 +2037,27 @@ export async function syncMultipleWodBusterUsers(usersArray, userId) {
       const snapshot = await getDocs(q);
       
       if (!snapshot.empty) {
-        // Actualizar
+        // Actualizar solo campos de la API, preservar campos enriquecidos manualmente
         const existingDoc = snapshot.docs[0];
-        await updateDoc(doc(db, "wodbuster_users", existingDoc.id), {
-          ...userData,
-          source: 'api',
+        const existingData = existingDoc.data();
+        
+        // Solo actualizar campos que vienen de la API, preservar los enriquecidos
+        const updateData = {
+          id: userData.id,
+          esAlumno: userData.esAlumno,
+          pagadoHasta: userData.pagadoHasta,
+          idTarifa: userData.idTarifa,
           lastSyncAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           updatedBy: userId || null,
-        });
+        };
+        
+        // Solo actualizar email si no existe o si ha cambiado
+        if (!existingData.email || existingData.source === 'api') {
+          updateData.email = userData.email;
+        }
+        
+        await updateDoc(doc(db, "wodbuster_users", existingDoc.id), updateData);
         results.updated++;
       } else {
         // Crear

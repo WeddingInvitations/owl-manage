@@ -173,7 +173,7 @@ async function refreshWodBusterUsers() {
       });
     }
     
-    // Combinar usuarios de BD y API (priorizar BD por si tienen más datos)
+    // Combinar usuarios de BD y API (priorizar datos enriquecidos de BD)
     const emailMap = new Map();
     
     // Primero añadir usuarios de BD
@@ -183,18 +183,28 @@ async function refreshWodBusterUsers() {
       }
     });
     
-    // Luego añadir usuarios de API (no sobrescribir si ya existe)
+    // Luego actualizar con datos live de la API (sin sobrescribir campos enriquecidos)
     activeUsersAPI.forEach(user => {
       if (user.email) {
         const email = user.email.toLowerCase();
         if (!emailMap.has(email)) {
+          // Usuario no existe en BD, añadir de API
           emailMap.set(email, user);
         } else {
-          // Actualizar solo si el usuario de API tiene datos más recientes
+          // Usuario existe en BD, solo actualizar campos live de API
           const existing = emailMap.get(email);
-          if (user.pagadoHasta || user.esAlumno !== undefined) {
-            emailMap.set(email, { ...existing, ...user });
-          }
+          emailMap.set(email, {
+            ...user,  // Datos de API (id, esAlumno, pagadoHasta, idTarifa)
+            ...existing,  // Datos de BD tienen prioridad
+            // Asegurar que campos enriquecidos nunca se sobrescriben
+            nombreCompleto: existing.nombreCompleto || user.name || '',
+            nombre: existing.nombre || '',
+            apellidos: existing.apellidos || '',
+            telefono: existing.telefono || existing.telefonoExcel || '',
+            telefonoExcel: existing.telefonoExcel || existing.telefono || '',
+            tarifaExcel: existing.tarifaExcel || '',
+            docId: existing.docId  // Preservar docId de BD
+          });
         }
       }
     });
