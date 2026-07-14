@@ -274,6 +274,57 @@ async function handleExcelSync() {
   }
 }
 
+// Guardar usuarios sincronizados en Firestore
+async function saveSyncedUsersToFirestore(syncedUsers) {
+  let savedCount = 0;
+  let updatedCount = 0;
+  let errorCount = 0;
+  
+  for (const user of syncedUsers) {
+    try {
+      // Preparar datos para guardar
+      const userData = {
+        nombreCompleto: user.nombreCompleto || '',
+        nombre: user.nombre || '',
+        apellidos: user.apellidos || '',
+        email: user.email,
+        telefono: user.telefonoExcel || user.telefono || '',
+        telefonoExcel: user.telefonoExcel || user.telefono || '',
+        tarifaExcel: user.tarifaExcel || '',
+        esAlumno: user.esAlumno !== undefined ? user.esAlumno : true,
+        pagadoHasta: user.pagadoHasta || null,
+        id: user.id || null, // ID de WodBuster
+        idTarifa: user.idTarifa || null
+      };
+      
+      // Si el usuario tiene docId (ya está en Firestore), actualizar
+      if (user.docId) {
+        await updateWodBusterUser(user.docId, userData, currentUserId);
+        updatedCount++;
+        console.log(`Usuario actualizado en BD: ${user.email}`);
+      } else {
+        // Si no tiene docId, crear nuevo registro en Firestore
+        const newDocId = await addWodBusterUser(userData, currentUserId);
+        // Actualizar el usuario en memoria con el nuevo docId
+        user.docId = newDocId;
+        savedCount++;
+        console.log(`Usuario guardado en BD: ${user.email} (ID: ${newDocId})`);
+      }
+    } catch (error) {
+      errorCount++;
+      console.error(`Error guardando usuario ${user.email} en BD:`, error);
+    }
+  }
+  
+  console.log(`Guardado en Firestore: ${savedCount} nuevos, ${updatedCount} actualizados, ${errorCount} errores`);
+  
+  if (errorCount > 0) {
+    console.warn(`⚠️ ${errorCount} usuarios no se pudieron guardar en la base de datos`);
+  }
+  
+  return { savedCount, updatedCount, errorCount };
+}
+
 // Función para procesar el archivo Excel seleccionado
 async function processExcelFile(file) {
   if (!file) return;
@@ -331,13 +382,37 @@ async function processExcelFile(file) {
     // Actualizar los usuarios actuales con los datos sincronizados
     currentWodBusterUsers = syncResult.usuariosSincronizados.concat(syncResult.usuariosNoSincronizados);
     
-    // Actualizar la tabla con los nuevos datos
-    renderWodBusterUsers(currentWodBusterUsers);
+    updateSyncProgress('Guardando datos sincronizados en base de datos...');
     
-    updateSyncProgress('Sincronización completada');
+    // Guardar los datos sincronizados en Firestore
+    const saveResult = await saveSyncedUsersToFirestore(syncResult.usuariosSincronizados);
+    
+    updateSyncProgress(`✅ Guardado completado: ${saveResult.savedCount} nuevos, ${saveResult.updatedCount} actualizados`);
+    
+    if (saveResult.errorCount > 0) {
+      updateSyncProgress(`⚠️ ${saveResult.errorCount} usuarios no se pudieron guardar`);
+    }
+    
+    // Recargar usuarios desde BD para tener los datos actualizados
+    updateSyncProgress('Recargando usuarios desde base de datos...');
+    const dbUsers = await getWodBusterUsersFromDB();
+    
+    // Combinar con usuarios no sincronizados
+    const allUsers = [...dbUsers, ...syncResult.usuariosNoSincronizados];
+    currentWodBusterUsers = allUsers;
+    
+    updateSyncProgress('Sincronización completada y guardada en BD');
+    
+    // Actualizar la tabla con los nuevos datos
+    renderWodBusterUsers(allUsers);
     
     // Mostrar resultados
     displaySyncResults(syncResult, columnInfo);
+    
+    // Actualizar estado con información de guardado
+    if (ui.wodBusterStatus) {
+      ui.wodBusterStatus.textContent = `Sincronización completada: ${syncResult.sincronizados} usuarios sincronizados y guardados en BD - ${new Date().toLocaleString("es-ES")}`;
+    }
     
     // Ocultar progreso, mostrar resultados
     if (ui.syncProgressSection) {
@@ -394,6 +469,10 @@ function displaySyncResults(syncResult, columnInfo) {
   // Mapeo de columnas
   if (ui.syncColumnMapping && columnInfo) {
     const mappingHtml = `
+      <div style="background: var(--success-color); color: white; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;">
+        <strong>✅ Datos guardados permanentemente en la base de datos</strong>
+        <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">Los nombres, teléfonos y tarifas sincronizados se mostrarán siempre en el apartado de Usuarios WodBuster.</p>
+      </div>
       <p style="margin: 0 0 0.5rem 0; font-weight: 600;">Columnas detectadas en el Excel:</p>
       <ul style="margin: 0; padding-left: 1.5rem;">
         <li><strong>Email:</strong> ${columnInfo.mapping.email || 'No detectado'}</li>
