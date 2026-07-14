@@ -22,18 +22,38 @@ let currentWodBusterUsers = []; // Almacenar usuarios cargados
 let lastSyncResult = null; // Para permitir regenerar el reporte
 let currentUserId = null; // Usuario actual logueado
 
+// Función para establecer el ID del usuario actual
+export function setCurrentUserId(userId) {
+  currentUserId = userId;
+  console.log('WodBuster: Usuario establecido:', userId);
+}
+
 // Mapa de precios por tarifa
 const tariffPrices = {
-  // CrossFit Mensuales
+  // CrossFit Mensuales - Variantes de WodBuster
+  "OPEN": 70,
   "Open Box": 70,
+  "OWL 8": 70,
+  "OWL 8 mañanas": 70,
   "8/mes": 70,
   "Fundador": 70,
   "SPL": 70,
   "Familiar": 40,
+  "OWL 4": 40,
   "4/mes": 40,
+  "OWL 6": 50,
   "6/mes": 50,
+  "OWL 12": 80,
+  "OWL 12 mañanas": 80,
   "12/mes": 80,
+  "ilimitada": 100,
+  "Ilimitada": 100,
   "Ilimitado": 100,
+  "ILIMITADA": 100,
+  "ILIMITADO": 100,
+  "Ilimitada mañanas": 100,
+  "ilimitadas mañanas": 100,
+  "Ilimitadas mañanas": 100,
   // CrossFit Trimestrales
   "Trimestre 8/mes": 200,
   "Trimestre 12/mes": 230,
@@ -338,7 +358,11 @@ async function refreshWodBusterUsers() {
 
 // Función para actualizar precios masivamente según tarifas
 async function updateAllPrices() {
+  console.log('updateAllPrices() llamado');
+  console.log('currentUserId:', currentUserId);
+  
   if (!confirm('¿Deseas actualizar los precios de todos los usuarios según sus tarifas?\n\nEsto calculará y guardará el precio para cada usuario que tenga una tarifa asignada.')) {
+    console.log('Usuario canceló la operación');
     return;
   }
   
@@ -881,10 +905,15 @@ export async function initializeWodBuster() {
     
     // Event listener para botón de actualizar precios
     const updatePricesBtn = document.getElementById('wodBusterUpdatePricesBtn');
+    console.log('Botón de actualizar precios encontrado:', updatePricesBtn);
     if (updatePricesBtn) {
+      console.log('Añadiendo event listener al botón de actualizar precios');
       updatePricesBtn.addEventListener("click", async () => {
+        console.log('Click en botón de actualizar precios detectado');
         await updateAllPrices();
       });
+    } else {
+      console.error('No se encontró el botón wodBusterUpdatePricesBtn');
     }
     
     // Event listener para cuando se selecciona un archivo
