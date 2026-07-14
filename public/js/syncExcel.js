@@ -162,6 +162,7 @@ export function syncUsersWithExcel(wodBusterUsers, excelData, columnMapping = {}
         nombre: nombre,
         apellidos: apellidos,
         telefonoExcel: cleanTextField(excelRow[mapping.telefono] || user.telefono || ''),
+        tarifaExcel: mapping.tarifa ? cleanTextField(excelRow[mapping.tarifa] || '') : '',
         sincronizado: true,
         fechaSincronizacion: new Date().toISOString()
       };
@@ -236,6 +237,7 @@ export function generateSyncReport(syncResult) {
     'Apellidos': user.apellidos || '-',
     'Nombre Completo': user.nombreCompleto || '-',
     'Teléfono': user.telefonoExcel || user.telefono || '-',
+    'Tarifa': user.tarifaExcel || '-',
     'Estado': user.esAlumno ? 'Activo' : 'Inactivo',
     'Pago Hasta': user.pagadoHasta 
       ? new Date(user.pagadoHasta).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
@@ -254,6 +256,7 @@ export function generateSyncReport(syncResult) {
     { wch: 20 }, // Apellidos
     { wch: 30 }, // Nombre Completo
     { wch: 15 }, // Teléfono
+    { wch: 25 }, // Tarifa
     { wch: 10 }, // Estado
     { wch: 20 }, // Pago Hasta
     { wch: 12 }, // ID Tarifa
@@ -270,6 +273,7 @@ export function generateSyncReport(syncResult) {
       'Nombre': user.nombre || '-',
       'Apellidos': user.apellidos || '-',
       'Teléfono': user.telefonoExcel || user.telefono || '-',
+      'Tarifa': user.tarifaExcel || '-',
       'Estado': user.esAlumno ? 'Activo' : 'Inactivo',
       'Sincronizado': 'SÍ',
       'Observaciones': ''
@@ -280,6 +284,7 @@ export function generateSyncReport(syncResult) {
       'Nombre': user.name || user.email || '-',
       'Apellidos': '-',
       'Teléfono': user.telefono || '-',
+      'Tarifa': '-',
       'Estado': user.esAlumno ? 'Activo' : 'Inactivo',
       'Sincronizado': 'NO',
       'Observaciones': user.motivo || ''
@@ -294,6 +299,7 @@ export function generateSyncReport(syncResult) {
     { wch: 20 }, // Nombre
     { wch: 20 }, // Apellidos
     { wch: 15 }, // Teléfono
+    { wch: 25 }, // Tarifa
     { wch: 10 }, // Estado
     { wch: 15 }, // Sincronizado
     { wch: 40 }  // Observaciones
@@ -359,6 +365,12 @@ export function detectExcelColumns(excelData) {
   const telefonoPatterns = ['telefono', 'teléfono', 'phone', 'movil', 'móvil', 'celular'];
   mapping.telefono = columns.find(col => 
     telefonoPatterns.some(pattern => col.toLowerCase().includes(pattern))
+  );
+  
+  // Detectar columna de tarifa
+  const tarifaPatterns = ['tarifa', 'plan', 'cuota', 'suscripcion', 'suscripción'];
+  mapping.tarifa = columns.find(col => 
+    tarifaPatterns.some(pattern => col.toLowerCase().includes(pattern))
   );
   
   console.log('Columnas detectadas:', mapping);

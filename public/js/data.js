@@ -1930,3 +1930,143 @@ export function setWodBusterApiKey(newApiKey) {
   WODBUSTER_CONFIG.apiKey = newApiKey;
   console.log('NOTA: La API Key debe actualizarse también en la Cloud Function');
 }
+
+// ==================== WodBuster Users - Firestore CRUD ====================
+
+/**
+ * Añadir un nuevo usuario de WodBuster a Firestore
+ */
+export async function addWodBusterUser(userData, userId) {
+  const docRef = await addDoc(collection(db, "wodbuster_users"), {
+    ...userData,
+    source: 'manual', // 'manual' o 'api'
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+/**
+ * Actualizar un usuario de WodBuster en Firestore
+ */
+export async function updateWodBusterUser(userDocId, userData, userId) {
+  await updateDoc(doc(db, "wodbuster_users", userDocId), {
+    ...userData,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  });
+}
+
+/**
+ * Eliminar un usuario de WodBuster de Firestore
+ */
+export async function deleteWodBusterUser(userDocId) {
+  await deleteDoc(doc(db, "wodbuster_users", userDocId));
+}
+
+/**
+ * Obtener todos los usuarios de WodBuster desde Firestore
+ */
+export async function getWodBusterUsersFromDB() {
+  const snap = await getDocs(collection(db, "wodbuster_users"));
+  const users = [];
+  snap.forEach((docSnap) => {
+    users.push({ 
+      docId: docSnap.id, // ID del documento de Firestore
+      ...docSnap.data() 
+    });
+  });
+  return users;
+}
+
+/**
+ * Sincronizar usuario de la API con Firestore
+ * Si existe (por email), actualiza. Si no, crea.
+ */
+export async function syncWodBusterUserToDB(userData, userId) {
+  // Buscar si ya existe un usuario con ese email
+  const q = query(
+    collection(db, "wodbuster_users"),
+    where("email", "==", userData.email)
+  );
+  
+  const snapshot = await getDocs(q);
+  
+  if (!snapshot.empty) {
+    // Usuario existe - actualizar
+    const existingDoc = snapshot.docs[0];
+    await updateDoc(doc(db, "wodbuster_users", existingDoc.id), {
+      ...userData,
+      source: 'api',
+      lastSyncAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+    return existingDoc.id;
+  } else {
+    // Usuario no existe - crear
+    const docRef = await addDoc(collection(db, "wodbuster_users"), {
+      ...userData,
+      source: 'api',
+      lastSyncAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+      createdBy: userId || null,
+    });
+    return docRef.id;
+  }
+}
+
+/**
+ * Sincronizar múltiples usuarios de la API con Firestore
+ */
+export async function syncMultipleWodBusterUsers(usersArray, userId) {
+  const results = {
+    created: 0,
+    updated: 0,
+    errors: 0,
+    errorDetails: []
+  };
+  
+  for (const userData of usersArray) {
+    try {
+      const q = query(
+        collection(db, "wodbuster_users"),
+        where("email", "==", userData.email)
+      );
+      
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        // Actualizar
+        const existingDoc = snapshot.docs[0];
+        await updateDoc(doc(db, "wodbuster_users", existingDoc.id), {
+          ...userData,
+          source: 'api',
+          lastSyncAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          updatedBy: userId || null,
+        });
+        results.updated++;
+      } else {
+        // Crear
+        await addDoc(collection(db, "wodbuster_users"), {
+          ...userData,
+          source: 'api',
+          lastSyncAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          createdBy: userId || null,
+        });
+        results.created++;
+      }
+    } catch (error) {
+      console.error(`Error sincronizando usuario ${userData.email}:`, error);
+      results.errors++;
+      results.errorDetails.push({
+        email: userData.email,
+        error: error.message
+      });
+    }
+  }
+  
+  return results;
+}

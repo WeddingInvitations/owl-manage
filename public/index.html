@@ -2105,11 +2105,12 @@
             <div class="detail-header">
               <h2>Usuarios WodBuster</h2>
               <div class="header-actions">
+                <button id="addWodBusterUserBtn" class="btn success" type="button">+ Añadir Usuario</button>
                 <button id="wodBusterSyncExcelBtn" class="btn primary" type="button">📊 Sincronizar con Excel/CSV</button>
                 <button id="wodBusterRefreshBtn" class="btn ghost" type="button">🔄 Actualizar</button>
               </div>
             </div>
-            <p class="muted">Usuarios sincronizados desde la aplicación WodBuster.</p>
+            <p class="muted">Usuarios sincronizados desde la aplicación WodBuster y base de datos local.</p>
             <p id="wodBusterStatus" class="muted"></p>
             
             <!-- Input oculto para seleccionar archivo Excel/CSV -->
@@ -2126,13 +2127,15 @@
                     <th>Nombre</th>
                     <th>Email</th>
                     <th>Teléfono</th>
+                    <th>Tarifa</th>
                     <th>Estado</th>
                     <th>Pago Hasta</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody id="wodBusterUsersList">
                   <tr>
-                    <td colspan="6" class="muted">Cargando usuarios...</td>
+                    <td colspan="8" class="muted">Cargando usuarios...</td>
                   </tr>
                 </tbody>
               </table>
@@ -2219,6 +2222,109 @@
               <div class="btn-group">
                 <button id="syncDownloadReportBtn" class="btn success" type="button" style="display: none;">📥 Descargar Informe Excel</button>
                 <button id="syncCloseModalBtn" class="btn ghost" type="button">Cerrar</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Modal de añadir/editar usuario -->
+          <div id="wodBusterUserModal" class="modal hidden">
+            <div class="modal-content card" style="max-width: 600px;">
+              <div class="detail-header">
+                <h3 id="wodBusterUserModalTitle">Añadir Usuario WodBuster</h3>
+              </div>
+              
+              <input type="hidden" id="wodBusterUserDocId" />
+              
+              <label>
+                Nombre Completo *
+                <input id="wodBusterUserName" type="text" placeholder="Juan Pérez García" required />
+              </label>
+              
+              <label>
+                Email *
+                <input id="wodBusterUserEmail" type="email" placeholder="juan@example.com" required />
+              </label>
+              
+              <label>
+                Teléfono
+                <input id="wodBusterUserPhone" type="tel" placeholder="612345678" />
+              </label>
+              
+              <label>
+                Tarifa
+                <select id="wodBusterUserTariff">
+                  <option value="">-- Seleccionar tarifa --</option>
+                  <optgroup label="CrossFit Mensuales">
+                    <option value="Open Box">Open Box - 70€/mes</option>
+                    <option value="8/mes">8/mes - 70€/mes</option>
+                    <option value="Fundador">Fundador - 70€/mes</option>
+                    <option value="SPL">SPL - 70€/mes</option>
+                    <option value="Familiar">Familiar - 40€/mes</option>
+                    <option value="4/mes">4/mes - 40€/mes</option>
+                    <option value="6/mes">6/mes - 50€/mes</option>
+                    <option value="12/mes">12/mes - 80€/mes</option>
+                    <option value="Ilimitado">Ilimitado - 100€/mes</option>
+                  </optgroup>
+                  <optgroup label="CrossFit Trimestrales">
+                    <option value="Trimestre 8/mes">Trimestre 8/mes - 200€</option>
+                    <option value="Trimestre 12/mes">Trimestre 12/mes - 230€</option>
+                    <option value="Trimestre ilimitado">Trimestre ilimitado - 285€</option>
+                  </optgroup>
+                  <optgroup label="CrossFit Semestrales">
+                    <option value="Semestre 8/mes">Semestre 8/mes - 380€</option>
+                    <option value="Semestre 12/mes">Semestre 12/mes - 430€</option>
+                    <option value="Semestre ilimitado">Semestre ilimitado - 540€</option>
+                  </optgroup>
+                  <optgroup label="CrossFit Anuales">
+                    <option value="Anual 8/mes">Anual 8/mes - 715€</option>
+                    <option value="Anual 12/mes">Anual 12/mes - 815€</option>
+                    <option value="Anual ilimitado">Anual ilimitado - 1020€</option>
+                  </optgroup>
+                  <optgroup label="Acrobacias">
+                    <option value="Acro 4/mes">Acro 4/mes - 45€/mes</option>
+                    <option value="Acro 8/mes">Acro 8/mes - 65€/mes</option>
+                    <option value="Acro Open Mensual">Acro Open Mensual - 70€/mes</option>
+                    <option value="Acro 12/mes">Acro 12/mes - 85€/mes</option>
+                    <option value="Acro Ilimitado">Acro Ilimitado - 105€/mes</option>
+                  </optgroup>
+                  <optgroup label="Halterofilia">
+                    <option value="Halte Pequeña">Halte Pequeña - 30€/mes</option>
+                    <option value="Halte Grande">Halte Grande - 50€/mes</option>
+                  </optgroup>
+                  <optgroup label="Telas">
+                    <option value="Telas 4/mes">Telas 4/mes - 45€/mes</option>
+                    <option value="Telas 8/mes">Telas 8/mes - 65€/mes</option>
+                    <option value="Telas 12/mes">Telas 12/mes - 85€/mes</option>
+                    <option value="Telas Ilimitado">Telas Ilimitado - 105€/mes</option>
+                  </optgroup>
+                  <optgroup label="Clases Sueltas">
+                    <option value="Clase Crossfit">Clase Crossfit - 15€</option>
+                    <option value="Bono 10 Clases Crossfit">Bono 10 Clases Crossfit - 135€</option>
+                    <option value="Clase Acrobacias">Clase Acrobacias - 15€</option>
+                    <option value="Bono 10 Clases Acrobacias">Bono 10 Clases Acrobacias - 135€</option>
+                    <option value="Open Acrobacias 1h">Open Acrobacias 1h - 10€</option>
+                    <option value="Open Acrobacias 2h">Open Acrobacias 2h - 15€</option>
+                  </optgroup>
+                </select>
+              </label>
+              
+              <label>
+                Estado
+                <select id="wodBusterUserStatus">
+                  <option value="true">Activo</option>
+                  <option value="false">Inactivo</option>
+                </select>
+              </label>
+              
+              <label>
+                Pago Hasta (Fecha)
+                <input id="wodBusterUserPaymentDate" type="date" />
+              </label>
+              
+              <div class="btn-group">
+                <button id="wodBusterUserSaveBtn" class="btn primary" type="button">Guardar</button>
+                <button id="wodBusterUserCancelBtn" class="btn ghost" type="button">Cancelar</button>
+                <button id="wodBusterUserDeleteBtn" class="btn danger" type="button" style="display: none; margin-left: auto;">Eliminar</button>
               </div>
             </div>
           </div>
@@ -2841,7 +2947,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script type="module" src="js/main.js?v=20260609a" defer></script>
+    <script type="module" src="js/main.js?v=20260714a" defer></script>
     
     <!-- Script de debugging simplificado -->
     <script>

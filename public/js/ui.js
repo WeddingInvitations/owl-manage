@@ -585,6 +585,7 @@ ui.inventoryRemoveCancel = $("inventoryRemoveCancel");
 ui.wodBusterView = $("wodBusterView");
 ui.wodBusterRefreshBtn = $("wodBusterRefreshBtn");
 ui.wodBusterSyncExcelBtn = $("wodBusterSyncExcelBtn");
+ui.addWodBusterUserBtn = $("addWodBusterUserBtn");
 ui.wodBusterStatus = $("wodBusterStatus");
 ui.wodBusterUsersList = $("wodBusterUsersList");
 ui.wodBusterUsersCount = $("wodBusterUsersCount");
@@ -593,6 +594,20 @@ ui.wodBusterBaseUrl = $("wodBusterBaseUrl");
 ui.wodBusterApiKey = $("wodBusterApiKey");
 ui.wodBusterConfigSave = $("wodBusterConfigSave");
 ui.wodBusterConfigCancel = $("wodBusterConfigCancel");
+
+// Modal de usuario WodBuster
+ui.wodBusterUserModal = $("wodBusterUserModal");
+ui.wodBusterUserModalTitle = $("wodBusterUserModalTitle");
+ui.wodBusterUserDocId = $("wodBusterUserDocId");
+ui.wodBusterUserName = $("wodBusterUserName");
+ui.wodBusterUserEmail = $("wodBusterUserEmail");
+ui.wodBusterUserPhone = $("wodBusterUserPhone");
+ui.wodBusterUserTariff = $("wodBusterUserTariff");
+ui.wodBusterUserStatus = $("wodBusterUserStatus");
+ui.wodBusterUserPaymentDate = $("wodBusterUserPaymentDate");
+ui.wodBusterUserSaveBtn = $("wodBusterUserSaveBtn");
+ui.wodBusterUserCancelBtn = $("wodBusterUserCancelBtn");
+ui.wodBusterUserDeleteBtn = $("wodBusterUserDeleteBtn");
 
 // Sincronización Excel
 ui.excelFileInput = $("excelFileInput");

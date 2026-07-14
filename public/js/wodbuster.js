@@ -1,5 +1,14 @@
 import { ui } from "./ui.js";
-import { getWodBusterUsers, setWodBusterBaseUrl, setWodBusterApiKey } from "./data.js";
+import { 
+  getWodBusterUsers, 
+  setWodBusterBaseUrl, 
+  setWodBusterApiKey,
+  getWodBusterUsersFromDB,
+  addWodBusterUser,
+  updateWodBusterUser,
+  deleteWodBusterUser,
+  syncMultipleWodBusterUsers
+} from "./data.js";
 import { 
   readExcelFile, 
   syncUsersWithExcel, 
@@ -11,6 +20,7 @@ import {
 let wodBusterInitialized = false;
 let currentWodBusterUsers = []; // Almacenar usuarios cargados
 let lastSyncResult = null; // Para permitir regenerar el reporte
+let currentUserId = null; // Usuario actual logueado
 
 // Renderizar lista de usuarios de WodBuster
 function renderWodBusterUsers(users) {
@@ -20,7 +30,7 @@ function renderWodBusterUsers(users) {
   
   if (!users || users.length === 0) {
     const tr = document.createElement("tr");
-    tr.innerHTML = '<td colspan="6" class="muted">No se encontraron usuarios.</td>';
+    tr.innerHTML = '<td colspan="8" class="muted">No se encontraron usuarios.</td>';
     ui.wodBusterUsersList.appendChild(tr);
     return;
   }
@@ -52,6 +62,13 @@ function renderWodBusterUsers(users) {
     phoneCell.textContent = displayPhone;
     tr.appendChild(phoneCell);
     
+    // Tarifa (desde Excel o WodBuster)
+    const tarifaCell = document.createElement("td");
+    const displayTarifa = user.tarifaExcel || "-";
+    tarifaCell.textContent = displayTarifa;
+    tarifaCell.style.fontSize = "0.9em";
+    tr.appendChild(tarifaCell);
+    
     // Estado (según documentación: esAlumno indica si es alumno activo)
     const statusCell = document.createElement("td");
     const statusBadge = document.createElement("span");
@@ -74,6 +91,16 @@ function renderWodBusterUsers(users) {
     }
     tr.appendChild(dateCell);
     
+    // Acciones
+    const actionsCell = document.createElement("td");
+    const editBtn = document.createElement("button");
+    editBtn.className = "btn ghost small";
+    editBtn.textContent = "✏️";
+    editBtn.title = "Editar usuario";
+    editBtn.onclick = () => openEditUserModal(user);
+    actionsCell.appendChild(editBtn);
+    tr.appendChild(actionsCell);
+    
     ui.wodBusterUsersList.appendChild(tr);
   });
 
@@ -83,13 +110,20 @@ function renderWodBusterUsers(users) {
   }
 }
 
-// Refrescar usuarios de WodBuster
+// Refrescar usuarios de WodBuster (desde API y BD)
 async function refreshWodBusterUsers() {
   if (ui.wodBusterStatus) {
     ui.wodBusterStatus.textContent = "Cargando usuarios...";
   }
 
   try {
+    // Cargar usuarios desde Firestore
+    console.log('Cargando usuarios desde Firestore...');
+    const dbUsers = await getWodBusterUsersFromDB();
+    console.log(`Usuarios en Firestore: ${dbUsers.length}`);
+    
+    // Cargar usuarios desde la API de WodBuster
+    console.log('Cargando usuarios desde API WodBuster...');
     const response = await getWodBusterUsers();
     
     console.log('Respuesta completa de WodBuster:', response);
@@ -100,7 +134,7 @@ async function refreshWodBusterUsers() {
     }
     
     // Los datos de usuarios están en response.Data según la documentación
-    const allUsers = response.Data || [];
+    const allUsersAPI = response.Data || [];
     
     // Calcular el último día del mes actual
     const today = new Date();
@@ -110,7 +144,7 @@ async function refreshWodBusterUsers() {
     console.log('Último día del mes actual:', lastDayOfMonth.toISOString());
     
     // Filtrar usuarios activos Y con pago vigente hasta fin de mes
-    const activeUsers = allUsers.filter(user => {
+    const activeUsersAPI = allUsersAPI.filter(user => {
       // Debe estar activo
       if (user.esAlumno !== true) return false;
       
@@ -127,42 +161,101 @@ async function refreshWodBusterUsers() {
       return pagadoHasta >= lastDayOfMonth;
     });
     
-    console.log(`Total usuarios: ${allUsers.length}, Usuarios activos y con pago vigente: ${activeUsers.length}`);
+    console.log(`Total usuarios API: ${allUsersAPI.length}, Usuarios activos con pago vigente: ${activeUsersAPI.length}`);
+    
+    // Sincronizar usuarios de la API con Firestore en segundo plano
+    if (activeUsersAPI.length > 0) {
+      console.log('Sincronizando usuarios de API con Firestore...');
+      syncMultipleWodBusterUsers(activeUsersAPI, currentUserId).then(result => {
+        console.log(`Sincronización completada: ${result.created} creados, ${result.updated} actualizados, ${result.errors} errores`);
+      }).catch(err => {
+        console.error('Error en sincronización automática:', err);
+      });
+    }
+    
+    // Combinar usuarios de BD y API (priorizar BD por si tienen más datos)
+    const emailMap = new Map();
+    
+    // Primero añadir usuarios de BD
+    dbUsers.forEach(user => {
+      if (user.email) {
+        emailMap.set(user.email.toLowerCase(), user);
+      }
+    });
+    
+    // Luego añadir usuarios de API (no sobrescribir si ya existe)
+    activeUsersAPI.forEach(user => {
+      if (user.email) {
+        const email = user.email.toLowerCase();
+        if (!emailMap.has(email)) {
+          emailMap.set(email, user);
+        } else {
+          // Actualizar solo si el usuario de API tiene datos más recientes
+          const existing = emailMap.get(email);
+          if (user.pagadoHasta || user.esAlumno !== undefined) {
+            emailMap.set(email, { ...existing, ...user });
+          }
+        }
+      }
+    });
+    
+    // Convertir a array y ordenar por nombre
+    const combinedUsers = Array.from(emailMap.values()).sort((a, b) => {
+      const nameA = a.nombreCompleto || a.nombre || a.email || '';
+      const nameB = b.nombreCompleto || b.nombre || b.email || '';
+      return nameA.localeCompare(nameB);
+    });
+    
+    console.log(`Total usuarios combinados: ${combinedUsers.length}`);
     
     // Guardar usuarios para sincronización posterior
-    currentWodBusterUsers = activeUsers;
+    currentWodBusterUsers = combinedUsers;
     
-    renderWodBusterUsers(activeUsers);
+    renderWodBusterUsers(combinedUsers);
     
     if (ui.wodBusterStatus) {
-      ui.wodBusterStatus.textContent = `Última actualización: ${new Date().toLocaleString("es-ES")} - ${activeUsers.length} usuarios activos con pago vigente`;
+      ui.wodBusterStatus.textContent = `Última actualización: ${new Date().toLocaleString("es-ES")} - ${combinedUsers.length} usuarios (BD: ${dbUsers.length}, API: ${activeUsersAPI.length})`;
     }
   } catch (error) {
     console.error("Error cargando usuarios de WodBuster:", error);
     
-    if (ui.wodBusterUsersList) {
-      let errorMessage = error.message;
+    // Si falla la API, intentar cargar solo desde BD
+    try {
+      console.log('Error en API, cargando solo desde Firestore...');
+      const dbUsers = await getWodBusterUsersFromDB();
+      currentWodBusterUsers = dbUsers;
+      renderWodBusterUsers(dbUsers);
       
-      // Mensaje específico para error 401
-      if (error.message.includes('401')) {
-        errorMessage = `❌ Error de autenticación (401): La API Key no es válida o el formato de autenticación es incorrecto.
-        <br><br><strong>Posibles soluciones:</strong>
-        <br>• Verifica que la API Key sea correcta en WodBuster
-        <br>• Consulta la documentación de WodBuster para el formato correcto del header de autenticación
-        <br>• Contacta al equipo de WodBuster para confirmar el método de autenticación`;
+      if (ui.wodBusterStatus) {
+        ui.wodBusterStatus.textContent = `Usuarios cargados desde BD local (${dbUsers.length}) - Error en API: ${error.message}`;
+      }
+    } catch (dbError) {
+      console.error("Error cargando desde BD:", dbError);
+      
+      if (ui.wodBusterUsersList) {
+        let errorMessage = error.message;
+        
+        // Mensaje específico para error 401
+        if (error.message.includes('401')) {
+          errorMessage = `❌ Error de autenticación (401): La API Key no es válida o el formato de autenticación es incorrecto.
+          <br><br><strong>Posibles soluciones:</strong>
+          <br>• Verifica que la API Key sea correcta en WodBuster
+          <br>• Consulta la documentación de WodBuster para el formato correcto del header de autenticación
+          <br>• Contacta al equipo de WodBuster para confirmar el método de autenticación`;
+        }
+        
+        ui.wodBusterUsersList.innerHTML = `
+          <tr>
+            <td colspan="8" class="error">
+              ${errorMessage}
+            </td>
+          </tr>
+        `;
       }
       
-      ui.wodBusterUsersList.innerHTML = `
-        <tr>
-          <td colspan="6" class="error">
-            ${errorMessage}
-          </td>
-        </tr>
-      `;
-    }
-    
-    if (ui.wodBusterStatus) {
-      ui.wodBusterStatus.textContent = "Error al cargar usuarios";
+      if (ui.wodBusterStatus) {
+        ui.wodBusterStatus.textContent = "Error al cargar usuarios";
+      }
     }
   }
 }
@@ -307,6 +400,7 @@ function displaySyncResults(syncResult, columnInfo) {
         <li><strong>Nombre:</strong> ${columnInfo.mapping.nombre || 'No detectado'}</li>
         <li><strong>Apellidos:</strong> ${columnInfo.mapping.apellidos || 'No detectado'}</li>
         <li><strong>Teléfono:</strong> ${columnInfo.mapping.telefono || 'No detectado'}</li>
+        <li><strong>Tarifa:</strong> ${columnInfo.mapping.tarifa || 'No detectado'}</li>
       </ul>
       <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
         Columnas disponibles: ${columnInfo.columns.join(', ')}
@@ -351,6 +445,157 @@ function downloadSyncReport() {
   }
 }
 
+// ===== FUNCIONES PARA CRUD DE USUARIOS =====
+
+// Abrir modal para añadir nuevo usuario
+function openAddUserModal() {
+  if (ui.wodBusterUserModal) {
+    // Limpiar formulario
+    ui.wodBusterUserModalTitle.textContent = "Añadir Usuario WodBuster";
+    ui.wodBusterUserDocId.value = "";
+    ui.wodBusterUserName.value = "";
+    ui.wodBusterUserEmail.value = "";
+    ui.wodBusterUserPhone.value = "";
+    ui.wodBusterUserTariff.value = "";
+    ui.wodBusterUserStatus.value = "true";
+    ui.wodBusterUserPaymentDate.value = "";
+    
+    // Ocultar botón de eliminar
+    ui.wodBusterUserDeleteBtn.style.display = "none";
+    
+    // Mostrar modal
+    ui.wodBusterUserModal.classList.remove("hidden");
+  }
+}
+
+// Abrir modal para editar usuario existente
+function openEditUserModal(user) {
+  if (ui.wodBusterUserModal) {
+    // Rellenar formulario con datos del usuario
+    ui.wodBusterUserModalTitle.textContent = "Editar Usuario WodBuster";
+    ui.wodBusterUserDocId.value = user.docId || "";
+    ui.wodBusterUserName.value = user.nombreCompleto || user.nombre || "";
+    ui.wodBusterUserEmail.value = user.email || "";
+    ui.wodBusterUserPhone.value = user.telefonoExcel || user.telefono || "";
+    ui.wodBusterUserTariff.value = user.tarifaExcel || "";
+    ui.wodBusterUserStatus.value = user.esAlumno ? "true" : "false";
+    
+    // Convertir fecha si existe
+    if (user.pagadoHasta) {
+      const date = new Date(user.pagadoHasta);
+      ui.wodBusterUserPaymentDate.value = date.toISOString().split('T')[0];
+    } else {
+      ui.wodBusterUserPaymentDate.value = "";
+    }
+    
+    // Mostrar botón de eliminar si el usuario tiene docId (está en BD)
+    if (user.docId) {
+      ui.wodBusterUserDeleteBtn.style.display = "inline-block";
+    } else {
+      ui.wodBusterUserDeleteBtn.style.display = "none";
+    }
+    
+    // Mostrar modal
+    ui.wodBusterUserModal.classList.remove("hidden");
+  }
+}
+
+// Guardar usuario (crear o actualizar)
+async function saveWodBusterUser() {
+  try {
+    // Validar campos requeridos
+    const name = ui.wodBusterUserName.value.trim();
+    const email = ui.wodBusterUserEmail.value.trim();
+    
+    if (!name || !email) {
+      alert('Por favor, completa al menos el nombre y el email');
+      return;
+    }
+    
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      alert('Por favor, introduce un email válido');
+      return;
+    }
+    
+    // Preparar datos del usuario
+    const userData = {
+      nombreCompleto: name,
+      email: email,
+      telefono: ui.wodBusterUserPhone.value.trim(),
+      telefonoExcel: ui.wodBusterUserPhone.value.trim(),
+      tarifaExcel: ui.wodBusterUserTariff.value,
+      esAlumno: ui.wodBusterUserStatus.value === "true",
+      pagadoHasta: ui.wodBusterUserPaymentDate.value ? new Date(ui.wodBusterUserPaymentDate.value).toISOString() : null
+    };
+    
+    // Separar nombre y apellidos si es posible
+    const nameParts = name.split(' ').filter(p => p.length > 0);
+    if (nameParts.length > 1) {
+      userData.nombre = nameParts[0];
+      userData.apellidos = nameParts.slice(1).join(' ');
+    } else {
+      userData.nombre = name;
+      userData.apellidos = '';
+    }
+    
+    const docId = ui.wodBusterUserDocId.value;
+    
+    if (docId) {
+      // Actualizar usuario existente
+      await updateWodBusterUser(docId, userData, currentUserId);
+      console.log('Usuario actualizado:', email);
+    } else {
+      // Crear nuevo usuario
+      const newDocId = await addWodBusterUser(userData, currentUserId);
+      console.log('Usuario creado con ID:', newDocId);
+    }
+    
+    // Cerrar modal
+    ui.wodBusterUserModal.classList.add("hidden");
+    
+    // Refrescar lista
+    await refreshWodBusterUsers();
+    
+    alert('Usuario guardado correctamente');
+  } catch (error) {
+    console.error('Error guardando usuario:', error);
+    alert(`Error al guardar el usuario: ${error.message}`);
+  }
+}
+
+// Eliminar usuario
+async function deleteWodBusterUserConfirm() {
+  const docId = ui.wodBusterUserDocId.value;
+  const email = ui.wodBusterUserEmail.value;
+  
+  if (!docId) {
+    alert('No se puede eliminar este usuario (no está en la base de datos local)');
+    return;
+  }
+  
+  const confirmDelete = confirm(`¿Estás seguro de que quieres eliminar el usuario "${email}"?\n\nEsta acción no se puede deshacer.`);
+  
+  if (!confirmDelete) return;
+  
+  try {
+    await deleteWodBusterUser(docId);
+    console.log('Usuario eliminado:', docId);
+    
+    // Cerrar modal
+    ui.wodBusterUserModal.classList.add("hidden");
+    
+    // Refrescar lista
+    await refreshWodBusterUsers();
+    
+    alert('Usuario eliminado correctamente');
+  } catch (error) {
+    console.error('Error eliminando usuario:', error);
+    alert(`Error al eliminar el usuario: ${error.message}`);
+  }
+}
+
 // Inicializar vista de WodBuster
 export async function initializeWodBuster() {
   if (!ui.wodBusterView) {
@@ -362,6 +607,34 @@ export async function initializeWodBuster() {
     if (ui.wodBusterRefreshBtn) {
       ui.wodBusterRefreshBtn.addEventListener("click", async () => {
         await refreshWodBusterUsers();
+      });
+    }
+    
+    // Event listener para botón de añadir usuario
+    if (ui.addWodBusterUserBtn) {
+      ui.addWodBusterUserBtn.addEventListener("click", () => {
+        openAddUserModal();
+      });
+    }
+    
+    // Event listeners para modal de usuario
+    if (ui.wodBusterUserSaveBtn) {
+      ui.wodBusterUserSaveBtn.addEventListener("click", async () => {
+        await saveWodBusterUser();
+      });
+    }
+    
+    if (ui.wodBusterUserCancelBtn) {
+      ui.wodBusterUserCancelBtn.addEventListener("click", () => {
+        if (ui.wodBusterUserModal) {
+          ui.wodBusterUserModal.classList.add("hidden");
+        }
+      });
+    }
+    
+    if (ui.wodBusterUserDeleteBtn) {
+      ui.wodBusterUserDeleteBtn.addEventListener("click", async () => {
+        await deleteWodBusterUserConfirm();
       });
     }
     
