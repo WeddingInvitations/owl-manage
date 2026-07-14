@@ -336,6 +336,77 @@ async function refreshWodBusterUsers() {
   }
 }
 
+// Función para actualizar precios masivamente según tarifas
+async function updateAllPrices() {
+  if (!confirm('¿Deseas actualizar los precios de todos los usuarios según sus tarifas?\n\nEsto calculará y guardará el precio para cada usuario que tenga una tarifa asignada.')) {
+    return;
+  }
+  
+  try {
+    console.log('Iniciando actualización masiva de precios...');
+    
+    // Cargar todos los usuarios desde Firestore
+    const dbUsers = await getWodBusterUsersFromDB();
+    
+    if (!dbUsers || dbUsers.length === 0) {
+      alert('No hay usuarios en la base de datos para actualizar');
+      return;
+    }
+    
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let errorCount = 0;
+    
+    for (const user of dbUsers) {
+      try {
+        // Si ya tiene precio, saltar
+        if (user.precio !== null && user.precio !== undefined) {
+          skippedCount++;
+          continue;
+        }
+        
+        // Calcular precio según tarifa
+        const tarifa = user.tarifaExcel;
+        if (!tarifa) {
+          skippedCount++;
+          continue;
+        }
+        
+        const precio = getTariffPrice(tarifa);
+        if (precio === null || precio === undefined) {
+          console.warn(`No se encontró precio para la tarifa: ${tarifa}`);
+          skippedCount++;
+          continue;
+        }
+        
+        // Actualizar solo el campo precio
+        await updateWodBusterUser(user.docId, { 
+          ...user,
+          precio: precio 
+        }, currentUserId);
+        
+        updatedCount++;
+        console.log(`Precio actualizado para ${user.email}: ${tarifa} = ${precio}€`);
+        
+      } catch (error) {
+        errorCount++;
+        console.error(`Error actualizando ${user.email}:`, error);
+      }
+    }
+    
+    console.log(`Actualización completada: ${updatedCount} actualizados, ${skippedCount} omitidos, ${errorCount} errores`);
+    
+    alert(`✅ Actualización de precios completada:\n\n• ${updatedCount} usuarios actualizados\n• ${skippedCount} usuarios omitidos (ya tenían precio o sin tarifa)\n• ${errorCount} errores`);
+    
+    // Refrescar lista
+    await refreshWodBusterUsers();
+    
+  } catch (error) {
+    console.error('Error en actualización masiva:', error);
+    alert(`Error al actualizar precios: ${error.message}`);
+  }
+}
+
 // Función para manejar la sincronización con Excel
 async function handleExcelSync() {
   // Verificar que hay usuarios cargados
@@ -805,6 +876,14 @@ export async function initializeWodBuster() {
     if (ui.wodBusterSyncExcelBtn) {
       ui.wodBusterSyncExcelBtn.addEventListener("click", () => {
         handleExcelSync();
+      });
+    }
+    
+    // Event listener para botón de actualizar precios
+    const updatePricesBtn = document.getElementById('wodBusterUpdatePricesBtn');
+    if (updatePricesBtn) {
+      updatePricesBtn.addEventListener("click", async () => {
+        await updateAllPrices();
       });
     }
     
