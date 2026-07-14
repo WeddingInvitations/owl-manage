@@ -1,4 +1,4 @@
-import { ui } from "./ui.js";
+import { ui, formatCurrency } from "./ui.js";
 import { 
   getWodBusterUsers, 
   setWodBusterBaseUrl, 
@@ -7,7 +7,8 @@ import {
   addWodBusterUser,
   updateWodBusterUser,
   deleteWodBusterUser,
-  syncMultipleWodBusterUsers
+  syncMultipleWodBusterUsers,
+  getMonthLabel
 } from "./data.js";
 import { 
   readExcelFile, 
@@ -21,6 +22,7 @@ let wodBusterInitialized = false;
 let currentWodBusterUsers = []; // Almacenar usuarios cargados
 let lastSyncResult = null; // Para permitir regenerar el reporte
 let currentUserId = null; // Usuario actual logueado
+let selectedWodBusterMonth = null; // Mes seleccionado para filtrado
 
 // Función para establecer el ID del usuario actual
 export function setCurrentUserId(userId) {
@@ -93,6 +95,76 @@ const tariffPrices = {
 function getTariffPrice(tarifa) {
   if (!tarifa) return null;
   return tariffPrices[tarifa] || null;
+}
+
+// Función para obtener el mes en formato YYYY-MM
+function getMonthKey(date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${date.getFullYear()}-${month}`;
+}
+
+// Renderizar opciones de selector de mes
+function renderWodBusterMonthOptions() {
+  if (!ui.wodBusterMonthSelect) return;
+  
+  const now = new Date();
+  const options = [];
+  
+  // Generar últimos 12 meses
+  for (let i = 0; i < 12; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  
+  ui.wodBusterMonthSelect.innerHTML = "";
+  options.forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = getMonthLabel(key);
+    ui.wodBusterMonthSelect.appendChild(option);
+  });
+  
+  selectedWodBusterMonth = options[0];
+  ui.wodBusterMonthSelect.value = selectedWodBusterMonth;
+}
+
+// Renderizar resumen mensual de WodBuster
+function renderWodBusterSummary(users) {
+  if (!ui.wodBusterSummaryActive || !selectedWodBusterMonth) return;
+  
+  // Filtrar usuarios activos del mes seleccionado
+  const activeUsers = users.filter(user => {
+    // Usuario debe estar activo (esAlumno === true)
+    if (!user.esAlumno) return false;
+    
+    // Si tiene pagadoHasta, verificar que sea >= al mes seleccionado
+    if (user.pagadoHasta) {
+      const pagadoHastaKey = getMonthKey(new Date(user.pagadoHasta));
+      return pagadoHastaKey >= selectedWodBusterMonth;
+    }
+    
+    // Si no tiene pagadoHasta pero está activo, incluirlo
+    return true;
+  });
+  
+  // Calcular ingresos totales y tarifa media
+  let totalIncome = 0;
+  let usersWithPrice = 0;
+  
+  activeUsers.forEach(user => {
+    const price = user.precio || getTariffPrice(user.tarifaExcel);
+    if (price !== null && price !== undefined) {
+      totalIncome += price;
+      usersWithPrice++;
+    }
+  });
+  
+  const averageTariff = usersWithPrice > 0 ? totalIncome / usersWithPrice : 0;
+  
+  // Actualizar UI
+  ui.wodBusterSummaryActive.textContent = String(activeUsers.length);
+  ui.wodBusterSummaryIncome.textContent = formatCurrency(totalIncome);
+  ui.wodBusterSummaryAverage.textContent = formatCurrency(averageTariff);
 }
 
 // Renderizar lista de usuarios de WodBuster
@@ -308,6 +380,7 @@ async function refreshWodBusterUsers() {
     currentWodBusterUsers = combinedUsers;
     
     renderWodBusterUsers(combinedUsers);
+    renderWodBusterSummary(combinedUsers);
     
     if (ui.wodBusterStatus) {
       ui.wodBusterStatus.textContent = `Última actualización: ${new Date().toLocaleString("es-ES")} - ${combinedUsers.length} usuarios (BD: ${dbUsers.length}, API: ${activeUsersAPI.length})`;
@@ -321,6 +394,7 @@ async function refreshWodBusterUsers() {
       const dbUsers = await getWodBusterUsersFromDB();
       currentWodBusterUsers = dbUsers;
       renderWodBusterUsers(dbUsers);
+      renderWodBusterSummary(dbUsers);
       
       if (ui.wodBusterStatus) {
         ui.wodBusterStatus.textContent = `Usuarios cargados desde BD local (${dbUsers.length}) - Error en API: ${error.message}`;
@@ -580,6 +654,7 @@ async function processExcelFile(file) {
     
     // Actualizar la tabla con los nuevos datos
     renderWodBusterUsers(allUsers);
+    renderWodBusterSummary(allUsers);
     
     // Mostrar resultados
     displaySyncResults(syncResult, columnInfo);
@@ -916,6 +991,15 @@ export async function initializeWodBuster() {
       console.error('No se encontró el botón wodBusterUpdatePricesBtn');
     }
     
+    // Event listener para selector de mes
+    if (ui.wodBusterMonthSelect) {
+      ui.wodBusterMonthSelect.addEventListener("change", (event) => {
+        selectedWodBusterMonth = event.target.value;
+        console.log('Mes seleccionado:', selectedWodBusterMonth);
+        renderWodBusterSummary(currentWodBusterUsers);
+      });
+    }
+    
     // Event listener para cuando se selecciona un archivo
     if (ui.excelFileInput) {
       ui.excelFileInput.addEventListener("change", (e) => {
@@ -981,6 +1065,9 @@ export async function initializeWodBuster() {
 
     wodBusterInitialized = true;
   }
+
+  // Renderizar selector de mes
+  renderWodBusterMonthOptions();
 
   // Cargar usuarios al entrar a la vista
   await refreshWodBusterUsers();

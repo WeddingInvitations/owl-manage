@@ -592,6 +592,10 @@ ui.wodBusterUsersCount = $("wodBusterUsersCount");
 ui.wodBusterConfigModal = $("wodBusterConfigModal");
 ui.wodBusterBaseUrl = $("wodBusterBaseUrl");
 ui.wodBusterApiKey = $("wodBusterApiKey");
+ui.wodBusterMonthSelect = $("wodBusterMonthSelect");
+ui.wodBusterSummaryActive = $("wodBusterSummaryActive");
+ui.wodBusterSummaryIncome = $("wodBusterSummaryIncome");
+ui.wodBusterSummaryAverage = $("wodBusterSummaryAverage");
 ui.wodBusterConfigSave = $("wodBusterConfigSave");
 ui.wodBusterConfigCancel = $("wodBusterConfigCancel");
 
