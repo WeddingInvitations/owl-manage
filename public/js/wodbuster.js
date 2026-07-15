@@ -322,15 +322,16 @@ async function refreshWodBusterUsers() {
     
     console.log(`Total usuarios API: ${allUsersAPI.length}, Usuarios activos con pago vigente: ${activeUsersAPI.length}`);
     
-    // Sincronizar usuarios de la API con Firestore en segundo plano
-    if (activeUsersAPI.length > 0) {
-      console.log('Sincronizando usuarios de API con Firestore...');
-      syncMultipleWodBusterUsers(activeUsersAPI, currentUserId).then(result => {
-        console.log(`Sincronización completada: ${result.created} creados, ${result.updated} actualizados, ${result.errors} errores`);
-      }).catch(err => {
-        console.error('Error en sincronización automática:', err);
-      });
-    }
+    // SINCRONIZACIÓN AUTOMÁTICA DESACTIVADA - Causaba 783 escrituras en cada carga
+    // La sincronización solo debe ocurrir durante el sync manual con Excel
+    // if (activeUsersAPI.length > 0) {
+    //   console.log('Sincronizando usuarios de API con Firestore...');
+    //   syncMultipleWodBusterUsers(activeUsersAPI, currentUserId).then(result => {
+    //     console.log(`Sincronización completada: ${result.created} creados, ${result.updated} actualizados, ${result.errors} errores`);
+    //   }).catch(err => {
+    //     console.error('Error en sincronización automática:', err);
+    //   });
+    // }
     
     // Combinar usuarios de BD y API (priorizar datos enriquecidos de BD)
     const emailMap = new Map();
@@ -897,13 +898,13 @@ async function saveWodBusterUser() {
             nombre: userData.nombre,
             apellidos: userData.apellidos,
             email: userData.email,
-            telefono: userData.telefono || '',
+            telefono: userData.telefonoExcel || '',
             tarifa: userData.tarifaExcel || '',
             esAlumno: userData.esAlumno,
             pagadoHasta: userData.pagadoHasta,
             // Campos que pueden ser requeridos por la API (usar originales si existen)
             clasesSueltas: currentEditingUser.clasesSueltas || 0,
-            idTarifa: currentEditingUser.idTarifa || null,
+            // Nota: No enviamos idTarifa porque es interno de WodBuster y se calcula desde 'tarifa'
             // Otros campos que puedan existir en el usuario original
             ...(currentEditingUser.fechaAlta && { fechaAlta: currentEditingUser.fechaAlta }),
             ...(currentEditingUser.observaciones && { observaciones: currentEditingUser.observaciones }),
@@ -1115,11 +1116,11 @@ export async function initializeWodBuster() {
     }
 
     wodBusterInitialized = true;
+    
+    // Renderizar selector de mes
+    renderWodBusterMonthOptions();
+    
+    // Cargar usuarios solo la primera vez
+    await refreshWodBusterUsers();
   }
-
-  // Renderizar selector de mes
-  renderWodBusterMonthOptions();
-
-  // Cargar usuarios al entrar a la vista
-  await refreshWodBusterUsers();
 }
