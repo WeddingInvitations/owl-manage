@@ -216,7 +216,15 @@ function renderWodBusterUsers(users) {
     tarifaCell.style.fontSize = "0.9em";
     tr.appendChild(tarifaCell);
     
-    // Precio (calculado según la tarifa)
+    // ID Tarifa (campo numérico de WodBuster) - COLUMNA 6 según el header HTML
+    const idTarifaCell = document.createElement("td");
+    const displayIdTarifa = user.idTarifa !== null && user.idTarifa !== undefined ? user.idTarifa : "-";
+    idTarifaCell.textContent = displayIdTarifa;
+    idTarifaCell.style.fontSize = "0.85em";
+    idTarifaCell.style.color = "#666";
+    tr.appendChild(idTarifaCell);
+    
+    // Precio (calculado según la tarifa) - COLUMNA 7 según el header HTML
     const priceCell = document.createElement("td");
     const price = user.precio || getTariffPrice(user.tarifaExcel);
     if (price !== null && price !== undefined) {
@@ -378,6 +386,77 @@ async function refreshWodBusterUsers() {
     });
     
     console.log(`Total usuarios combinados: ${combinedUsers.length}`);
+    
+    // Crear mapeo detallado de ID Tarifa → Información de tarifa
+    // Usar TODOS los usuarios de la API (no solo los combinados) para tener datos completos
+    const tarifaMap = new Map();
+    
+    // Analizar usuarios de la API para obtener el mapeo real
+    allUsersAPI.forEach(user => {
+      if (user.idTarifa !== null && user.idTarifa !== undefined) {
+        if (!tarifaMap.has(user.idTarifa)) {
+          tarifaMap.set(user.idTarifa, {
+            usuarios: [],
+            nombresUnicos: new Set()
+          });
+        }
+        
+        const info = tarifaMap.get(user.idTarifa);
+        
+        // Buscar datos enriquecidos en combinedUsers
+        const userEnriquecido = combinedUsers.find(u => u.email === user.email);
+        const nombre = userEnriquecido?.tarifaExcel || userEnriquecido?.nombreCompleto || user.email;
+        const precio = userEnriquecido?.precio;
+        
+        info.usuarios.push({
+          email: user.email,
+          nombre: nombre,
+          precio: precio
+        });
+        
+        // Guardar nombres únicos de tarifa
+        if (userEnriquecido?.tarifaExcel) {
+          info.nombresUnicos.add(userEnriquecido.tarifaExcel);
+        }
+      }
+    });
+    
+    // Mostrar mapeo detallado en consola ordenado por ID
+    if (tarifaMap.size > 0) {
+      console.log('═════════════════════════════════════════════════════════════════════════');
+      console.log('📊 MAPEO COMPLETO: ID TARIFA → NOMBRE TARIFA → USUARIOS');
+      console.log('═════════════════════════════════════════════════════════════════════════');
+      
+      const sortedEntries = Array.from(tarifaMap.entries()).sort((a, b) => a[0] - b[0]);
+      
+      sortedEntries.forEach(([idTarifa, info]) => {
+        const { usuarios, nombresUnicos } = info;
+        const nombresStr = nombresUnicos.size > 0 
+          ? Array.from(nombresUnicos).join(' / ')
+          : '(sin nombre asignado)';
+        
+        console.log(`\n🔸 ID ${String(idTarifa).padStart(3, ' ')} → ${nombresStr}`);
+        console.log(`   Total usuarios: ${usuarios.length}`);
+        
+        // Mostrar hasta 3 ejemplos de usuarios
+        const ejemplos = usuarios.slice(0, 3);
+        ejemplos.forEach((u, idx) => {
+          const precioStr = u.precio !== null && u.precio !== undefined 
+            ? `${u.precio}€` 
+            : '(sin precio)';
+          console.log(`   ${idx + 1}. ${u.email} - ${precioStr}`);
+        });
+        
+        if (usuarios.length > 3) {
+          console.log(`   ... y ${usuarios.length - 3} usuarios más`);
+        }
+      });
+      
+      console.log('\n═════════════════════════════════════════════════════════════════════════');
+      console.log(`📈 Total IDs de tarifa únicos: ${tarifaMap.size}`);
+      console.log(`📊 Total usuarios analizados: ${allUsersAPI.length}`);
+      console.log('═════════════════════════════════════════════════════════════════════════\n');
+    }
     
     // Guardar usuarios para sincronización posterior
     currentWodBusterUsers = combinedUsers;
