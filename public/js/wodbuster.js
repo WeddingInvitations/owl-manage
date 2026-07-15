@@ -38,7 +38,7 @@ const tariffPrices = {
   "OPEN": 70,
   "Open Box": 70,
   "OWL 8": 70,
-  "OWL 8 mañanas": 70,
+  "OWL 8 mañanas": 63,
   "8/mes": 70,
   "Fundador": 70,
   "SPL": 70,
@@ -48,28 +48,16 @@ const tariffPrices = {
   "OWL 6": 50,
   "6/mes": 50,
   "OWL 12": 80,
-  "OWL 12 mañanas": 80,
+  "OWL 12 mañanas": 72,
   "12/mes": 80,
   "ilimitada": 100,
   "Ilimitada": 100,
   "Ilimitado": 100,
   "ILIMITADA": 100,
   "ILIMITADO": 100,
-  "Ilimitada mañanas": 100,
-  "ilimitadas mañanas": 100,
-  "Ilimitadas mañanas": 100,
-  // CrossFit Trimestrales
-  "Trimestre 8/mes": 200,
-  "Trimestre 12/mes": 230,
-  "Trimestre ilimitado": 285,
-  // CrossFit Semestrales
-  "Semestre 8/mes": 380,
-  "Semestre 12/mes": 430,
-  "Semestre ilimitado": 540,
-  // CrossFit Anuales
-  "Anual 8/mes": 715,
-  "Anual 12/mes": 815,
-  "Anual ilimitado": 1020,
+  "Ilimitada mañanas": 90,
+  "ilimitadas mañanas": 90,
+  "Ilimitadas mañanas": 90,
   // Acrobacias
   "Acro 4/mes": 45,
   "Acro 8/mes": 65,
@@ -97,6 +85,50 @@ const tariffPrices = {
 function getTariffPrice(tarifa) {
   if (!tarifa) return null;
   return tariffPrices[tarifa] || null;
+}
+
+// ========== TABLA DE EQUIVALENCIA ID TARIFA → NOMBRE TARIFA ==========
+// Tabla maestra de equivalencia entre idTarifa (WodBuster) y nombre de tarifa
+const TARIFF_ID_MAP = {
+  1: "OWL 12",
+  3: "Ilimitada",
+  4: "SPL",
+  6: "Familiar",
+  7: "OWL 8",
+  13: "OPEN",
+  14: "OWL 8 mañanas",
+  15: "OWL 12 mañanas",
+  17: "Ilimitada mañanas",
+  18: "OWL 4",
+  19: "OWL 6"
+};
+
+// Función para obtener el nombre de tarifa basado en el ID
+function getTariffNameById(idTarifa) {
+  if (idTarifa === null || idTarifa === undefined) return null;
+  return TARIFF_ID_MAP[idTarifa] || null;
+}
+
+// Función inversa: obtener ID de tarifa basado en el nombre
+function getTariffIdByName(tarifaName) {
+  if (!tarifaName) return null;
+  
+  // Buscar coincidencia exacta
+  for (const [id, name] of Object.entries(TARIFF_ID_MAP)) {
+    if (name === tarifaName) {
+      return Number(id);
+    }
+  }
+  
+  // Si no hay coincidencia exacta, buscar coincidencia case-insensitive
+  const normalizedInput = tarifaName.toLowerCase().trim();
+  for (const [id, name] of Object.entries(TARIFF_ID_MAP)) {
+    if (name.toLowerCase() === normalizedInput) {
+      return Number(id);
+    }
+  }
+  
+  return null;
 }
 
 // Función para obtener el mes en formato YYYY-MM
@@ -209,9 +241,10 @@ function renderWodBusterUsers(users) {
     phoneCell.textContent = displayPhone;
     tr.appendChild(phoneCell);
     
-    // Tarifa (desde Excel o WodBuster)
+    // Tarifa (desde Excel o mapeada desde idTarifa)
     const tarifaCell = document.createElement("td");
-    const displayTarifa = user.tarifaExcel || "-";
+    // Prioridad: tarifaExcel > mapeo desde idTarifa > "-"
+    const displayTarifa = user.tarifaExcel || getTariffNameById(user.idTarifa) || "-";
     tarifaCell.textContent = displayTarifa;
     tarifaCell.style.fontSize = "0.9em";
     tr.appendChild(tarifaCell);
@@ -226,7 +259,9 @@ function renderWodBusterUsers(users) {
     
     // Precio (calculado según la tarifa) - COLUMNA 7 según el header HTML
     const priceCell = document.createElement("td");
-    const price = user.precio || getTariffPrice(user.tarifaExcel);
+    // Prioridad: precio guardado > precio desde tarifaExcel > precio desde idTarifa mapeado
+    const tarifaName = user.tarifaExcel || getTariffNameById(user.idTarifa);
+    const price = user.precio || getTariffPrice(tarifaName);
     if (price !== null && price !== undefined) {
       priceCell.textContent = `${price}€`;
       priceCell.style.fontWeight = "600";
@@ -356,11 +391,20 @@ async function refreshWodBusterUsers() {
       if (user.email) {
         const email = user.email.toLowerCase();
         if (!emailMap.has(email)) {
-          // Usuario no existe en BD, añadir de API
-          emailMap.set(email, user);
+          // Usuario no existe en BD, añadir de API con mapeo automático de tarifa
+          const autoMappedTarifa = getTariffNameById(user.idTarifa) || '';
+          emailMap.set(email, {
+            ...user,
+            tarifaExcel: autoMappedTarifa,
+            precio: getTariffPrice(autoMappedTarifa)
+          });
         } else {
           // Usuario existe en BD, solo actualizar campos live de API
           const existing = emailMap.get(email);
+          
+          // Si no hay tarifaExcel pero hay idTarifa, mapear automáticamente
+          const autoMappedTarifa = existing.tarifaExcel || getTariffNameById(user.idTarifa) || '';
+          
           emailMap.set(email, {
             ...user,  // Datos de API (id, esAlumno, pagadoHasta, idTarifa)
             ...existing,  // Datos de BD tienen prioridad
@@ -370,8 +414,8 @@ async function refreshWodBusterUsers() {
             apellidos: existing.apellidos || '',
             telefono: existing.telefono || existing.telefonoExcel || '',
             telefonoExcel: existing.telefonoExcel || existing.telefono || '',
-            tarifaExcel: existing.tarifaExcel || '',
-            precio: existing.precio || getTariffPrice(existing.tarifaExcel),
+            tarifaExcel: autoMappedTarifa,
+            precio: existing.precio || getTariffPrice(autoMappedTarifa),
             docId: existing.docId  // Preservar docId de BD
           });
         }
@@ -613,6 +657,11 @@ async function saveSyncedUsersToFirestore(syncedUsers) {
       const tarifa = user.tarifaExcel || '';
       const precio = user.precio || getTariffPrice(tarifa);
       
+      // Calcular idTarifa automáticamente desde el nombre de tarifa del Excel
+      // Si no coincide con ningún mapeo, preservar el idTarifa existente del usuario
+      const calculatedIdTarifa = getTariffIdByName(tarifa);
+      const finalIdTarifa = calculatedIdTarifa !== null ? calculatedIdTarifa : (user.idTarifa || null);
+      
       const userData = {
         nombreCompleto: user.nombreCompleto || '',
         nombre: user.nombre || '',
@@ -625,7 +674,7 @@ async function saveSyncedUsersToFirestore(syncedUsers) {
         esAlumno: user.esAlumno !== undefined ? user.esAlumno : true,
         pagadoHasta: user.pagadoHasta || null,
         id: user.id || null, // ID de WodBuster
-        idTarifa: user.idTarifa || null
+        idTarifa: finalIdTarifa // ID de tarifa calculado o preservado
       };
       
       // Si el usuario tiene docId (ya está en Firestore), actualizar
@@ -893,7 +942,9 @@ function openEditUserModal(user) {
     ui.wodBusterUserName.value = user.nombreCompleto || user.nombre || "";
     ui.wodBusterUserEmail.value = user.email || "";
     ui.wodBusterUserPhone.value = user.telefonoExcel || user.telefono || "";
-    ui.wodBusterUserTariff.value = user.tarifaExcel || "";
+    // Mapear automáticamente tarifa desde idTarifa si no hay tarifaExcel
+    const displayTarifa = user.tarifaExcel || getTariffNameById(user.idTarifa) || "";
+    ui.wodBusterUserTariff.value = displayTarifa;
     ui.wodBusterUserStatus.value = user.esAlumno ? "true" : "false";
     
     // Convertir fecha si existe
@@ -939,6 +990,9 @@ async function saveWodBusterUser() {
     const tarifa = ui.wodBusterUserTariff.value;
     const precio = getTariffPrice(tarifa);
     
+    // Calcular idTarifa automáticamente desde el nombre de tarifa
+    const calculatedIdTarifa = getTariffIdByName(tarifa);
+    
     const userData = {
       nombreCompleto: name,
       email: email,
@@ -947,7 +1001,8 @@ async function saveWodBusterUser() {
       tarifaExcel: tarifa,
       precio: precio,
       esAlumno: ui.wodBusterUserStatus.value === "true",
-      pagadoHasta: ui.wodBusterUserPaymentDate.value ? new Date(ui.wodBusterUserPaymentDate.value).toISOString() : null
+      pagadoHasta: ui.wodBusterUserPaymentDate.value ? new Date(ui.wodBusterUserPaymentDate.value).toISOString() : null,
+      idTarifa: calculatedIdTarifa !== null ? calculatedIdTarifa : (currentEditingUser?.idTarifa || null)
     };
     
     // Separar nombre y apellidos si es posible
@@ -975,6 +1030,9 @@ async function saveWodBusterUser() {
           console.log('📝 Datos del formulario:', userData);
           
           // Enviar todos los campos del usuario original + los modificados
+          // Calcular idTarifa automáticamente desde el nombre de tarifa
+          const newIdTarifa = getTariffIdByName(userData.tarifaExcel) || currentEditingUser.idTarifa || null;
+          
           const apiData = {
             id: parseInt(wodBusterId),
             nombre: userData.nombre,
@@ -983,7 +1041,7 @@ async function saveWodBusterUser() {
             telefono: userData.telefonoExcel || '',
             // IMPORTANTE: Enviar tarifa Y idTarifa (WodBuster necesita el ID)
             tarifa: userData.tarifaExcel || '',
-            idTarifa: currentEditingUser.idTarifa || null, // Preservar el ID original de tarifa
+            idTarifa: newIdTarifa, // ID de tarifa calculado automáticamente desde el nombre
             esAlumno: userData.esAlumno,
             pagadoHasta: userData.pagadoHasta,
             // Campos que pueden ser requeridos por la API (usar originales si existen)
