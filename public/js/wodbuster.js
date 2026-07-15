@@ -892,6 +892,9 @@ async function saveWodBusterUser() {
       // Si tiene ID de WodBuster, actualizar también en la API
       if (wodBusterId && currentEditingUser) {
         try {
+          console.log('📝 Usuario actual antes de actualizar:', currentEditingUser);
+          console.log('📝 Datos del formulario:', userData);
+          
           // Enviar todos los campos del usuario original + los modificados
           const apiData = {
             id: parseInt(wodBusterId),
@@ -899,18 +902,19 @@ async function saveWodBusterUser() {
             apellidos: userData.apellidos,
             email: userData.email,
             telefono: userData.telefonoExcel || '',
+            // IMPORTANTE: Enviar tarifa Y idTarifa (WodBuster necesita el ID)
             tarifa: userData.tarifaExcel || '',
+            idTarifa: currentEditingUser.idTarifa || null, // Preservar el ID original de tarifa
             esAlumno: userData.esAlumno,
             pagadoHasta: userData.pagadoHasta,
             // Campos que pueden ser requeridos por la API (usar originales si existen)
             clasesSueltas: currentEditingUser.clasesSueltas || 0,
-            // Nota: No enviamos idTarifa porque es interno de WodBuster y se calcula desde 'tarifa'
             // Otros campos que puedan existir en el usuario original
             ...(currentEditingUser.fechaAlta && { fechaAlta: currentEditingUser.fechaAlta }),
             ...(currentEditingUser.observaciones && { observaciones: currentEditingUser.observaciones }),
           };
           
-          console.log('Enviando a WodBuster API:', apiData);
+          console.log('🚀 ENVIANDO A WODBUSTER API:', JSON.stringify(apiData, null, 2));
           const apiResponse = await updateWodBusterUserAPI(apiData);
           
           if (apiResponse && apiResponse.EsOk !== false) {
