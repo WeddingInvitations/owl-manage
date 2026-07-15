@@ -3410,6 +3410,55 @@ span.athlete-status-unpaid,
   box-sizing: border-box;
 }
 
+/* ========== WODBUSTER FILTERS - RESPONSIVE ========== */
+
+/* Desktop: filtros en línea con tamaños flexibles */
+#wodBusterView .filter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+#wodBusterView .filter-row input,
+#wodBusterView .filter-row select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Tablet: 2 columnas */
+@media (max-width: 1024px) {
+  #wodBusterView .filter-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Móvil: 1 columna */
+@media (max-width: 768px) {
+  #wodBusterView .filter-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  #wodBusterView .filter-row input,
+  #wodBusterView .filter-row select {
+    font-size: 0.9rem;
+    padding: 10px;
+  }
+}
+
+/* Móvil pequeño: ajustes adicionales */
+@media (max-width: 480px) {
+  #wodBusterView .detail-header h3 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+  }
+  
+  #wodBusterView .filter-row {
+    gap: 8px;
+  }
+}
+
 .bulk-assign-content {
   display: block;
 }

@@ -21,6 +21,7 @@ import {
 
 let wodBusterInitialized = false;
 let currentWodBusterUsers = []; // Almacenar usuarios cargados
+let allWodBusterUsers = []; // Todos los usuarios sin filtrar
 let lastSyncResult = null; // Para permitir regenerar el reporte
 let currentUserId = null; // Usuario actual logueado
 let selectedWodBusterMonth = null; // Mes seleccionado para filtrado
@@ -209,7 +210,7 @@ function renderWodBusterUsers(users) {
   
   if (!users || users.length === 0) {
     const tr = document.createElement("tr");
-    tr.innerHTML = '<td colspan="9" class="muted">No se encontraron usuarios.</td>';
+    tr.innerHTML = '<td colspan="8" class="muted">No se encontraron usuarios.</td>';
     ui.wodBusterUsersList.appendChild(tr);
     return;
   }
@@ -234,13 +235,6 @@ function renderWodBusterUsers(users) {
     emailCell.textContent = user.email || "-";
     tr.appendChild(emailCell);
     
-    // Teléfono (no disponible en la documentación)
-    const phoneCell = document.createElement("td");
-    // Priorizar telefonoExcel (si fue sincronizado), luego telefono, luego phone
-    const displayPhone = user.telefonoExcel || user.telefono || user.phone || "-";
-    phoneCell.textContent = displayPhone;
-    tr.appendChild(phoneCell);
-    
     // Tarifa (desde Excel o mapeada desde idTarifa)
     const tarifaCell = document.createElement("td");
     // Prioridad: tarifaExcel > mapeo desde idTarifa > "-"
@@ -249,15 +243,7 @@ function renderWodBusterUsers(users) {
     tarifaCell.style.fontSize = "0.9em";
     tr.appendChild(tarifaCell);
     
-    // ID Tarifa (campo numérico de WodBuster) - COLUMNA 6 según el header HTML
-    const idTarifaCell = document.createElement("td");
-    const displayIdTarifa = user.idTarifa !== null && user.idTarifa !== undefined ? user.idTarifa : "-";
-    idTarifaCell.textContent = displayIdTarifa;
-    idTarifaCell.style.fontSize = "0.85em";
-    idTarifaCell.style.color = "#666";
-    tr.appendChild(idTarifaCell);
-    
-    // Precio (calculado según la tarifa) - COLUMNA 7 según el header HTML
+    // Precio (calculado según la tarifa)
     const priceCell = document.createElement("td");
     // Prioridad: precio guardado > precio desde tarifaExcel > precio desde idTarifa mapeado
     const tarifaName = user.tarifaExcel || getTariffNameById(user.idTarifa);
@@ -312,6 +298,61 @@ function renderWodBusterUsers(users) {
   }
 }
 
+// Aplicar filtros a los usuarios de WodBuster
+function applyWodBusterFilters() {
+  // Obtener valores de los filtros
+  const nameFilter = (document.getElementById('filterWodBusterName')?.value || '').toLowerCase().trim();
+  const emailFilter = (document.getElementById('filterWodBusterEmail')?.value || '').toLowerCase().trim();
+  const tariffFilter = (document.getElementById('filterWodBusterTariff')?.value || '').toLowerCase().trim();
+  const statusFilter = document.getElementById('filterWodBusterStatus')?.value || 'active';
+  
+  // Filtrar usuarios
+  let filteredUsers = allWodBusterUsers.filter(user => {
+    // Filtro por nombre
+    if (nameFilter) {
+      const userName = (user.nombreCompleto || user.nombre || '').toLowerCase();
+      if (!userName.includes(nameFilter)) {
+        return false;
+      }
+    }
+    
+    // Filtro por email
+    if (emailFilter) {
+      const userEmail = (user.email || '').toLowerCase();
+      if (!userEmail.includes(emailFilter)) {
+        return false;
+      }
+    }
+    
+    // Filtro por tarifa
+    if (tariffFilter) {
+      const userTariff = (user.tarifaExcel || '').toLowerCase();
+      if (!userTariff.includes(tariffFilter)) {
+        return false;
+      }
+    }
+    
+    // Filtro por estado (activo/inactivo)
+    if (statusFilter === 'active') {
+      // Solo mostrar usuarios activos
+      if (user.esAlumno !== true) {
+        return false;
+      }
+    } else if (statusFilter === 'inactive') {
+      // Solo mostrar usuarios inactivos
+      if (user.esAlumno === true) {
+        return false;
+      }
+    }
+    // Si statusFilter === 'all', mostrar todos (no filtrar por estado)
+    
+    return true;
+  });
+  
+  // Renderizar usuarios filtrados
+  renderWodBusterUsers(filteredUsers);
+}
+
 // Refrescar usuarios de WodBuster (desde API y BD)
 async function refreshWodBusterUsers() {
   if (ui.wodBusterStatus) {
@@ -364,6 +405,7 @@ async function refreshWodBusterUsers() {
     });
     
     console.log(`Total usuarios API: ${allUsersAPI.length}, Usuarios activos con pago vigente: ${activeUsersAPI.length}`);
+    console.log('Nota: Se cargan TODOS los usuarios de la API (activos e inactivos). El filtro por defecto muestra solo activos.');
     
     // SINCRONIZACIÓN AUTOMÁTICA DESACTIVADA - Causaba 783 escrituras en cada carga
     // La sincronización solo debe ocurrir durante el sync manual con Excel
@@ -387,7 +429,9 @@ async function refreshWodBusterUsers() {
     });
     
     // Luego actualizar con datos live de la API (sin sobrescribir campos enriquecidos)
-    activeUsersAPI.forEach(user => {
+    // IMPORTANTE: Usar allUsersAPI (no activeUsersAPI) para incluir TODOS los usuarios
+    // El filtrado por activo/inactivo se hace después en applyWodBusterFilters()
+    allUsersAPI.forEach(user => {
       if (user.email) {
         const email = user.email.toLowerCase();
         if (!emailMap.has(email)) {
@@ -430,6 +474,9 @@ async function refreshWodBusterUsers() {
     });
     
     console.log(`Total usuarios combinados: ${combinedUsers.length}`);
+    
+    // Guardar TODOS los usuarios para el filtrado
+    allWodBusterUsers = combinedUsers;
     
     // Crear mapeo detallado de ID Tarifa → Información de tarifa
     // Usar TODOS los usuarios de la API (no solo los combinados) para tener datos completos
@@ -504,8 +551,10 @@ async function refreshWodBusterUsers() {
     
     // Guardar usuarios para sincronización posterior
     currentWodBusterUsers = combinedUsers;
+    allWodBusterUsers = combinedUsers;
     
-    renderWodBusterUsers(combinedUsers);
+    // Aplicar filtros (por defecto muestra solo activos)
+    applyWodBusterFilters();
     renderWodBusterSummary(combinedUsers);
     
     if (ui.wodBusterStatus) {
@@ -519,7 +568,9 @@ async function refreshWodBusterUsers() {
       console.log('Error en API, cargando solo desde Firestore...');
       const dbUsers = await getWodBusterUsersFromDB();
       currentWodBusterUsers = dbUsers;
-      renderWodBusterUsers(dbUsers);
+      allWodBusterUsers = dbUsers;
+      // Aplicar filtros (por defecto muestra solo activos)
+      applyWodBusterFilters();
       renderWodBusterSummary(dbUsers);
       
       if (ui.wodBusterStatus) {
@@ -761,6 +812,7 @@ async function processExcelFile(file) {
     
     // Actualizar los usuarios actuales con los datos sincronizados
     currentWodBusterUsers = syncResult.usuariosSincronizados.concat(syncResult.usuariosNoSincronizados);
+    allWodBusterUsers = currentWodBusterUsers;
     
     updateSyncProgress('Guardando datos sincronizados en base de datos...');
     
@@ -780,11 +832,12 @@ async function processExcelFile(file) {
     // Combinar con usuarios no sincronizados
     const allUsers = [...dbUsers, ...syncResult.usuariosNoSincronizados];
     currentWodBusterUsers = allUsers;
+    allWodBusterUsers = allUsers;
     
     updateSyncProgress('Sincronización completada y guardada en BD');
     
     // Actualizar la tabla con los nuevos datos
-    renderWodBusterUsers(allUsers);
+    applyWodBusterFilters();
     renderWodBusterSummary(allUsers);
     
     // Mostrar resultados
@@ -1140,6 +1193,36 @@ export async function initializeWodBuster() {
     if (ui.addWodBusterUserBtn) {
       ui.addWodBusterUserBtn.addEventListener("click", () => {
         openAddUserModal();
+      });
+    }
+    
+    // Event listeners para filtros
+    const filterNameInput = document.getElementById('filterWodBusterName');
+    const filterEmailInput = document.getElementById('filterWodBusterEmail');
+    const filterTariffInput = document.getElementById('filterWodBusterTariff');
+    const filterStatusSelect = document.getElementById('filterWodBusterStatus');
+    
+    if (filterNameInput) {
+      filterNameInput.addEventListener('input', () => {
+        applyWodBusterFilters();
+      });
+    }
+    
+    if (filterEmailInput) {
+      filterEmailInput.addEventListener('input', () => {
+        applyWodBusterFilters();
+      });
+    }
+    
+    if (filterTariffInput) {
+      filterTariffInput.addEventListener('input', () => {
+        applyWodBusterFilters();
+      });
+    }
+    
+    if (filterStatusSelect) {
+      filterStatusSelect.addEventListener('change', () => {
+        applyWodBusterFilters();
       });
     }
     

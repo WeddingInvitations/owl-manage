@@ -2140,17 +2140,27 @@
           </div>
 
           <div class="card">
-            <h3>Lista de Usuarios</h3>
-            <div class="table-responsive">
-              <table class="table">
+            <div class="detail-header">
+              <h3>Lista de Usuarios</h3>
+              <div class="filter-row">
+                <input type="text" id="filterWodBusterName" placeholder="🔍 Buscar por nombre..." />
+                <input type="text" id="filterWodBusterEmail" placeholder="📧 Buscar por email..." />
+                <input type="text" id="filterWodBusterTariff" placeholder="🏷️ Buscar por tarifa..." />
+                <select id="filterWodBusterStatus">
+                  <option value="active">Solo Activos</option>
+                  <option value="all">Todos</option>
+                  <option value="inactive">Solo Inactivos</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="table-responsive">              <table class="table">
                 <thead>
                   <tr>
                     <th>ID</th>
                     <th>Nombre</th>
                     <th>Email</th>
-                    <th>Teléfono</th>
                     <th>Tarifa</th>
-                    <th>ID Tarifa</th>
                     <th>Precio</th>
                     <th>Estado</th>
                     <th>Pago Hasta</th>
@@ -2159,7 +2169,7 @@
                 </thead>
                 <tbody id="wodBusterUsersList">
                   <tr>
-                    <td colspan="10" class="muted">Cargando usuarios...</td>
+                    <td colspan="8" class="muted">Cargando usuarios...</td>
                   </tr>
                 </tbody>
               </table>
@@ -2959,7 +2969,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script type="module" src="js/main.js?v=20260715a" defer></script>
+    <script type="module" src="js/main.js?v=20260715f" defer></script>
     
     <!-- Script de debugging simplificado -->
     <script>
