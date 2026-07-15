@@ -132,6 +132,32 @@ function getTariffIdByName(tarifaName) {
   return null;
 }
 
+// Función para verificar si un usuario está activo
+// Un usuario está activo si:
+// 1. esAlumno === true
+// 2. pagadoHasta es posterior o igual a la fecha actual (a nivel de mes)
+function isUserActive(user) {
+  // Primera condición: debe ser alumno
+  if (user.esAlumno !== true) {
+    return false;
+  }
+  
+  // Segunda condición: verificar fecha de pago
+  if (!user.pagadoHasta) {
+    // Si no tiene fecha de pago pero esAlumno es true, considerarlo activo
+    return true;
+  }
+  
+  // Comparar pagadoHasta con fecha actual
+  const now = new Date();
+  const pagadoHastaDate = new Date(user.pagadoHasta);
+  
+  // Considerar activo si pagadoHasta es >= al primer día del mes actual
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  
+  return pagadoHastaDate >= currentMonthStart;
+}
+
 // Función para obtener el mes en formato YYYY-MM
 function getMonthKey(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -257,11 +283,11 @@ function renderWodBusterUsers(users) {
     }
     tr.appendChild(priceCell);
     
-    // Estado (según documentación: esAlumno indica si es alumno activo)
+    // Estado (esAlumno + verificación de fecha de pago)
     const statusCell = document.createElement("td");
     const statusBadge = document.createElement("span");
     statusBadge.className = "badge";
-    const isActive = user.esAlumno === true;
+    const isActive = isUserActive(user);
     statusBadge.classList.add(isActive ? "success" : "danger");
     statusBadge.textContent = isActive ? "Activo" : "Inactivo";
     statusCell.appendChild(statusBadge);
@@ -334,13 +360,13 @@ function applyWodBusterFilters() {
     
     // Filtro por estado (activo/inactivo)
     if (statusFilter === 'active') {
-      // Solo mostrar usuarios activos
-      if (user.esAlumno !== true) {
+      // Solo mostrar usuarios activos (esAlumno + fecha vigente)
+      if (!isUserActive(user)) {
         return false;
       }
     } else if (statusFilter === 'inactive') {
       // Solo mostrar usuarios inactivos
-      if (user.esAlumno === true) {
+      if (isUserActive(user)) {
         return false;
       }
     }
