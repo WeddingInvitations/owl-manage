@@ -2145,7 +2145,8 @@
               <div class="filter-row">
                 <input type="text" id="filterWodBusterName" placeholder="🔍 Buscar por nombre..." />
                 <input type="text" id="filterWodBusterEmail" placeholder="📧 Buscar por email..." />
-                <input type="text" id="filterWodBusterTariff" placeholder="🏷️ Buscar por tarifa..." />
+                <input type="text" id="filterWodBusterTariff" list="tariffOptions" placeholder="🏷️ Buscar o seleccionar tarifa..." autocomplete="off" />
+                <datalist id="tariffOptions"></datalist>
                 <select id="filterWodBusterStatus">
                   <option value="active">Solo Activos</option>
                   <option value="all">Todos</option>

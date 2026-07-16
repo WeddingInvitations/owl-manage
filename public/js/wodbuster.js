@@ -324,13 +324,64 @@ function renderWodBusterUsers(users) {
   }
 }
 
+// Poblar el datalist de tarifas con las tarifas únicas de los usuarios
+function populateTariffDatalist() {
+  const datalist = document.getElementById('tariffOptions');
+  if (!datalist) return;
+  
+  // Extraer todas las tarifas únicas de los usuarios
+  const tariffSet = new Set();
+  
+  allWodBusterUsers.forEach(user => {
+    const tariff = user.tarifaExcel || getTariffNameById(user.idTarifa);
+    if (tariff && tariff !== '-') {
+      tariffSet.add(tariff);
+    }
+  });
+  
+  // Ordenar tarifas alfabéticamente
+  const sortedTariffs = Array.from(tariffSet).sort((a, b) => a.localeCompare(b, 'es'));
+  
+  // Limpiar datalist y agregar opciones
+  datalist.innerHTML = '';
+  sortedTariffs.forEach(tariff => {
+    const option = document.createElement('option');
+    option.value = tariff;
+    datalist.appendChild(option);
+  });
+  
+  console.log(`Datalist de tarifas poblado con ${sortedTariffs.length} opciones:`, sortedTariffs);
+}
+
 // Aplicar filtros a los usuarios de WodBuster
 function applyWodBusterFilters() {
   // Obtener valores de los filtros
   const nameFilter = (document.getElementById('filterWodBusterName')?.value || '').toLowerCase().trim();
   const emailFilter = (document.getElementById('filterWodBusterEmail')?.value || '').toLowerCase().trim();
-  const tariffFilter = (document.getElementById('filterWodBusterTariff')?.value || '').toLowerCase().trim();
+  const tariffFilterRaw = (document.getElementById('filterWodBusterTariff')?.value || '').trim();
+  const tariffFilter = tariffFilterRaw.toLowerCase();
   const statusFilter = document.getElementById('filterWodBusterStatus')?.value || 'active';
+  
+  // Verificar si el valor de tarifa coincide exactamente con una opción del datalist
+  let isExactTariffMatch = false;
+  let exactTariffValue = '';
+  
+  if (tariffFilterRaw) {
+    const datalist = document.getElementById('tariffOptions');
+    if (datalist) {
+      const options = Array.from(datalist.options);
+      const exactMatch = options.find(option => 
+        option.value.toLowerCase() === tariffFilter
+      );
+      if (exactMatch) {
+        isExactTariffMatch = true;
+        exactTariffValue = exactMatch.value;
+        console.log(`Filtro de tarifa: coincidencia exacta detectada - "${exactTariffValue}"`);
+      } else {
+        console.log(`Filtro de tarifa: búsqueda parcial - "${tariffFilterRaw}"`);
+      }
+    }
+  }
   
   // Filtrar usuarios
   let filteredUsers = allWodBusterUsers.filter(user => {
@@ -350,11 +401,20 @@ function applyWodBusterFilters() {
       }
     }
     
-    // Filtro por tarifa
+    // Filtro por tarifa - exacto o parcial según corresponda
     if (tariffFilter) {
-      const userTariff = (user.tarifaExcel || '').toLowerCase();
-      if (!userTariff.includes(tariffFilter)) {
-        return false;
+      const userTariff = user.tarifaExcel || '';
+      
+      if (isExactTariffMatch) {
+        // Comparación exacta (case-insensitive)
+        if (userTariff !== exactTariffValue) {
+          return false;
+        }
+      } else {
+        // Búsqueda parcial (comportamiento original)
+        if (!userTariff.toLowerCase().includes(tariffFilter)) {
+          return false;
+        }
       }
     }
     
@@ -579,6 +639,9 @@ async function refreshWodBusterUsers() {
     currentWodBusterUsers = combinedUsers;
     allWodBusterUsers = combinedUsers;
     
+    // Poblar datalist de tarifas con las tarifas únicas
+    populateTariffDatalist();
+    
     // Aplicar filtros (por defecto muestra solo activos)
     applyWodBusterFilters();
     renderWodBusterSummary(combinedUsers);
@@ -595,6 +658,10 @@ async function refreshWodBusterUsers() {
       const dbUsers = await getWodBusterUsersFromDB();
       currentWodBusterUsers = dbUsers;
       allWodBusterUsers = dbUsers;
+      
+      // Poblar datalist de tarifas
+      populateTariffDatalist();
+      
       // Aplicar filtros (por defecto muestra solo activos)
       applyWodBusterFilters();
       renderWodBusterSummary(dbUsers);
@@ -861,6 +928,9 @@ async function processExcelFile(file) {
     allWodBusterUsers = allUsers;
     
     updateSyncProgress('Sincronización completada y guardada en BD');
+    
+    // Poblar datalist de tarifas con los datos actualizados
+    populateTariffDatalist();
     
     // Actualizar la tabla con los nuevos datos
     applyWodBusterFilters();
