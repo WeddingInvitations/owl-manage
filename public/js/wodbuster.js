@@ -82,10 +82,43 @@ const tariffPrices = {
   "Open Acrobacias 2h": 15
 };
 
+// Mapa de puntos disponibles por tarifa (para WodBuster)
+const tariffPoints = {
+  "OWL 8": 7,
+  "OWL 12": 10,
+  "Ilimitada": 13,
+  "ilimitada": 13,
+  "Ilimitado": 13,
+  "ILIMITADA": 13,
+  "ILIMITADO": 13,
+  "OWL 8 mañanas": 7,
+  "OWL 12 mañanas": 10,
+  "Ilimitada mañanas": 13,
+  "ilimitadas mañanas": 13,
+  "Ilimitadas mañanas": 13,
+  "Familiar": 13,
+  "SPL": 13,
+  "OWL 4": 7,
+  "4/mes": 7,
+  "OWL 6": 7,
+  "6/mes": 7,
+  "OPEN": 13, // Asumido 13 como Ilimitada, ajustar si es diferente
+  "Open Box": 13,
+  "8/mes": 7,
+  "12/mes": 10,
+  "Fundador": 13,
+};
+
 // Función para obtener el precio de una tarifa
 function getTariffPrice(tarifa) {
   if (!tarifa) return null;
   return tariffPrices[tarifa] || null;
+}
+
+// Función para obtener los puntos disponibles de una tarifa
+function getTariffPoints(tarifa) {
+  if (!tarifa) return null;
+  return tariffPoints[tarifa] || null;
 }
 
 // ========== TABLA DE EQUIVALENCIA ID TARIFA → NOMBRE TARIFA ==========
@@ -1182,6 +1215,9 @@ async function saveWodBusterUser() {
           // Calcular idTarifa automáticamente desde el nombre de tarifa
           const newIdTarifa = getTariffIdByName(userData.tarifaExcel) || currentEditingUser.idTarifa || null;
           
+          // Calcular puntos disponibles según la tarifa
+          const puntosDisponibles = getTariffPoints(userData.tarifaExcel) || currentEditingUser.puntosDisponibles || 0;
+          
           const apiData = {
             id: parseInt(wodBusterId),
             nombre: userData.nombre,
@@ -1193,6 +1229,7 @@ async function saveWodBusterUser() {
             idTarifa: newIdTarifa, // ID de tarifa calculado automáticamente desde el nombre
             esAlumno: userData.esAlumno,
             pagadoHasta: userData.pagadoHasta,
+            puntosDisponibles: puntosDisponibles, // Puntos según la tarifa
             // Campos que pueden ser requeridos por la API (usar originales si existen)
             clasesSueltas: currentEditingUser.clasesSueltas || 0,
             // Otros campos que puedan existir en el usuario original
@@ -1201,6 +1238,7 @@ async function saveWodBusterUser() {
           };
           
           console.log('🚀 ENVIANDO A WODBUSTER API:', JSON.stringify(apiData, null, 2));
+          console.log(`💎 Puntos asignados: ${puntosDisponibles} (Tarifa: ${userData.tarifaExcel})`);
           const apiResponse = await updateWodBusterUserAPI(apiData);
           
           if (apiResponse && apiResponse.EsOk !== false) {
