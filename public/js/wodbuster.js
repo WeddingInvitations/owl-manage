@@ -175,20 +175,61 @@ function isUserActive(user) {
     return false;
   }
   
-  // Segunda condición: verificar fecha de pago
-  if (!user.pagadoHasta) {
-    // Si no tiene fecha de pago pero esAlumno es true, considerarlo activo
-    return true;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  
+  // Segunda condición: si tiene clases sueltas, validar que tenga fecha vigente
+  if (user.clasesSueltas && user.clasesSueltas > 0) {
+    // Si tiene bono, validar fecha del bono (válido por 7 meses)
+    if (user.fechaBono) {
+      const bonoDate = new Date(user.fechaBono);
+      if (!isNaN(bonoDate.getTime())) {
+        bonoDate.setHours(0, 0, 0, 0);
+        const bonoExpiry = new Date(bonoDate);
+        bonoExpiry.setMonth(bonoExpiry.getMonth() + 7);
+        
+        if (now <= bonoExpiry) {
+          return true; // Bono vigente
+        }
+      }
+    }
+    
+    // Si tiene pagadoHasta vigente, también está activo
+    if (user.pagadoHasta) {
+      const pagadoHastaDate = new Date(user.pagadoHasta);
+      if (!isNaN(pagadoHastaDate.getTime())) {
+        pagadoHastaDate.setHours(0, 0, 0, 0);
+        if (pagadoHastaDate >= now) {
+          return true; // Fecha de pago vigente
+        }
+      }
+    }
+    
+    // Tiene clases pero todas las fechas han expirado
+    console.log('Usuario con clases sueltas pero fechas expiradas:', user.email, 
+                'clasesSueltas:', user.clasesSueltas, 
+                'pagadoHasta:', user.pagadoHasta,
+                'fechaBono:', user.fechaBono);
+    return false;
   }
   
-  // Comparar pagadoHasta con fecha actual
-  const now = new Date();
+  // Tercera condición: verificar fecha de pago vigente (sin clases sueltas)
+  if (!user.pagadoHasta) {
+    return false;
+  }
+  
   const pagadoHastaDate = new Date(user.pagadoHasta);
   
-  // Considerar activo si pagadoHasta es >= al primer día del mes actual
-  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  // Validar que la fecha sea válida
+  if (isNaN(pagadoHastaDate.getTime())) {
+    console.warn('Fecha pagadoHasta inválida para usuario:', user.email, user.pagadoHasta);
+    return false;
+  }
   
-  return pagadoHastaDate >= currentMonthStart;
+  pagadoHastaDate.setHours(0, 0, 0, 0);
+  
+  // Considerar activo si pagadoHasta es >= a la fecha actual (hoy)
+  return pagadoHastaDate >= now;
 }
 
 // Función para obtener el mes en formato YYYY-MM
@@ -294,10 +335,32 @@ function renderWodBusterUsers(users) {
     emailCell.textContent = user.email || "-";
     tr.appendChild(emailCell);
     
-    // Tarifa (desde Excel o mapeada desde idTarifa)
+    // Tarifa (desde Excel o mapeada desde idTarifa) + indicador de bono
     const tarifaCell = document.createElement("td");
     // Prioridad: tarifaExcel > mapeo desde idTarifa > "-"
-    const displayTarifa = user.tarifaExcel || getTariffNameById(user.idTarifa) || "-";
+    let displayTarifa = user.tarifaExcel || getTariffNameById(user.idTarifa) || "-";
+    
+    // Si tiene fechaBono y clases disponibles, mostrar info del bono
+    if (user.fechaBono && user.clasesSueltas && user.clasesSueltas > 0) {
+      const clasesText = `Bono (${user.clasesSueltas} ${user.clasesSueltas === 1 ? 'clase' : 'clases'})`;
+      
+      // Si tiene tarifa mensual diferente a "Bono...", mostrar ambas
+      if (displayTarifa !== "-" && !displayTarifa.toLowerCase().includes('bono')) {
+        displayTarifa = `${displayTarifa} + ${clasesText}`;
+      } else {
+        // Si no tiene tarifa o ya es un bono, mostrar solo el bono con clases
+        displayTarifa = clasesText;
+      }
+    } else if (user.clasesSueltas && user.clasesSueltas > 0) {
+      // Tiene clases sueltas pero no fechaBono (clases sueltas sin ser bono)
+      const clasesText = `(${user.clasesSueltas} ${user.clasesSueltas === 1 ? 'clase' : 'clases'})`;
+      if (displayTarifa !== "-") {
+        displayTarifa = `${displayTarifa} ${clasesText}`;
+      } else {
+        displayTarifa = `Clases sueltas ${clasesText}`;
+      }
+    }
+    
     tarifaCell.textContent = displayTarifa;
     tarifaCell.style.fontSize = "0.9em";
     tr.appendChild(tarifaCell);
@@ -1117,7 +1180,15 @@ function openAddUserModal() {
     if (bonoTypeEl) bonoTypeEl.value = "Bono 10 Clases Crossfit";
     
     const bonoDateEl = document.getElementById('wodBusterUserBonoDate');
-    if (bonoDateEl) bonoDateEl.value = "";
+    if (bonoDateEl) {
+      bonoDateEl.value = "";
+      bonoDateEl.readOnly = false;
+      bonoDateEl.title = "";
+    }
+    
+    // Limpiar info de clases disponibles si existe
+    const oldInfo = document.getElementById('clasesDisponiblesInfo');
+    if (oldInfo) oldInfo.remove();
     
     // Ocultar botón de eliminar
     ui.wodBusterUserDeleteBtn.style.display = "none";
@@ -1160,6 +1231,34 @@ function openEditUserModal(user) {
     const tariffTypeSelect = document.getElementById('wodBusterUserTariffType');
     if (tariffTypeSelect) {
       tariffTypeSelect.value = "tarifa";
+    }
+    
+    // Si el usuario tiene fechaBono, mostrar en el campo correspondiente (solo informativo)
+    const bonoDateEl = document.getElementById('wodBusterUserBonoDate');
+    if (bonoDateEl && user.fechaBono) {
+      const bonoDate = new Date(user.fechaBono);
+      bonoDateEl.value = bonoDate.toISOString().split('T')[0];
+      // Hacer el campo readonly para que no se modifique accidentalmente
+      bonoDateEl.readOnly = true;
+      bonoDateEl.title = `Bono activo desde ${bonoDate.toLocaleDateString('es-ES')}`;
+    } else if (bonoDateEl) {
+      bonoDateEl.readOnly = false;
+      bonoDateEl.title = "";
+    }
+    
+    // Mostrar información sobre clases sueltas si las tiene
+    const tariffLabel = document.getElementById('wodBusterUserTariffLabel');
+    if (tariffLabel && user.clasesSueltas && user.clasesSueltas > 0) {
+      const infoSpan = document.createElement('span');
+      infoSpan.style.fontSize = '0.85em';
+      infoSpan.style.color = 'var(--success-color)';
+      infoSpan.style.marginLeft = '8px';
+      infoSpan.textContent = `(${user.clasesSueltas} clases disponibles)`;
+      infoSpan.id = 'clasesDisponiblesInfo';
+      // Eliminar info anterior si existe
+      const oldInfo = document.getElementById('clasesDisponiblesInfo');
+      if (oldInfo) oldInfo.remove();
+      tariffLabel.appendChild(infoSpan);
     }
     
     // Mostrar botón de eliminar si el usuario tiene docId (está en BD)
@@ -1205,6 +1304,7 @@ async function saveWodBusterUser() {
     let clasesSueltasIncrement = 0;
     let fechaBono = null;
     let pagadoHastaOverride = null;
+    const isEditingExistingUser = currentEditingUser !== null;
     
     // Procesar según tipo de alta
     if (tariffType === 'clase-suelta') {
@@ -1219,8 +1319,17 @@ async function saveWodBusterUser() {
       const bonoTypeEl = document.getElementById('wodBusterUserBonoType');
       const bonoDateEl = document.getElementById('wodBusterUserBonoDate');
       
-      tarifa = bonoTypeEl ? bonoTypeEl.value : 'Bono 10 Clases Crossfit';
-      precio = getTariffPrice(tarifa);
+      // Si está editando usuario existente, mantener su tarifa mensual original
+      // Si es alta nueva, usar el tipo de bono como tarifa
+      if (isEditingExistingUser && currentEditingUser.tarifaExcel) {
+        tarifa = currentEditingUser.tarifaExcel; // Mantener tarifa mensual original
+        precio = currentEditingUser.precio || getTariffPrice(tarifa);
+        console.log('🔄 Usuario existente - Manteniendo tarifa mensual:', tarifa);
+      } else {
+        tarifa = bonoTypeEl ? bonoTypeEl.value : 'Bono 10 Clases Crossfit';
+        precio = getTariffPrice(tarifa);
+      }
+      
       clasesSueltasIncrement = 10;
       
       // Validar fecha de bono
@@ -1263,9 +1372,13 @@ async function saveWodBusterUser() {
       clasesSueltas: clasesSueltasIncrement > 0 ? (currentEditingUser?.clasesSueltas || 0) + clasesSueltasIncrement : (currentEditingUser?.clasesSueltas || 0)
     };
     
-    // Añadir fechaBono si corresponde
+    // Añadir fechaBono: si se está dando de alta un bono nuevo, usar el nuevo
+    // Si no, preservar el fechaBono existente del usuario
     if (fechaBono) {
       userData.fechaBono = fechaBono;
+    } else if (currentEditingUser?.fechaBono) {
+      // Preservar fechaBono existente si no se está actualizando
+      userData.fechaBono = currentEditingUser.fechaBono;
     }
     
     // Separar nombre y apellidos si es posible

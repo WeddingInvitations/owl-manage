@@ -1690,6 +1690,19 @@ span.athlete-status-unpaid,
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+.badge.success {
+  background: var(--success-color);
+}
+
+.badge.danger {
+  background: var(--danger-color);
+}
+
+.badge.info {
+  background: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
 /* .app-footer {
   padding: 16px 32px 32px;
   color: var(--muted);
