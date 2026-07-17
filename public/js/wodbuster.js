@@ -1103,8 +1103,27 @@ function openAddUserModal() {
     ui.wodBusterUserStatus.value = "true";
     ui.wodBusterUserPaymentDate.value = "";
     
+    // Inicializar tipo de alta a "tarifa" por defecto
+    const tariffTypeSelect = document.getElementById('wodBusterUserTariffType');
+    if (tariffTypeSelect) {
+      tariffTypeSelect.value = "tarifa";
+    }
+    
+    // Limpiar campos de clase suelta y bono
+    const classTypeEl = document.getElementById('wodBusterUserClassType');
+    if (classTypeEl) classTypeEl.value = "Clase Crossfit";
+    
+    const bonoTypeEl = document.getElementById('wodBusterUserBonoType');
+    if (bonoTypeEl) bonoTypeEl.value = "Bono 10 Clases Crossfit";
+    
+    const bonoDateEl = document.getElementById('wodBusterUserBonoDate');
+    if (bonoDateEl) bonoDateEl.value = "";
+    
     // Ocultar botón de eliminar
     ui.wodBusterUserDeleteBtn.style.display = "none";
+    
+    // Actualizar visibilidad de campos según tipo de alta
+    handleTariffTypeChange();
     
     // Mostrar modal
     ui.wodBusterUserModal.classList.remove("hidden");
@@ -1137,12 +1156,21 @@ function openEditUserModal(user) {
       ui.wodBusterUserPaymentDate.value = "";
     }
     
+    // Inicializar tipo de alta: siempre "tarifa" cuando se edita un usuario existente
+    const tariffTypeSelect = document.getElementById('wodBusterUserTariffType');
+    if (tariffTypeSelect) {
+      tariffTypeSelect.value = "tarifa";
+    }
+    
     // Mostrar botón de eliminar si el usuario tiene docId (está en BD)
     if (user.docId) {
       ui.wodBusterUserDeleteBtn.style.display = "inline-block";
     } else {
       ui.wodBusterUserDeleteBtn.style.display = "none";
     }
+    
+    // Actualizar visibilidad de campos según tipo de alta
+    handleTariffTypeChange();
     
     // Mostrar modal
     ui.wodBusterUserModal.classList.remove("hidden");
@@ -1168,9 +1196,56 @@ async function saveWodBusterUser() {
       return;
     }
     
-    // Preparar datos del usuario
-    const tarifa = ui.wodBusterUserTariff.value;
-    const precio = getTariffPrice(tarifa);
+    // Obtener tipo de alta
+    const tariffTypeEl = document.getElementById('wodBusterUserTariffType');
+    const tariffType = tariffTypeEl ? tariffTypeEl.value : 'tarifa';
+    
+    let tarifa = '';
+    let precio = null;
+    let clasesSueltasIncrement = 0;
+    let fechaBono = null;
+    let pagadoHastaOverride = null;
+    
+    // Procesar según tipo de alta
+    if (tariffType === 'clase-suelta') {
+      // Clase suelta: añadir 1 a clasesSueltas
+      const classTypeEl = document.getElementById('wodBusterUserClassType');
+      tarifa = classTypeEl ? classTypeEl.value : 'Clase Crossfit';
+      precio = getTariffPrice(tarifa);
+      clasesSueltasIncrement = 1;
+      console.log('💳 Alta con CLASE SUELTA:', tarifa, '- Incremento:', clasesSueltasIncrement);
+    } else if (tariffType === 'bono') {
+      // Bono: añadir 10 a clasesSueltas y establecer fechaBono y pagadoHasta
+      const bonoTypeEl = document.getElementById('wodBusterUserBonoType');
+      const bonoDateEl = document.getElementById('wodBusterUserBonoDate');
+      
+      tarifa = bonoTypeEl ? bonoTypeEl.value : 'Bono 10 Clases Crossfit';
+      precio = getTariffPrice(tarifa);
+      clasesSueltasIncrement = 10;
+      
+      // Validar fecha de bono
+      if (!bonoDateEl || !bonoDateEl.value) {
+        alert('Por favor, selecciona la fecha de alta del bono');
+        return;
+      }
+      
+      // Establecer fechaBono con formato ISO
+      const bonoDate = new Date(bonoDateEl.value);
+      fechaBono = bonoDate.toISOString().split('.')[0]; // Formato: 2026-05-28T00:00:00
+      
+      // Calcular pagadoHasta: 7 meses después de la fecha del bono
+      const pagadoHastaDate = new Date(bonoDate);
+      pagadoHastaDate.setMonth(pagadoHastaDate.getMonth() + 7);
+      pagadoHastaOverride = pagadoHastaDate.toISOString();
+      
+      console.log('🎫 Alta con BONO:', tarifa, '- Incremento:', clasesSueltasIncrement);
+      console.log('📅 Fecha Bono:', fechaBono);
+      console.log('📅 Pagado Hasta (7 meses):', pagadoHastaOverride);
+    } else {
+      // Tarifa mensual normal
+      tarifa = ui.wodBusterUserTariff.value;
+      precio = getTariffPrice(tarifa);
+    }
     
     // Calcular idTarifa automáticamente desde el nombre de tarifa
     const calculatedIdTarifa = getTariffIdByName(tarifa);
@@ -1183,9 +1258,15 @@ async function saveWodBusterUser() {
       tarifaExcel: tarifa,
       precio: precio,
       esAlumno: ui.wodBusterUserStatus.value === "true",
-      pagadoHasta: ui.wodBusterUserPaymentDate.value ? new Date(ui.wodBusterUserPaymentDate.value).toISOString() : null,
-      idTarifa: calculatedIdTarifa !== null ? calculatedIdTarifa : (currentEditingUser?.idTarifa || null)
+      pagadoHasta: pagadoHastaOverride || (ui.wodBusterUserPaymentDate.value ? new Date(ui.wodBusterUserPaymentDate.value).toISOString() : null),
+      idTarifa: calculatedIdTarifa !== null ? calculatedIdTarifa : (currentEditingUser?.idTarifa || null),
+      clasesSueltas: clasesSueltasIncrement > 0 ? (currentEditingUser?.clasesSueltas || 0) + clasesSueltasIncrement : (currentEditingUser?.clasesSueltas || 0)
     };
+    
+    // Añadir fechaBono si corresponde
+    if (fechaBono) {
+      userData.fechaBono = fechaBono;
+    }
     
     // Separar nombre y apellidos si es posible
     const nameParts = name.split(' ').filter(p => p.length > 0);
@@ -1231,10 +1312,11 @@ async function saveWodBusterUser() {
             pagadoHasta: userData.pagadoHasta,
             puntosDisponibles: puntosDisponibles, // Puntos según la tarifa
             // Campos que pueden ser requeridos por la API (usar originales si existen)
-            clasesSueltas: currentEditingUser.clasesSueltas || 0,
+            clasesSueltas: userData.clasesSueltas || 0,
             // Otros campos que puedan existir en el usuario original
             ...(currentEditingUser.fechaAlta && { fechaAlta: currentEditingUser.fechaAlta }),
             ...(currentEditingUser.observaciones && { observaciones: currentEditingUser.observaciones }),
+            ...(userData.fechaBono && { fechaBono: userData.fechaBono }),
           };
           
           console.log('🚀 ENVIANDO A WODBUSTER API:', JSON.stringify(apiData, null, 2));
@@ -1309,6 +1391,45 @@ async function deleteWodBusterUserConfirm() {
   }
 }
 
+// Manejar cambio de tipo de alta (mensual/clase-suelta/bono)
+function handleTariffTypeChange() {
+  const tariffTypeSelect = document.getElementById('wodBusterUserTariffType');
+  if (!tariffTypeSelect) return;
+  
+  const selectedType = tariffTypeSelect.value;
+  
+  // Elementos para clase suelta
+  const classTypeLabel = document.getElementById('wodBusterUserClassTypeLabel');
+  
+  // Elementos para bono
+  const bonoTypeLabel = document.getElementById('wodBusterUserBonoTypeLabel');
+  const bonoDateLabel = document.getElementById('wodBusterUserBonoDateLabel');
+  
+  // Elementos para tarifa mensual
+  const tariffLabel = document.getElementById('wodBusterUserTariffLabel');
+  
+  // Mostrar/ocultar secciones según el tipo seleccionado
+  if (selectedType === 'clase-suelta') {
+    // Mostrar tipo de clase, ocultar bono y tarifa mensual
+    if (classTypeLabel) classTypeLabel.style.display = 'block';
+    if (bonoTypeLabel) bonoTypeLabel.style.display = 'none';
+    if (bonoDateLabel) bonoDateLabel.style.display = 'none';
+    if (tariffLabel) tariffLabel.style.display = 'none';
+  } else if (selectedType === 'bono') {
+    // Mostrar tipo de bono y fecha, ocultar clase suelta y tarifa mensual
+    if (classTypeLabel) classTypeLabel.style.display = 'none';
+    if (bonoTypeLabel) bonoTypeLabel.style.display = 'block';
+    if (bonoDateLabel) bonoDateLabel.style.display = 'block';
+    if (tariffLabel) tariffLabel.style.display = 'none';
+  } else { // tarifa (mensual)
+    // Mostrar tarifa mensual, ocultar clase suelta y bono
+    if (classTypeLabel) classTypeLabel.style.display = 'none';
+    if (bonoTypeLabel) bonoTypeLabel.style.display = 'none';
+    if (bonoDateLabel) bonoDateLabel.style.display = 'none';
+    if (tariffLabel) tariffLabel.style.display = 'block';
+  }
+}
+
 // Inicializar vista de WodBuster
 export async function initializeWodBuster() {
   if (!ui.wodBusterView) {
@@ -1379,6 +1500,16 @@ export async function initializeWodBuster() {
       ui.wodBusterUserDeleteBtn.addEventListener("click", async () => {
         await deleteWodBusterUserConfirm();
       });
+    }
+    
+    // Event listener para cambio de tipo de alta
+    const tariffTypeSelect = document.getElementById('wodBusterUserTariffType');
+    if (tariffTypeSelect) {
+      tariffTypeSelect.addEventListener('change', () => {
+        handleTariffTypeChange();
+      });
+      // Inicializar estado al cargar
+      handleTariffTypeChange();
     }
     
     // Event listener para botón de sincronizar con Excel

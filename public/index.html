@@ -2287,6 +2287,15 @@
               </label>
               
               <label>
+                Tipo de Alta
+                <select id="wodBusterUserTariffType">
+                  <option value="tarifa">Tarifa Mensual</option>
+                  <option value="clase-suelta">Clase Suelta</option>
+                  <option value="bono">Bono 10 Clases</option>
+                </select>
+              </label>
+              
+              <label id="wodBusterUserTariffLabel">
                 Tarifa
                 <select id="wodBusterUserTariff">
                   <option value="">-- Seleccionar tarifa --</option>
@@ -2320,15 +2329,30 @@
                     <option value="Telas 12/mes">Telas 12/mes - 85€/mes</option>
                     <option value="Telas Ilimitado">Telas Ilimitado - 105€/mes</option>
                   </optgroup>
-                  <optgroup label="Clases Sueltas">
-                    <option value="Clase Crossfit">Clase Crossfit - 15€</option>
-                    <option value="Bono 10 Clases Crossfit">Bono 10 Clases Crossfit - 135€</option>
-                    <option value="Clase Acrobacias">Clase Acrobacias - 15€</option>
-                    <option value="Bono 10 Clases Acrobacias">Bono 10 Clases Acrobacias - 135€</option>
-                    <option value="Open Acrobacias 1h">Open Acrobacias 1h - 10€</option>
-                    <option value="Open Acrobacias 2h">Open Acrobacias 2h - 15€</option>
-                  </optgroup>
                 </select>
+              </label>
+              
+              <label id="wodBusterUserClassTypeLabel" style="display: none;">
+                Tipo de Clase
+                <select id="wodBusterUserClassType">
+                  <option value="Clase Crossfit">Clase Crossfit - 15€</option>
+                  <option value="Clase Acrobacias">Clase Acrobacias - 15€</option>
+                  <option value="Open Acrobacias 1h">Open Acrobacias 1h - 10€</option>
+                  <option value="Open Acrobacias 2h">Open Acrobacias 2h - 15€</option>
+                </select>
+              </label>
+              
+              <label id="wodBusterUserBonoTypeLabel" style="display: none;">
+                Tipo de Bono
+                <select id="wodBusterUserBonoType">
+                  <option value="Bono 10 Clases Crossfit">Bono 10 Clases Crossfit - 135€</option>
+                  <option value="Bono 10 Clases Acrobacias">Bono 10 Clases Acrobacias - 135€</option>
+                </select>
+              </label>
+              
+              <label id="wodBusterUserBonoDateLabel" style="display: none;">
+                Fecha de Alta del Bono *
+                <input id="wodBusterUserBonoDate" type="date" />
               </label>
               
               <label>
