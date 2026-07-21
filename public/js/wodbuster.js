@@ -26,6 +26,7 @@ let lastSyncResult = null; // Para permitir regenerar el reporte
 let currentUserId = null; // Usuario actual logueado
 let selectedWodBusterMonth = null; // Mes seleccionado para filtrado
 let currentEditingUser = null; // Datos originales del usuario en edición
+let isSyncing = false; // Flag para prevenir sincronizaciones simultáneas
 
 // Función para establecer el ID del usuario actual
 export function setCurrentUserId(userId) {
@@ -531,24 +532,83 @@ function applyWodBusterFilters() {
     return true;
   });
   
+  // Actualizar currentWodBusterUsers con los usuarios filtrados
+  currentWodBusterUsers = filteredUsers;
+  
   // Renderizar usuarios filtrados
   renderWodBusterUsers(filteredUsers);
+  
+  // Actualizar resumen con usuarios filtrados
+  renderWodBusterSummary(filteredUsers);
 }
 
 // Refrescar usuarios de WodBuster (desde API y BD)
+// Cargar usuarios solo desde Firestore (sin sincronizar con API)
 async function refreshWodBusterUsers() {
   if (ui.wodBusterStatus) {
-    ui.wodBusterStatus.textContent = "Cargando usuarios...";
+    ui.wodBusterStatus.textContent = "Cargando usuarios desde base de datos local...";
   }
 
   try {
-    // Cargar usuarios desde Firestore
     console.log('Cargando usuarios desde Firestore...');
     const dbUsers = await getWodBusterUsersFromDB();
     console.log(`Usuarios en Firestore: ${dbUsers.length}`);
     
+    // Guardar usuarios
+    currentWodBusterUsers = dbUsers;
+    allWodBusterUsers = dbUsers;
+    
+    // Poblar datalist de tarifas
+    populateTariffDatalist();
+    
+    // Aplicar filtros (por defecto muestra solo activos) - esto también actualiza el resumen
+    applyWodBusterFilters();
+    
+    if (ui.wodBusterStatus) {
+      ui.wodBusterStatus.textContent = `Última actualización: ${new Date().toLocaleString("es-ES")} - ${dbUsers.length} usuarios (solo BD local)`;
+    }
+  } catch (error) {
+    console.error("Error cargando usuarios desde Firestore:", error);
+    
+    if (ui.wodBusterUsersList) {
+      ui.wodBusterUsersList.innerHTML = `
+        <tr>
+          <td colspan="9" class="error">
+            Error al cargar usuarios: ${error.message}
+          </td>
+        </tr>
+      `;
+    }
+    
+    if (ui.wodBusterStatus) {
+      ui.wodBusterStatus.textContent = "Error al cargar usuarios";
+    }
+  }
+}
+
+// Sincronizar con la API de WodBuster
+async function syncWithWodBusterAPI() {
+  // Prevenir sincronizaciones simultáneas
+  if (isSyncing) {
+    console.warn('⚠️ Ya hay una sincronización en curso, esperando...');
+    alert('Ya hay una sincronización en curso. Por favor, espera a que termine.');
+    return;
+  }
+  
+  isSyncing = true;
+  
+  if (ui.wodBusterStatus) {
+    ui.wodBusterStatus.textContent = "Sincronizando con WodBuster API...";
+  }
+
+  try {
+    // Cargar usuarios desde Firestore
+    console.log('📥 Cargando usuarios desde Firestore...');
+    const dbUsers = await getWodBusterUsersFromDB();
+    console.log(`✅ Usuarios en Firestore: ${dbUsers.length}`);
+    
     // Cargar usuarios desde la API de WodBuster
-    console.log('Cargando usuarios desde API WodBuster...');
+    console.log('☁️ Sincronizando con API WodBuster...');
     const response = await getWodBusterUsers();
     
     console.log('Respuesta completa de WodBuster:', response);
@@ -589,16 +649,14 @@ async function refreshWodBusterUsers() {
     console.log(`Total usuarios API: ${allUsersAPI.length}, Usuarios activos con pago vigente: ${activeUsersAPI.length}`);
     console.log('Nota: Se cargan TODOS los usuarios de la API (activos e inactivos). El filtro por defecto muestra solo activos.');
     
-    // SINCRONIZACIÓN AUTOMÁTICA DESACTIVADA - Causaba 783 escrituras en cada carga
-    // La sincronización solo debe ocurrir durante el sync manual con Excel
-    // if (activeUsersAPI.length > 0) {
-    //   console.log('Sincronizando usuarios de API con Firestore...');
-    //   syncMultipleWodBusterUsers(activeUsersAPI, currentUserId).then(result => {
-    //     console.log(`Sincronización completada: ${result.created} creados, ${result.updated} actualizados, ${result.errors} errores`);
-    //   }).catch(err => {
-    //     console.error('Error en sincronización automática:', err);
-    //   });
-    // }
+    // Guardar usuarios de la API en Firestore
+    console.log('💾 Guardando usuarios de WodBuster en Firestore...');
+    const syncResult = await syncMultipleWodBusterUsers(allUsersAPI, currentUserId);
+    console.log(`✅ Sincronización con Firestore completada: ${syncResult.created} creados, ${syncResult.updated} actualizados, ${syncResult.errors} errores`);
+    
+    // NO recargar desde BD - usar los datos que ya tenemos en memoria
+    // Los usuarios de dbUsers ya tienen los docId, solo necesitamos combinarlos con los datos actualizados de la API
+    console.log('🔄 Combinando usuarios de BD (en memoria) con datos actualizados de API...');
     
     // Combinar usuarios de BD y API (priorizar datos enriquecidos de BD)
     const emailMap = new Map();
@@ -738,13 +796,18 @@ async function refreshWodBusterUsers() {
     // Poblar datalist de tarifas con las tarifas únicas
     populateTariffDatalist();
     
-    // Aplicar filtros (por defecto muestra solo activos)
+    // Aplicar filtros (por defecto muestra solo activos) - esto también actualiza el resumen
     applyWodBusterFilters();
-    renderWodBusterSummary(combinedUsers);
     
     if (ui.wodBusterStatus) {
-      ui.wodBusterStatus.textContent = `Última actualización: ${new Date().toLocaleString("es-ES")} - ${combinedUsers.length} usuarios (BD: ${dbUsers.length}, API: ${activeUsersAPI.length})`;
+      ui.wodBusterStatus.textContent = `Última sincronización: ${new Date().toLocaleString("es-ES")} - ${combinedUsers.length} usuarios (BD: ${dbUsers.length}, API: ${allUsersAPI.length}) - ${syncResult.created} nuevos, ${syncResult.updated} actualizados`;
     }
+    
+    // Mostrar resumen de la sincronización
+    if (syncResult.created > 0 || syncResult.updated > 0) {
+      alert(`✅ Sincronización completada:\n\n• ${syncResult.created} usuarios nuevos guardados\n• ${syncResult.updated} usuarios actualizados\n• ${syncResult.skipped || 0} usuarios sin cambios\n• ${combinedUsers.length} usuarios totales\n\nLos datos ahora están guardados en la base de datos local.`);
+    }
+    
   } catch (error) {
     console.error("Error cargando usuarios de WodBuster:", error);
     
@@ -758,9 +821,8 @@ async function refreshWodBusterUsers() {
       // Poblar datalist de tarifas
       populateTariffDatalist();
       
-      // Aplicar filtros (por defecto muestra solo activos)
+      // Aplicar filtros (por defecto muestra solo activos) - esto también actualiza el resumen
       applyWodBusterFilters();
-      renderWodBusterSummary(dbUsers);
       
       if (ui.wodBusterStatus) {
         ui.wodBusterStatus.textContent = `Usuarios cargados desde BD local (${dbUsers.length}) - Error en API: ${error.message}`;
@@ -793,6 +855,10 @@ async function refreshWodBusterUsers() {
         ui.wodBusterStatus.textContent = "Error al cargar usuarios";
       }
     }
+  } finally {
+    // Liberar flag de sincronización
+    isSyncing = false;
+    console.log('🏁 Sincronización finalizada, flag liberado');
   }
 }
 
@@ -1028,9 +1094,8 @@ async function processExcelFile(file) {
     // Poblar datalist de tarifas con los datos actualizados
     populateTariffDatalist();
     
-    // Actualizar la tabla con los nuevos datos
+    // Actualizar la tabla con los nuevos datos - esto también actualiza el resumen
     applyWodBusterFilters();
-    renderWodBusterSummary(allUsers);
     
     // Mostrar resultados
     displaySyncResults(syncResult, columnInfo);
@@ -1266,6 +1331,16 @@ function openEditUserModal(user) {
       ui.wodBusterUserDeleteBtn.style.display = "inline-block";
     } else {
       ui.wodBusterUserDeleteBtn.style.display = "none";
+    }
+    
+    // Mostrar botón de eliminar bono si el usuario tiene clases sueltas
+    const deleteBonoBtn = document.getElementById('wodBusterUserDeleteBonoBtn');
+    if (deleteBonoBtn) {
+      if (user.clasesSueltas && user.clasesSueltas > 0) {
+        deleteBonoBtn.style.display = "inline-block";
+      } else {
+        deleteBonoBtn.style.display = "none";
+      }
     }
     
     // Actualizar visibilidad de campos según tipo de alta
@@ -1504,6 +1579,94 @@ async function deleteWodBusterUserConfirm() {
   }
 }
 
+// Eliminar bono de un usuario
+async function deleteWodBusterUserBono() {
+  const docId = ui.wodBusterUserDocId.value;
+  const email = ui.wodBusterUserEmail.value;
+  const wodBusterId = ui.wodBusterUserId?.value;
+  
+  if (!docId) {
+    alert('No se puede eliminar el bono de este usuario (no está en la base de datos local)');
+    return;
+  }
+  
+  if (!currentEditingUser || !currentEditingUser.clasesSueltas || currentEditingUser.clasesSueltas <= 0) {
+    alert('Este usuario no tiene bono activo');
+    return;
+  }
+  
+  const confirmDelete = confirm(`¿Estás seguro de que quieres eliminar el bono del usuario "${email}"?\n\nSe eliminarán ${currentEditingUser.clasesSueltas} clases disponibles.\n\nEsta acción no se puede deshacer.`);
+  
+  if (!confirmDelete) return;
+  
+  try {
+    // Actualizar datos del usuario para eliminar el bono
+    const userData = {
+      clasesSueltas: 0,
+      fechaBono: null,
+    };
+    
+    // Actualizar en Firestore
+    await updateWodBusterUser(docId, userData, currentUserId);
+    console.log('Bono eliminado del usuario en Firestore:', email);
+    
+    // Si tiene ID de WodBuster, actualizar también en la API
+    if (wodBusterId && currentEditingUser) {
+      try {
+        // Calcular idTarifa automáticamente desde el nombre de tarifa
+        const idTarifa = getTariffIdByName(currentEditingUser.tarifaExcel) || currentEditingUser.idTarifa || null;
+        
+        // Calcular puntos disponibles según la tarifa
+        const puntosDisponibles = getTariffPoints(currentEditingUser.tarifaExcel) || currentEditingUser.puntosDisponibles || 0;
+        
+        const apiData = {
+          id: parseInt(wodBusterId),
+          nombre: currentEditingUser.nombre,
+          apellidos: currentEditingUser.apellidos,
+          email: currentEditingUser.email,
+          telefono: currentEditingUser.telefonoExcel || '',
+          tarifa: currentEditingUser.tarifaExcel || '',
+          idTarifa: idTarifa,
+          esAlumno: currentEditingUser.esAlumno,
+          pagadoHasta: currentEditingUser.pagadoHasta,
+          puntosDisponibles: puntosDisponibles,
+          clasesSueltas: 0, // Eliminar clases sueltas
+          // Otros campos que puedan existir
+          ...(currentEditingUser.fechaAlta && { fechaAlta: currentEditingUser.fechaAlta }),
+          ...(currentEditingUser.observaciones && { observaciones: currentEditingUser.observaciones }),
+        };
+        
+        console.log('🗑️ ELIMINANDO BONO EN WODBUSTER API:', JSON.stringify(apiData, null, 2));
+        const apiResponse = await updateWodBusterUserAPI(apiData);
+        
+        if (apiResponse && apiResponse.EsOk !== false) {
+          console.log('Bono eliminado en WodBuster API correctamente');
+        } else {
+          console.warn('La API de WodBuster retornó error:', apiResponse);
+          alert('Bono eliminado localmente, pero hubo un problema al actualizar en WodBuster. Revisa la consola.');
+        }
+      } catch (apiError) {
+        console.error('Error eliminando bono en WodBuster API:', apiError);
+        alert('Bono eliminado localmente, pero no se pudo actualizar en WodBuster: ' + apiError.message);
+      }
+    }
+    
+    // Cerrar modal
+    ui.wodBusterUserModal.classList.add("hidden");
+    
+    // Limpiar datos de edición
+    currentEditingUser = null;
+    
+    // Refrescar lista
+    await refreshWodBusterUsers();
+    
+    alert('Bono eliminado correctamente');
+  } catch (error) {
+    console.error('Error eliminando bono:', error);
+    alert(`Error al eliminar el bono: ${error.message}`);
+  }
+}
+
 // Manejar cambio de tipo de alta (mensual/clase-suelta/bono)
 function handleTariffTypeChange() {
   const tariffTypeSelect = document.getElementById('wodBusterUserTariffType');
@@ -1550,10 +1713,10 @@ export async function initializeWodBuster() {
   }
 
   if (!wodBusterInitialized) {
-    // Event listener para botón de refrescar
+    // Event listener para botón de refrescar (sincronizar con WodBuster API)
     if (ui.wodBusterRefreshBtn) {
       ui.wodBusterRefreshBtn.addEventListener("click", async () => {
-        await refreshWodBusterUsers();
+        await syncWithWodBusterAPI();
       });
     }
     
@@ -1612,6 +1775,14 @@ export async function initializeWodBuster() {
     if (ui.wodBusterUserDeleteBtn) {
       ui.wodBusterUserDeleteBtn.addEventListener("click", async () => {
         await deleteWodBusterUserConfirm();
+      });
+    }
+    
+    // Event listener para botón de eliminar bono
+    const deleteBonoBtn = document.getElementById('wodBusterUserDeleteBonoBtn');
+    if (deleteBonoBtn) {
+      deleteBonoBtn.addEventListener("click", async () => {
+        await deleteWodBusterUserBono();
       });
     }
     

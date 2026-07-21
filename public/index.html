@@ -2108,10 +2108,10 @@
                 <button id="addWodBusterUserBtn" class="btn success" type="button">+ Añadir Usuario</button>
                 <button id="wodBusterSyncExcelBtn" class="btn primary" type="button">📊 Sincronizar con Excel/CSV</button>
                 <button id="wodBusterUpdatePricesBtn" class="btn secondary" type="button">💰 Actualizar Precios</button>
-                <button id="wodBusterRefreshBtn" class="btn ghost" type="button">🔄 Actualizar</button>
+                <button id="wodBusterRefreshBtn" class="btn ghost" type="button">🔄 Sincronizar con WodBuster</button>
               </div>
             </div>
-            <p class="muted">Usuarios sincronizados desde la aplicación WodBuster y base de datos local.</p>
+            <p class="muted">Usuarios cargados desde base de datos local. Usa el botón "Sincronizar con WodBuster" para actualizar desde la API.</p>
             <p id="wodBusterStatus" class="muted"></p>
             
             <!-- Input oculto para seleccionar archivo Excel/CSV -->
@@ -2371,6 +2371,7 @@
               <div class="btn-group">
                 <button id="wodBusterUserSaveBtn" class="btn primary" type="button">Guardar</button>
                 <button id="wodBusterUserCancelBtn" class="btn ghost" type="button">Cancelar</button>
+                <button id="wodBusterUserDeleteBonoBtn" class="btn secondary" type="button" style="display: none;">🗑️ Eliminar Bono</button>
                 <button id="wodBusterUserDeleteBtn" class="btn danger" type="button" style="display: none; margin-left: auto;">Eliminar</button>
               </div>
             </div>

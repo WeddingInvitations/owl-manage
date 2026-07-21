@@ -2038,66 +2038,112 @@ export async function syncWodBusterUserToDB(userData, userId) {
 
 /**
  * Sincronizar múltiples usuarios de la API con Firestore
+ * Optimizado para evitar queries en bucle
  */
 export async function syncMultipleWodBusterUsers(usersArray, userId) {
   const results = {
     created: 0,
     updated: 0,
+    skipped: 0,
     errors: 0,
     errorDetails: []
   };
   
-  for (const userData of usersArray) {
-    try {
-      const q = query(
-        collection(db, "wodbuster_users"),
-        where("email", "==", userData.email)
-      );
-      
-      const snapshot = await getDocs(q);
-      
-      if (!snapshot.empty) {
-        // Actualizar solo campos de la API, preservar campos enriquecidos manualmente
-        const existingDoc = snapshot.docs[0];
-        const existingData = existingDoc.data();
-        
-        // Solo actualizar campos que vienen de la API, preservar los enriquecidos
-        const updateData = {
-          id: userData.id,
-          esAlumno: userData.esAlumno,
-          pagadoHasta: userData.pagadoHasta,
-          idTarifa: userData.idTarifa,
-          lastSyncAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          updatedBy: userId || null,
-        };
-        
-        // Solo actualizar email si no existe o si ha cambiado
-        if (!existingData.email || existingData.source === 'api') {
-          updateData.email = userData.email;
+  try {
+    // 1. Cargar TODOS los usuarios de Firestore UNA SOLA VEZ
+    console.log('📥 Cargando usuarios existentes de Firestore...');
+    const existingUsers = await getWodBusterUsersFromDB();
+    
+    // 2. Crear un mapa por email para búsqueda rápida
+    const emailMap = new Map();
+    existingUsers.forEach(user => {
+      if (user.email) {
+        emailMap.set(user.email.toLowerCase(), user);
+      }
+    });
+    
+    console.log(`✅ ${existingUsers.length} usuarios existentes cargados`);
+    console.log(`🔄 Procesando ${usersArray.length} usuarios de la API...`);
+    
+    // 3. Procesar cada usuario de la API
+    for (const userData of usersArray) {
+      try {
+        if (!userData.email) {
+          console.warn('Usuario sin email, omitiendo:', userData);
+          results.errors++;
+          continue;
         }
         
-        await updateDoc(doc(db, "wodbuster_users", existingDoc.id), updateData);
-        results.updated++;
-      } else {
-        // Crear
-        await addDoc(collection(db, "wodbuster_users"), {
-          ...userData,
-          source: 'api',
-          lastSyncAt: serverTimestamp(),
-          createdAt: serverTimestamp(),
-          createdBy: userId || null,
+        const emailKey = userData.email.toLowerCase();
+        const existingUser = emailMap.get(emailKey);
+        
+        if (existingUser) {
+          // Usuario existe - verificar si necesita actualización
+          const needsUpdate = 
+            existingUser.id !== userData.id ||
+            existingUser.esAlumno !== userData.esAlumno ||
+            existingUser.pagadoHasta !== userData.pagadoHasta ||
+            existingUser.idTarifa !== userData.idTarifa;
+          
+          if (needsUpdate) {
+            // Actualizar solo campos de la API
+            const updateData = {
+              id: userData.id,
+              esAlumno: userData.esAlumno,
+              pagadoHasta: userData.pagadoHasta,
+              idTarifa: userData.idTarifa,
+              lastSyncAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+              updatedBy: userId || null,
+            };
+            
+            // Solo actualizar email si no existe o si la fuente original era API
+            if (!existingUser.email || existingUser.source === 'api') {
+              updateData.email = userData.email;
+            }
+            
+            await updateDoc(doc(db, "wodbuster_users", existingUser.docId), updateData);
+            results.updated++;
+          } else {
+            // Usuario existe pero no necesita actualización, saltar
+            results.skipped++;
+          }
+        } else {
+          // Usuario nuevo - crear
+          await addDoc(collection(db, "wodbuster_users"), {
+            ...userData,
+            source: 'api',
+            lastSyncAt: serverTimestamp(),
+            createdAt: serverTimestamp(),
+            createdBy: userId || null,
+          });
+          results.created++;
+        }
+        
+        // Mostrar progreso cada 50 usuarios
+        if ((results.created + results.updated + results.skipped) % 50 === 0) {
+          console.log(`Progress: ${results.created + results.updated + results.skipped}/${usersArray.length} usuarios procesados`);
+        }
+        
+      } catch (error) {
+        console.error(`Error sincronizando usuario ${userData.email}:`, error);
+        results.errors++;
+        results.errorDetails.push({
+          email: userData.email,
+          error: error.message
         });
-        results.created++;
       }
-    } catch (error) {
-      console.error(`Error sincronizando usuario ${userData.email}:`, error);
-      results.errors++;
-      results.errorDetails.push({
-        email: userData.email,
-        error: error.message
-      });
     }
+    
+    console.log(`✅ Sincronización completada: ${results.created} creados, ${results.updated} actualizados, ${results.skipped} sin cambios, ${results.errors} errores`);
+    
+  } catch (error) {
+    console.error('Error en sincronización masiva:', error);
+    results.errors++;
+    results.errorDetails.push({
+      email: 'N/A',
+      error: error.message
+    });
   }
   
   return results;
