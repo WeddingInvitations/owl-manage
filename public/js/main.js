@@ -554,6 +554,8 @@ const singleClassesTariffPlans = [
   { key: "Bono 10 Clases Crossfit", durationMonths: 1, priceTotal: 135 },
   { key: "Clase Acrobacias", durationMonths: 1, priceTotal: 15 },
   { key: "Bono 10 Clases Acrobacias", durationMonths: 1, priceTotal: 135 },
+  { key: "Clase Telas", durationMonths: 1, priceTotal: 15 },
+  { key: "Bono 10 Clases Telas", durationMonths: 1, priceTotal: 135 },
   { key: "Open Acrobacias 1h", durationMonths: 1, priceTotal: 10 },
   { key: "Open Acrobacias 2h", durationMonths: 1, priceTotal: 15 },
 ];
@@ -2646,7 +2648,7 @@ async function refreshSingleClassesMonthly() {
     const athleteName = e.athlete.name || "Sin nombre";
     const paymentMethod = e.paymentMethod || "Efectivo";
     const row = document.createElement("tr");
-    const tariffOptions = ["", "Clase Crossfit", "Bono 10 Clases Crossfit", "Clase Acrobacias", "Bono 10 Clases Acrobacias", "Open Acrobacias 1h", "Open Acrobacias 2h"];
+    const tariffOptions = ["", "Clase Crossfit", "Bono 10 Clases Crossfit", "Clase Acrobacias", "Bono 10 Clases Acrobacias", "Clase Telas", "Bono 10 Clases Telas", "Open Acrobacias 1h", "Open Acrobacias 2h"];
     const tariffOptionsHtml = tariffOptions
       .map((opt) => {
         const sel = opt === e.tariff ? "selected" : "";

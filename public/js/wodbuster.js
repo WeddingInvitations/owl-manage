@@ -79,6 +79,8 @@ const tariffPrices = {
   "Bono 10 Clases Crossfit": 135,
   "Clase Acrobacias": 15,
   "Bono 10 Clases Acrobacias": 135,
+  "Clase Telas": 15,
+  "Bono 10 Clases Telas": 135,
   "Open Acrobacias 1h": 10,
   "Open Acrobacias 2h": 15
 };
