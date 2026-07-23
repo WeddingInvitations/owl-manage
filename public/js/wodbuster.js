@@ -192,24 +192,27 @@ function isUserActive(user) {
         bonoExpiry.setMonth(bonoExpiry.getMonth() + 7);
         
         if (now <= bonoExpiry) {
+          console.log('✅ Usuario ACTIVO por bono vigente:', user.email, 'Bono expira:', bonoExpiry.toISOString().split('T')[0]);
           return true; // Bono vigente
         }
       }
     }
     
     // Si tiene pagadoHasta vigente, también está activo
-    if (user.pagadoHasta) {
+    // Verificar que pagadoHasta no sea null, undefined, cadena vacía, etc.
+    if (user.pagadoHasta && user.pagadoHasta !== '' && user.pagadoHasta !== 'null' && user.pagadoHasta !== 'undefined') {
       const pagadoHastaDate = new Date(user.pagadoHasta);
       if (!isNaN(pagadoHastaDate.getTime())) {
         pagadoHastaDate.setHours(0, 0, 0, 0);
         if (pagadoHastaDate >= now) {
+          console.log('✅ Usuario ACTIVO con clases sueltas y fecha vigente:', user.email, 'pagadoHasta:', pagadoHastaDate.toISOString().split('T')[0]);
           return true; // Fecha de pago vigente
         }
       }
     }
     
     // Tiene clases pero todas las fechas han expirado
-    console.log('Usuario con clases sueltas pero fechas expiradas:', user.email, 
+    console.log('⚠️ Usuario INACTIVO: clases sueltas pero fechas expiradas:', user.email, 
                 'clasesSueltas:', user.clasesSueltas, 
                 'pagadoHasta:', user.pagadoHasta,
                 'fechaBono:', user.fechaBono);
@@ -217,7 +220,14 @@ function isUserActive(user) {
   }
   
   // Tercera condición: verificar fecha de pago vigente (sin clases sueltas)
-  if (!user.pagadoHasta) {
+  // Verificar si pagadoHasta es null, undefined, cadena vacía, o valor falsy
+  if (!user.pagadoHasta || user.pagadoHasta === '' || user.pagadoHasta === 'null' || user.pagadoHasta === 'undefined') {
+    console.log('⚠️ Usuario INACTIVO: sin fecha de pago válida:', {
+      email: user.email,
+      pagadoHasta: user.pagadoHasta,
+      tipo: typeof user.pagadoHasta,
+      esAlumno: user.esAlumno
+    });
     return false;
   }
   
@@ -225,14 +235,22 @@ function isUserActive(user) {
   
   // Validar que la fecha sea válida
   if (isNaN(pagadoHastaDate.getTime())) {
-    console.warn('Fecha pagadoHasta inválida para usuario:', user.email, user.pagadoHasta);
+    console.warn('⚠️ Usuario INACTIVO: fecha pagadoHasta inválida:', user.email, user.pagadoHasta);
     return false;
   }
   
   pagadoHastaDate.setHours(0, 0, 0, 0);
   
   // Considerar activo si pagadoHasta es >= a la fecha actual (hoy)
-  return pagadoHastaDate >= now;
+  const isActive = pagadoHastaDate >= now;
+  
+  if (isActive) {
+    console.log('✅ Usuario ACTIVO: fecha de pago vigente:', user.email, 'pagadoHasta:', pagadoHastaDate.toISOString().split('T')[0]);
+  } else {
+    console.log('⚠️ Usuario INACTIVO: fecha de pago vencida:', user.email, 'pagadoHasta:', pagadoHastaDate.toISOString().split('T')[0], 'hoy:', now.toISOString().split('T')[0]);
+  }
+  
+  return isActive;
 }
 
 // Función para obtener el mes en formato YYYY-MM
@@ -270,20 +288,15 @@ function renderWodBusterMonthOptions() {
 function renderWodBusterSummary(users) {
   if (!ui.wodBusterSummaryActive || !selectedWodBusterMonth) return;
   
-  // Filtrar usuarios activos del mes seleccionado
-  const activeUsers = users.filter(user => {
-    // Usuario debe estar activo (esAlumno === true)
-    if (!user.esAlumno) return false;
-    
-    // Si tiene pagadoHasta, verificar que sea >= al mes seleccionado
-    if (user.pagadoHasta) {
-      const pagadoHastaKey = getMonthKey(new Date(user.pagadoHasta));
-      return pagadoHastaKey >= selectedWodBusterMonth;
-    }
-    
-    // Si no tiene pagadoHasta pero está activo, incluirlo
-    return true;
-  });
+  console.log(`📊 Calculando resumen para ${users.length} usuarios filtrados...`);
+  
+  // Filtrar usuarios activos usando isUserActive() 
+  // Esta función ya valida todas las reglas de negocio:
+  // - esAlumno === true
+  // - Fecha de pago vigente (pagadoHasta >= hoy) O bono válido
+  const activeUsers = users.filter(user => isUserActive(user));
+  
+  console.log(`✅ Usuarios activos según isUserActive(): ${activeUsers.length}`);
   
   // Calcular ingresos totales y tarifa media
   let totalIncome = 0;
@@ -454,12 +467,16 @@ function populateTariffDatalist() {
 
 // Aplicar filtros a los usuarios de WodBuster
 function applyWodBusterFilters() {
+  console.log(`🔍 Aplicando filtros a ${allWodBusterUsers?.length || 0} usuarios en total...`);
+  
   // Obtener valores de los filtros
   const nameFilter = (document.getElementById('filterWodBusterName')?.value || '').toLowerCase().trim();
   const emailFilter = (document.getElementById('filterWodBusterEmail')?.value || '').toLowerCase().trim();
   const tariffFilterRaw = (document.getElementById('filterWodBusterTariff')?.value || '').trim();
   const tariffFilter = tariffFilterRaw.toLowerCase();
   const statusFilter = document.getElementById('filterWodBusterStatus')?.value || 'active';
+  
+  console.log(`📊 Filtros: status="${statusFilter}", name="${nameFilter}", email="${emailFilter}", tariff="${tariffFilter}"`);
   
   // Verificar si el valor de tarifa coincide exactamente con una opción del datalist
   let isExactTariffMatch = false;
@@ -536,6 +553,8 @@ function applyWodBusterFilters() {
   
   // Actualizar currentWodBusterUsers con los usuarios filtrados
   currentWodBusterUsers = filteredUsers;
+  
+  console.log(`✅ Resultado del filtrado: ${filteredUsers.length} usuarios`);
   
   // Renderizar usuarios filtrados
   renderWodBusterUsers(filteredUsers);
