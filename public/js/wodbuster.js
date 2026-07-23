@@ -171,7 +171,8 @@ function getTariffIdByName(tarifaName) {
 // Función para verificar si un usuario está activo
 // Un usuario está activo si:
 // 1. esAlumno === true
-// 2. pagadoHasta es posterior o igual a la fecha actual (a nivel de mes)
+// 2. pagadoHasta es posterior o igual a la fecha actual
+// NOTA: Para usuarios con bono, pagadoHasta debe estar actualizado como fechaBono + 6 meses
 function isUserActive(user) {
   // Primera condición: debe ser alumno
   if (user.esAlumno !== true) {
@@ -181,55 +182,24 @@ function isUserActive(user) {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   
-  // Segunda condición: si tiene clases sueltas, validar que tenga fecha vigente
-  if (user.clasesSueltas && user.clasesSueltas > 0) {
-    // Si tiene bono, validar fecha del bono (válido por 7 meses)
-    if (user.fechaBono) {
-      const bonoDate = new Date(user.fechaBono);
-      if (!isNaN(bonoDate.getTime())) {
-        bonoDate.setHours(0, 0, 0, 0);
-        const bonoExpiry = new Date(bonoDate);
-        bonoExpiry.setMonth(bonoExpiry.getMonth() + 7);
-        
-        if (now <= bonoExpiry) {
-          console.log('✅ Usuario ACTIVO por bono vigente:', user.email, 'Bono expira:', bonoExpiry.toISOString().split('T')[0]);
-          return true; // Bono vigente
-        }
-      }
-    }
-    
-    // Si tiene pagadoHasta vigente, también está activo
-    // Verificar que pagadoHasta no sea null, undefined, cadena vacía, etc.
-    if (user.pagadoHasta && user.pagadoHasta !== '' && user.pagadoHasta !== 'null' && user.pagadoHasta !== 'undefined') {
-      const pagadoHastaDate = new Date(user.pagadoHasta);
-      if (!isNaN(pagadoHastaDate.getTime())) {
-        pagadoHastaDate.setHours(0, 0, 0, 0);
-        if (pagadoHastaDate >= now) {
-          console.log('✅ Usuario ACTIVO con clases sueltas y fecha vigente:', user.email, 'pagadoHasta:', pagadoHastaDate.toISOString().split('T')[0]);
-          return true; // Fecha de pago vigente
-        }
-      }
-    }
-    
-    // Tiene clases pero todas las fechas han expirado
-    console.log('⚠️ Usuario INACTIVO: clases sueltas pero fechas expiradas:', user.email, 
-                'clasesSueltas:', user.clasesSueltas, 
-                'pagadoHasta:', user.pagadoHasta,
-                'fechaBono:', user.fechaBono);
-    return false;
-  }
-  
-  // Tercera condición: verificar fecha de pago vigente (sin clases sueltas)
+  // Segunda condición: verificar fecha de pago vigente
+  // TODOS los usuarios (incluyendo los que tienen bonos) deben tener pagadoHasta actualizado
+  // Para usuarios con bono: pagadoHasta = fechaBono + 6 meses
   // Verificar si pagadoHasta es null, undefined, cadena vacía, o valor falsy
   if (!user.pagadoHasta || user.pagadoHasta === '' || user.pagadoHasta === 'null' || user.pagadoHasta === 'undefined') {
     console.log('⚠️ Usuario INACTIVO: sin fecha de pago válida:', {
       email: user.email,
       pagadoHasta: user.pagadoHasta,
       tipo: typeof user.pagadoHasta,
-      esAlumno: user.esAlumno
+      esAlumno: user.esAlumno,
+      tieneBono: !!user.fechaBono,
+      clasesSueltas: user.clasesSueltas || 0
     });
     return false;
   }
+  
+  // Log del valor crudo de pagadoHasta antes de procesarlo
+  console.log('🔍 Procesando fecha para:', user.email, 'pagadoHasta CRUDO:', user.pagadoHasta, 'tipo:', typeof user.pagadoHasta);
   
   const pagadoHastaDate = new Date(user.pagadoHasta);
   
@@ -239,15 +209,47 @@ function isUserActive(user) {
     return false;
   }
   
+  // Verificar si la fecha original tiene formato incompleto (solo año-mes sin día)
+  const pagadoHastaStr = String(user.pagadoHasta);
+  if (pagadoHastaStr.match(/^\d{4}-\d{2}$/)) {
+    console.warn('⚠️ FORMATO DE FECHA INCOMPLETO detectado (año-mes sin día):', user.email, user.pagadoHasta);
+    // Si solo tiene año-mes, JavaScript lo interpreta como el día 1
+    // Pero debería ser el último día del mes para ser correcto
+  }
+  
   pagadoHastaDate.setHours(0, 0, 0, 0);
   
+  // Obtener el mes y año de ambas fechas para logging
+  const pagadoMes = pagadoHastaDate.getMonth() + 1;
+  const pagadoAnio = pagadoHastaDate.getFullYear();
+  const actualMes = now.getMonth() + 1;
+  const actualAnio = now.getFullYear();
+  
   // Considerar activo si pagadoHasta es >= a la fecha actual (hoy)
+  // Esto significa que si pagó hasta el 30 de junio, el 30 de junio está activo
+  // pero el 1 de julio ya no
   const isActive = pagadoHastaDate >= now;
   
   if (isActive) {
-    console.log('✅ Usuario ACTIVO: fecha de pago vigente:', user.email, 'pagadoHasta:', pagadoHastaDate.toISOString().split('T')[0]);
+    console.log('✅ Usuario ACTIVO: fecha de pago vigente:', {
+      email: user.email,
+      pagadoHasta: pagadoHastaDate.toISOString().split('T')[0],
+      pagadoMesAnio: `${pagadoMes}/${pagadoAnio}`,
+      hoy: now.toISOString().split('T')[0],
+      actualMesAnio: `${actualMes}/${actualAnio}`,
+      tieneBono: !!user.fechaBono,
+      clasesSueltas: user.clasesSueltas || 0
+    });
   } else {
-    console.log('⚠️ Usuario INACTIVO: fecha de pago vencida:', user.email, 'pagadoHasta:', pagadoHastaDate.toISOString().split('T')[0], 'hoy:', now.toISOString().split('T')[0]);
+    console.log('⚠️ Usuario INACTIVO: fecha de pago vencida:', {
+      email: user.email,
+      pagadoHasta: pagadoHastaDate.toISOString().split('T')[0],
+      pagadoMesAnio: `${pagadoMes}/${pagadoAnio}`,
+      hoy: now.toISOString().split('T')[0],
+      actualMesAnio: `${actualMes}/${actualAnio}`,
+      tieneBono: !!user.fechaBono,
+      clasesSueltas: user.clasesSueltas || 0
+    });
   }
   
   return isActive;
@@ -405,13 +407,14 @@ function renderWodBusterUsers(users) {
     statusCell.appendChild(statusBadge);
     tr.appendChild(statusCell);
     
-    // Fecha de pago vigente (pagadoHasta solo mes y año)
+    // Fecha de pago vigente (pagadoHasta FECHA COMPLETA para debugging)
     const dateCell = document.createElement("td");
     if (user.pagadoHasta) {
       const date = new Date(user.pagadoHasta);
-      // Formato: "julio 2026"
-      const monthYear = date.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
-      dateCell.textContent = monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
+      // Mostrar fecha COMPLETA para debugging (día/mes/año)
+      const fullDate = date.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+      dateCell.textContent = fullDate.charAt(0).toUpperCase() + fullDate.slice(1);
+      dateCell.style.fontSize = "0.9em";
     } else {
       dateCell.textContent = "-";
     }
@@ -563,6 +566,71 @@ function applyWodBusterFilters() {
   renderWodBusterSummary(filteredUsers);
 }
 
+// Función para corregir pagadoHasta en usuarios con bono
+// Si un usuario tiene fechaBono pero no tiene pagadoHasta actualizado (o es incorrecto),
+// calcular pagadoHasta = fechaBono + 6 meses
+async function fixUsersWithBonoWithoutPagadoHasta(users) {
+  console.log('🔧 Verificando usuarios con bono sin pagadoHasta actualizado...');
+  let fixedCount = 0;
+  
+  for (const user of users) {
+    // Solo procesar usuarios que tienen fechaBono
+    if (!user.fechaBono) continue;
+    
+    // Verificar si pagadoHasta está vacío o si no coincide con fechaBono + 6 meses
+    const bonoDate = new Date(user.fechaBono);
+    if (isNaN(bonoDate.getTime())) {
+      console.warn('⚠️ fechaBono inválida para:', user.email, user.fechaBono);
+      continue;
+    }
+    
+    // Calcular pagadoHasta esperado (fechaBono + 6 meses)
+    const expectedPagadoHasta = new Date(bonoDate);
+    expectedPagadoHasta.setMonth(expectedPagadoHasta.getMonth() + 6);
+    
+    // Verificar si necesita corrección
+    let needsFix = false;
+    if (!user.pagadoHasta || user.pagadoHasta === '' || user.pagadoHasta === 'null') {
+      needsFix = true;
+      console.log('🔧 Usuario con bono sin pagadoHasta:', user.email);
+    } else {
+      const currentPagadoHasta = new Date(user.pagadoHasta);
+      // Si la diferencia es más de 1 día, considerarlo incorrecto
+      const diffMs = Math.abs(expectedPagadoHasta.getTime() - currentPagadoHasta.getTime());
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      if (diffDays > 1) {
+        needsFix = true;
+        console.log('🔧 Usuario con bono y pagadoHasta incorrecto:', user.email, 
+                    'Actual:', currentPagadoHasta.toISOString().split('T')[0],
+                    'Esperado:', expectedPagadoHasta.toISOString().split('T')[0]);
+      }
+    }
+    
+    // Aplicar corrección si es necesario
+    if (needsFix && user.docId) {
+      try {
+        const newPagadoHasta = expectedPagadoHasta.toISOString();
+        await updateWodBusterUser(user.docId, {
+          pagadoHasta: newPagadoHasta
+        }, currentUserId);
+        
+        // Actualizar en memoria también
+        user.pagadoHasta = newPagadoHasta;
+        fixedCount++;
+        console.log('✅ Corregido pagadoHasta para:', user.email, 'Nuevo valor:', newPagadoHasta.split('T')[0]);
+      } catch (error) {
+        console.error('❌ Error corrigiendo pagadoHasta para:', user.email, error);
+      }
+    }
+  }
+  
+  if (fixedCount > 0) {
+    console.log(`✅ Se corrigieron ${fixedCount} usuarios con bono`);
+  } else {
+    console.log('✅ Todos los usuarios con bono tienen pagadoHasta correcto');
+  }
+}
+
 // Refrescar usuarios de WodBuster (desde API y BD)
 // Cargar usuarios solo desde Firestore (sin sincronizar con API)
 async function refreshWodBusterUsers() {
@@ -574,6 +642,9 @@ async function refreshWodBusterUsers() {
     console.log('Cargando usuarios desde Firestore...');
     const dbUsers = await getWodBusterUsersFromDB();
     console.log(`Usuarios en Firestore: ${dbUsers.length}`);
+    
+    // Corregir usuarios con bono que no tienen pagadoHasta actualizado
+    await fixUsersWithBonoWithoutPagadoHasta(dbUsers);
     
     // Guardar usuarios
     currentWodBusterUsers = dbUsers;
@@ -1438,14 +1509,14 @@ async function saveWodBusterUser() {
       const bonoDate = new Date(bonoDateEl.value);
       fechaBono = bonoDate.toISOString().split('.')[0]; // Formato: 2026-05-28T00:00:00
       
-      // Calcular pagadoHasta: 7 meses después de la fecha del bono
+      // Calcular pagadoHasta: 6 meses después de la fecha del bono
       const pagadoHastaDate = new Date(bonoDate);
-      pagadoHastaDate.setMonth(pagadoHastaDate.getMonth() + 7);
+      pagadoHastaDate.setMonth(pagadoHastaDate.getMonth() + 6);
       pagadoHastaOverride = pagadoHastaDate.toISOString();
       
       console.log('🎫 Alta con BONO:', tarifa, '- Incremento:', clasesSueltasIncrement);
       console.log('📅 Fecha Bono:', fechaBono);
-      console.log('📅 Pagado Hasta (7 meses):', pagadoHastaOverride);
+      console.log('📅 Pagado Hasta (6 meses):', pagadoHastaOverride);
     } else {
       // Tarifa mensual normal
       tarifa = ui.wodBusterUserTariff.value;
