@@ -15,3 +15,10 @@ functions/node_modules/
 
 # Editor
 .vscode/
+
+# Secrets and credentials - NO SUBIR A GIT
+service-account-key.json
+functions/invoice-processor/config/production.js
+functions/.env
+functions/.env.*
+!functions/.env.example

@@ -1,3 +1,6 @@
+// Cargar variables de entorno desde .env
+require('dotenv').config();
+
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
@@ -163,3 +166,14 @@ exports.wodBusterProxy = functions.https.onCall(async (data, context) => {
     );
   }
 });
+
+// ===== INVOICE PROCESSOR MODULE =====
+// Módulo de procesamiento automático de facturas
+// Arquitectura Clean + SOLID + Extensible
+const invoiceProcessor = require('./invoice-processor/presentation/functions');
+
+// Exportar Cloud Functions de facturas
+exports.processInvoice = invoiceProcessor.processInvoice;
+exports.processInvoicesWeekly = invoiceProcessor.processInvoicesWeekly;
+exports.processFolderInvoices = invoiceProcessor.processFolderInvoices;
+exports.getInvoicesByPeriod = invoiceProcessor.getInvoicesByPeriod;

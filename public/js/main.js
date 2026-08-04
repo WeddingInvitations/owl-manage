@@ -117,6 +117,7 @@ import {
   deletePayment,
   updateExpense,
   deleteExpense,
+  processInvoicesFromDrive,
   addOrder,
   updateOrder,
   deleteOrder,
@@ -4737,6 +4738,59 @@ on(ui.expenseForm, "submit", async (event) => {
   ui.expenseForm.reset();
   setDefaultMonthForPaymentExpense();
   await refreshAll();
+});
+
+// Process invoices from Drive
+on(ui.processInvoicesBtn, "click", async () => {
+  if (!confirm("¿Procesar todas las facturas de la carpeta de Drive?\n\nEsto puede tardar unos minutos dependiendo de la cantidad de facturas.")) {
+    return;
+  }
+  
+  const btn = ui.processInvoicesBtn;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "⏳ Procesando...";
+  
+  try {
+    const folderId = "17gLKpXeubw3VdbWdn2lfAGQB52sk161J"; // ID de la carpeta configurada
+    const result = await processInvoicesFromDrive(folderId);
+    
+    if (result.success) {
+      const data = result.data;
+      let message = `✓ Procesamiento completado\n\n`;
+      message += `Total archivos: ${data.total}\n`;
+      message += `✓ Procesados: ${data.processed}\n`;
+      
+      if (data.skipped > 0) {
+        message += `⊘ Ya procesados: ${data.skipped}\n`;
+      }
+      
+      if (data.failed > 0) {
+        message += `✗ Fallidos: ${data.failed}\n`;
+      }
+      
+      alert(message);
+      
+      // Recargar gastos para ver las nuevas facturas
+      await refreshAll();
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    let errorMsg = "Error procesando facturas";
+    
+    if (error.code === 'functions/permission-denied') {
+      errorMsg = "Solo usuarios OWNER pueden procesar facturas";
+    } else if (error.code === 'functions/unauthenticated') {
+      errorMsg = "Debes iniciar sesión para procesar facturas";
+    } else if (error.message) {
+      errorMsg += ": " + error.message;
+    }
+    
+    alert(errorMsg);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 });
 
 // Expense CSV handlers

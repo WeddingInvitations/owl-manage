@@ -69,6 +69,7 @@ export const ui = {
   expenseMonthSelect: $("expenseMonthSelect"),
   expenseMonthTitle: $("expenseMonthTitle"),
   expenseList: $("expenseList"),
+  processInvoicesBtn: $("processInvoicesBtn"),
   expenseCsvModal: $("expenseCsvModal"),
   expenseCsvOpen: $("expenseCsvOpen"),
   expenseCsvClose: $("expenseCsvClose"),

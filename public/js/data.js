@@ -164,6 +164,18 @@ export async function getExpense(expenseId) {
   return null;
 }
 
+// --- Invoice Processor ---
+export async function processInvoicesFromDrive(folderId) {
+  const processFolderInvoices = httpsCallable(functions, 'processFolderInvoices');
+  try {
+    const result = await processFolderInvoices({ folderId });
+    return result.data;
+  } catch (error) {
+    console.error('Error procesando facturas:', error);
+    throw error;
+  }
+}
+
 export async function addOrder(supplier, price, date, document, userId) {
   await addDoc(collection(db, "orders"), {
     supplier,
