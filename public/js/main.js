@@ -4741,19 +4741,22 @@ on(ui.expenseForm, "submit", async (event) => {
 });
 
 // Process invoices from Drive
-on(ui.processInvoicesBtn, "click", async () => {
-  if (!confirm("¿Procesar todas las facturas de la carpeta de Drive?\n\nEsto puede tardar unos minutos dependiendo de la cantidad de facturas.")) {
-    return;
-  }
-  
-  const btn = ui.processInvoicesBtn;
-  const originalText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = "⏳ Procesando...";
-  
-  try {
-    const folderId = "17gLKpXeubw3VdbWdn2lfAGQB52sk161J"; // ID de la carpeta configurada
-    const result = await processInvoicesFromDrive(folderId);
+console.log('Registrando event listener para processInvoicesBtn:', ui.processInvoicesBtn);
+if (ui.processInvoicesBtn) {
+  ui.processInvoicesBtn.addEventListener("click", async () => {
+    console.log('Click en botón de procesar facturas');
+    if (!confirm("¿Procesar todas las facturas de la carpeta de Drive?\n\nEsto puede tardar unos minutos dependiendo de la cantidad de facturas.")) {
+      return;
+    }
+    
+    const btn = ui.processInvoicesBtn;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "⏳ Procesando...";
+    
+    try {
+      const folderId = "17gLKpXeubw3VdbWdn2lfAGQB52sk161J"; // ID de la carpeta configurada
+      const result = await processInvoicesFromDrive(folderId);
     
     if (result.success) {
       const data = result.data;
@@ -4791,7 +4794,10 @@ on(ui.processInvoicesBtn, "click", async () => {
     btn.disabled = false;
     btn.textContent = originalText;
   }
-});
+  });
+} else {
+  console.error('ERROR: No se encontró el botón processInvoicesBtn en el DOM');
+}
 
 // Expense CSV handlers
 on(ui.expenseCsvOpen, "click", () => {
