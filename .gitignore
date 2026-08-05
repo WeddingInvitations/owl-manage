@@ -22,3 +22,6 @@ functions/invoice-processor/config/production.js
 functions/.env
 functions/.env.*
 !functions/.env.example
+
+# Test files with API keys
+functions/test-*.js

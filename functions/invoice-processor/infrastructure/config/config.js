@@ -16,7 +16,7 @@ class Config {
     // Gemini AI
     this.gemini = {
       apiKey: process.env.GEMINI_API_KEY || prodConfig.gemini?.apiKey || '',
-      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+      model: process.env.GEMINI_MODEL || prodConfig.gemini?.model || 'gemini-3.6-flash',
     };
 
     // Configuración del parser

@@ -4762,14 +4762,14 @@ if (ui.processInvoicesBtn) {
       const data = result.data;
       let message = `✓ Procesamiento completado\n\n`;
       message += `Total archivos: ${data.total}\n`;
-      message += `✓ Procesados: ${data.processed}\n`;
+      message += `✓ Correctas: ${data.processed}\n`;
       
       if (data.skipped > 0) {
-        message += `⊘ Ya procesados: ${data.skipped}\n`;
+        message += `⊙ Ya subidas: ${data.skipped}\n`;
       }
       
       if (data.failed > 0) {
-        message += `✗ Fallidos: ${data.failed}\n`;
+        message += `✗ Fallidas: ${data.failed}\n`;
       }
       
       alert(message);
