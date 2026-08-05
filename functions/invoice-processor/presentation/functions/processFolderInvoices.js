@@ -9,7 +9,12 @@ const { DIContainer } = require('../../infrastructure/config');
  * Uso:
  * const result = await processFolderInvoices({ folderId: 'xxx' });
  */
-exports.processFolderInvoices = functions.https.onCall(async (data, context) => {
+exports.processFolderInvoices = functions
+  .runWith({
+    timeoutSeconds: 540, // 9 minutos (máximo para Gen 1)
+    memory: '1GB',
+  })
+  .https.onCall(async (data, context) => {
   // Verificar autenticación y permisos
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Autenticación requerida');

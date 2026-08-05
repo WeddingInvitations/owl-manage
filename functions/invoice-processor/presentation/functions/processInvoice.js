@@ -9,7 +9,12 @@ const { DIContainer } = require('../../infrastructure/config');
  * Uso:
  * const result = await processInvoice({ driveFileId: 'xxx' });
  */
-exports.processInvoice = functions.https.onCall(async (data, context) => {
+exports.processInvoice = functions
+  .runWith({
+    timeoutSeconds: 300, // 5 minutos
+    memory: '512MB',
+  })
+  .https.onCall(async (data, context) => {
   // Verificar autenticación
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Autenticación requerida');
