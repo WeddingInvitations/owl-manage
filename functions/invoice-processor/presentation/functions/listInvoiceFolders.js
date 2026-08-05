@@ -1,29 +1,35 @@
 /**
  * Cloud Function para listar subcarpetas de facturas
  */
+const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { DIContainer } = require('../../infrastructure/config');
 
 /**
  * Lista las subcarpetas (meses) disponibles en la carpeta de facturas
  */
-async function listInvoiceFolders(request, response) {
+exports.listInvoiceFolders = functions.https.onCall(async (data, context) => {
+  // Verificar autenticación
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Autenticción requerida');
+  }
+
+  // Verificar rol del usuario
+  const userDoc = await admin.firestore().collection('users').doc(context.auth.uid).get();
+  const userData = userDoc.exists ? userDoc.data() : {};
+  const userRole = userData.role || 'OWNER';
+
+  if (userRole !== 'OWNER') {
+    throw new functions.https.HttpsError('permission-denied', 'Solo OWNER puede listar carpetas');
+  }
+
+  // Validar entrada
+  const { folderId } = data;
+  if (!folderId) {
+    throw new functions.https.HttpsError('invalid-argument', 'folderId es requerido');
+  }
+
   try {
-    const { folderId } = request.data;
-    const userId = request.auth?.uid;
-
-    if (!userId) {
-      throw new Error('Usuario no autenticado');
-    }
-
-    // Verificar rol del usuario
-    const userDoc = await admin.firestore().collection('users').doc(userId).get();
-    const userRole = userDoc.data()?.role;
-
-    if (userRole !== 'OWNER') {
-      throw new Error('Solo usuarios OWNER pueden listar carpetas de facturas');
-    }
-
     // Inicializar contenedor
     const container = new DIContainer(admin.firestore());
     const driveAdapter = container.factory.createDriveAdapter();
@@ -42,8 +48,6 @@ async function listInvoiceFolders(request, response) {
     };
   } catch (error) {
     console.error('Error listando carpetas:', error);
-    throw new Error(`Error listando carpetas: ${error.message}`);
+    throw new functions.https.HttpsError('internal', `Error listando carpetas: ${error.message}`);
   }
-}
-
-module.exports = { listInvoiceFolders };
+});
