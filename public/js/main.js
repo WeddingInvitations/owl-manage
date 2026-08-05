@@ -118,6 +118,7 @@ import {
   updateExpense,
   deleteExpense,
   processInvoicesFromDrive,
+  listInvoiceFolders,
   addOrder,
   updateOrder,
   deleteOrder,
@@ -4745,55 +4746,93 @@ console.log('Registrando event listener para processInvoicesBtn:', ui.processInv
 if (ui.processInvoicesBtn) {
   ui.processInvoicesBtn.addEventListener("click", async () => {
     console.log('Click en botón de procesar facturas');
-    if (!confirm("¿Procesar todas las facturas de la carpeta de Drive?\n\nEsto puede tardar unos minutos dependiendo de la cantidad de facturas.")) {
-      return;
-    }
     
     const btn = ui.processInvoicesBtn;
     const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = "⏳ Procesando...";
+    btn.textContent = "⏳ Cargando carpetas...";
     
     try {
-      const folderId = "17gLKpXeubw3VdbWdn2lfAGQB52sk161J"; // ID de la carpeta configurada
-      const result = await processInvoicesFromDrive(folderId);
-    
-    if (result.success) {
-      const data = result.data;
-      let message = `✓ Procesamiento completado\n\n`;
-      message += `Total archivos: ${data.total}\n`;
-      message += `✓ Correctas: ${data.processed}\n`;
+      // Cargar subcarpetas (meses) disponibles
+      const parentFolderId = "17gLKpXeubw3VdbWdn2lfAGQB52sk161J";
+      const folderResult = await listInvoiceFolders(parentFolderId);
       
-      if (data.skipped > 0) {
-        message += `⊙ Ya subidas: ${data.skipped}\n`;
+      btn.disabled = false;
+      btn.textContent = originalText;
+      
+      if (!folderResult.success || !folderResult.folders || folderResult.folders.length === 0) {
+        alert("No se encontraron carpetas de meses en la carpeta principal.\n\nCrea subcarpetas con el formato: 'AGOSTO 2026', 'JULIO 2026', etc.");
+        return;
       }
       
-      if (data.failed > 0) {
-        message += `✗ Fallidas: ${data.failed}\n`;
+      // Crear lista de opciones
+      let folderOptions = "Selecciona el mes a procesar:\n\n";
+      folderResult.folders.forEach((folder, index) => {
+        folderOptions += `${index + 1}. ${folder.name}\n`;
+      });
+      folderOptions += "\nIngresa el número del mes (1-" + folderResult.folders.length + "):";
+      
+      const selection = prompt(folderOptions);
+      
+      if (!selection) {
+        return; // Usuario canceló
       }
       
-      alert(message);
+      const selectedIndex = parseInt(selection) - 1;
       
-      // Recargar gastos para ver las nuevas facturas
-      await refreshAll();
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    let errorMsg = "Error procesando facturas";
+      if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= folderResult.folders.length) {
+        alert("Selección inválida");
+        return;
+      }
+      
+      const selectedFolder = folderResult.folders[selectedIndex];
+      
+      if (!confirm(`¿Procesar facturas de "${selectedFolder.name}"?\n\nEsto puede tardar unos minutos dependiendo de la cantidad de facturas.`)) {
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.textContent = "⏳ Procesando...";
+      
+      // Procesar facturas de la carpeta seleccionada
+      const result = await processInvoicesFromDrive(selectedFolder.id);
     
-    if (error.code === 'functions/permission-denied') {
-      errorMsg = "Solo usuarios OWNER pueden procesar facturas";
-    } else if (error.code === 'functions/unauthenticated') {
-      errorMsg = "Debes iniciar sesión para procesar facturas";
-    } else if (error.message) {
-      errorMsg += ": " + error.message;
+      if (result.success) {
+        const data = result.data;
+        let message = `✓ Procesamiento completado\n\nCarpeta: ${selectedFolder.name}\n\n`;
+        message += `Total archivos: ${data.total}\n`;
+        message += `✓ Correctas: ${data.processed}\n`;
+        
+        if (data.skipped > 0) {
+          message += `⊙ Ya subidas: ${data.skipped}\n`;
+        }
+        
+        if (data.failed > 0) {
+          message += `✗ Fallidas: ${data.failed}\n`;
+        }
+        
+        alert(message);
+        
+        // Recargar gastos para ver las nuevas facturas
+        await refreshAll();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      let errorMsg = "Error procesando facturas";
+      
+      if (error.code === 'functions/permission-denied') {
+        errorMsg = "Solo usuarios OWNER pueden procesar facturas";
+      } else if (error.code === 'functions/unauthenticated') {
+        errorMsg = "Debes iniciar sesión para procesar facturas";
+      } else if (error.message) {
+        errorMsg += ": " + error.message;
+      }
+      
+      alert(errorMsg);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
     }
-    
-    alert(errorMsg);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = originalText;
-  }
   });
 } else {
   console.error('ERROR: No se encontró el botón processInvoicesBtn en el DOM');

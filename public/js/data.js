@@ -165,6 +165,17 @@ export async function getExpense(expenseId) {
 }
 
 // --- Invoice Processor ---
+export async function listInvoiceFolders(folderId) {
+  const listFoldersFunc = httpsCallable(functions, 'listInvoiceFolders');
+  try {
+    const result = await listFoldersFunc({ folderId });
+    return result.data;
+  } catch (error) {
+    console.error('Error listando carpetas:', error);
+    throw error;
+  }
+}
+
 export async function processInvoicesFromDrive(folderId) {
   const processFolderInvoices = httpsCallable(functions, 'processFolderInvoices');
   try {

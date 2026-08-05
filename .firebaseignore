@@ -1,0 +1,20 @@
+**/node_modules/**
+**/bower_components/**
+**/.git/**
+**/.DS_Store
+**/Thumbs.db
+firebase-debug.log
+firebase-debug.*.log
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.vscode/
+
+# Importante: NO excluir production.js para que se despliegue con las funciones
+# Sí excluir .env para evitar subir secretos accidentalmente
+functions/.env
+functions/.env.*
+!functions/.env.example
+
+# Excluir service account key del root
+service-account-key.json

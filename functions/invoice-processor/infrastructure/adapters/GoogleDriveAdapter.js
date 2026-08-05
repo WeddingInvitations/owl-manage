@@ -82,6 +82,20 @@ class GoogleDriveAdapter {
 
     return response.data.files;
   }
+
+  /**
+   * Lista subcarpetas de una carpeta
+   */
+  async listFolders(parentFolderId) {
+    const response = await this.drive.files.list({
+      q: `'${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed = false`,
+      fields: 'files(id, name, createdTime, modifiedTime)',
+      orderBy: 'name desc',
+      pageSize: 100,
+    });
+
+    return response.data.files;
+  }
 }
 
 module.exports = { GoogleDriveAdapter };

@@ -177,3 +177,4 @@ exports.processInvoice = invoiceProcessor.processInvoice;
 exports.processInvoicesWeekly = invoiceProcessor.processInvoicesWeekly;
 exports.processFolderInvoices = invoiceProcessor.processFolderInvoices;
 exports.getInvoicesByPeriod = invoiceProcessor.getInvoicesByPeriod;
+exports.listInvoiceFolders = invoiceProcessor.listInvoiceFolders;
