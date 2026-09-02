@@ -34,11 +34,14 @@ class ProcessInvoicesFromFolder {
       failed: 0,
       skipped: 0,
       details: [],
+      errors: [], // Lista detallada de errores
     };
 
     // Procesar cada archivo
     for (const file of files) {
       try {
+        this.logger.info('Procesando archivo', { ...context, fileId: file.id, filename: file.name });
+        
         const result = await this.processNewInvoice.execute({
           driveFileId: file.id,
           userId,
@@ -52,6 +55,7 @@ class ProcessInvoicesFromFolder {
             status: 'skipped',
             reason: 'Already processed',
           });
+          this.logger.info('Archivo ya procesado', { ...context, fileId: file.id, filename: file.name });
         } else {
           results.processed++;
           results.details.push({
@@ -60,23 +64,31 @@ class ProcessInvoicesFromFolder {
             status: 'success',
             invoiceId: result.invoiceId,
           });
+          this.logger.info('Archivo procesado exitosamente', { ...context, fileId: file.id, filename: file.name });
         }
       } catch (error) {
         results.failed++;
-        results.details.push({
+        const errorDetail = {
           fileId: file.id,
           filename: file.name,
           status: 'error',
           error: error.message,
-        });
+          errorType: error.constructor?.name || 'Error',
+        };
+        
+        results.details.push(errorDetail);
+        results.errors.push(errorDetail);
         
         this.logger.error('Error procesando archivo', {
           ...context,
           fileId: file.id,
+          filename: file.name,
           error: error.message,
           stack: error.stack,
           errorType: error.constructor.name,
         });
+        
+        // IMPORTANTE: Continuar con el siguiente archivo, no propagar el error
       }
     }
 

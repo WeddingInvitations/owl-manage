@@ -8,6 +8,7 @@ const viewsInitialized = {
   halteView: false,
   telasView: false,
   singleClassesView: false,
+  pilatesView: false,
   checkinsView: false,
   vacationsView: false,
   classesView: false,
@@ -36,6 +37,15 @@ import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { initializeCaja, initializeInventory } from "./caja.js?v=20260622a";
 import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js";
+import {
+  initializePilates,
+  refreshPilatesMonthly,
+  setPilatesPriceFromTariff,
+  calculatePilatesFinalPrice,
+  renderPilatesPaymentMonthOptions,
+  renderPilatesCsvMonthOptions,
+  importPilatesAthletesFromCsv,
+} from "./pilates.js";
 import {
   addPayment,
   addExpense,
@@ -107,6 +117,12 @@ import {
   getAllTelasAthleteMonths,
   getTelasAthleteMonthsForMonth,
   upsertTelasAthleteMonth,
+  createPilatesAthlete,
+  getPilatesAthletes,
+  updatePilatesAthlete,
+  getAllPilatesAthleteMonths,
+  getPilatesAthleteMonthsForMonth,
+  upsertPilatesAthleteMonth,
   createSingleClassesAthlete,
   getSingleClassesAthletes,
   updateSingleClassesAthlete,
@@ -314,11 +330,20 @@ let telasPaidFilter = "ALL";
 let telasSearchTerm = "";
 let selectedTelasCsvMonth = "";
 
+// Pilates state
+let selectedPilatesMonth = "";
+let selectedPilatesListMonth = "";
+let selectedPilatesPaymentMonth = "";
+let pilatesPaidFilter = "ALL";
+let pilatesSearchTerm = "";
+let selectedPilatesCsvMonth = "";
+
 // Caché de datos para filtrado instantáneo (sin re-fetch a Firestore al buscar)
 let athleteListCacheData = null;
 let acroListCacheData = null;
 let halteListCacheData = null;
 let telasListCacheData = null;
+let pilatesListCacheData = null;
 
 // Single Classes state
 let selectedSingleClassesMonth = "";
@@ -564,6 +589,23 @@ const singleClassesTariffPlans = [
 
 const singleClassesTariffPlanMap = new Map(
   singleClassesTariffPlans.map((plan) => [plan.key, {
+    ...plan,
+    priceMonthly: plan.priceTotal / plan.durationMonths,
+  }])
+);
+
+// Tarifas específicas para Pilates
+const pilatesTariffPlans = [
+  { key: "Reformer 4", durationMonths: 1, priceTotal: 65 },
+  { key: "Reformer 8", durationMonths: 1, priceTotal: 105 },
+  { key: "Reformer 12", durationMonths: 1, priceTotal: 145 },
+  { key: "Barre 4", durationMonths: 1, priceTotal: 55 },
+  { key: "Barre 8", durationMonths: 1, priceTotal: 85 },
+  { key: "Barre 12", durationMonths: 1, priceTotal: 125 },
+];
+
+const pilatesTariffPlanMap = new Map(
+  pilatesTariffPlans.map((plan) => [plan.key, {
     ...plan,
     priceMonthly: plan.priceTotal / plan.durationMonths,
   }])
@@ -3442,6 +3484,12 @@ async function initializeViewIfNeeded(viewId) {
       viewsInitialized.telasView = true;
       break;
       
+    case "pilatesView":
+      initializePilates();
+      await refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
+      viewsInitialized.pilatesView = true;
+      break;
+      
     case "singleClassesView":
       await refreshSingleClassesMonthly();
       viewsInitialized.singleClassesView = true;
@@ -3606,6 +3654,7 @@ function calculateDiscountFromReason(reason) {
   if (reason === "Familiar") return 15;
   if (reason === "Funcionario") return 10;
   if (reason === "Mañanas") return 10;
+  if (reason === "Amigo") return 10;
   return 0;
 }
 
@@ -3630,6 +3679,9 @@ function updatePendingSaveButtons() {
   const telasPending = ui.telasList
     ? ui.telasList.querySelectorAll("tr[data-dirty='true']").length
     : 0;
+  const pilatesPending = ui.pilatesList
+    ? ui.pilatesList.querySelectorAll("tr[data-dirty='true']").length
+    : 0;
 
   if (ui.athleteSaveAllBtn) {
     ui.athleteSaveAllBtn.disabled = athletePending === 0;
@@ -3646,6 +3698,10 @@ function updatePendingSaveButtons() {
   if (ui.telasSaveAllBtn) {
     ui.telasSaveAllBtn.disabled = telasPending === 0;
     ui.telasSaveAllBtn.textContent = `Guardar cambios (${telasPending})`;
+  }
+  if (ui.pilatesSaveAllBtn) {
+    ui.pilatesSaveAllBtn.disabled = pilatesPending === 0;
+    ui.pilatesSaveAllBtn.textContent = `Guardar cambios (${pilatesPending})`;
   }
 }
 
@@ -3827,6 +3883,53 @@ async function saveTelasRow(row) {
       targetMonth,
       {
         name: athleteName,
+        tariff: newTariff,
+        price: newPrice,
+        basePrice,
+        discount: newDiscount,
+        discountReason: newDiscountReason,
+        paid: newPaid,
+        paymentMethod: newPaymentMethod,
+        active: newPaid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
+      },
+      currentUser?.uid
+    );
+  }
+}
+
+async function savePilatesRow(row) {
+  const athleteId = row?.dataset?.id;
+  const athleteName = row?.dataset?.name || "";
+  const tariffSelect = row?.querySelector("[data-role='pilates-tariff']");
+  const paidSelect = row?.querySelector("[data-role='pilates-paid']");
+  const discountReasonInput = row?.querySelector("[data-role='pilates-discount-reason']");
+  const paymentMethodSelect = row?.querySelector("[data-role='pilates-payment-method']");
+
+  if (!athleteId || !tariffSelect || !paidSelect) {
+    throw new Error("Fila inválida");
+  }
+
+  const newTariff = tariffSelect.value;
+  const newPaid = paidSelect.value === "SI";
+  const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
+  const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const newPaymentMethod = paymentMethodSelect ? paymentMethodSelect.value : "Efectivo";
+  const plan = pilatesTariffPlanMap.get(newTariff) || pilatesTariffPlanMap.get("Reformer 4");
+  const basePrice = plan.priceTotal;
+  const newPrice = basePrice * (1 - newDiscount / 100);
+  const monthKey = selectedPilatesListMonth || selectedPilatesMonth || getMonthKey(new Date());
+  const duration = plan.durationMonths || 1;
+
+  for (let i = 0; i < duration; i += 1) {
+    const targetMonth = addMonthsToKey(monthKey, i);
+    await upsertPilatesAthleteMonth(
+      athleteId,
+      targetMonth,
+      {
+        athleteName,
         tariff: newTariff,
         price: newPrice,
         basePrice,
@@ -4134,6 +4237,56 @@ if (ui.telasSaveAllBtn) {
     await refreshTelasMonthly();
     updatePendingSaveButtons();
     ui.telasSaveAllBtn.textContent = originalText;
+
+    if (failedNames.length) {
+      alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
+      return;
+    }
+    alert(`Guardados ${saved} cambios.`);
+  });
+}
+
+if (ui.pilatesList) {
+  ui.pilatesList.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!target.matches("[data-role='pilates-tariff'], [data-role='pilates-discount-reason'], [data-role='pilates-paid'], [data-role='pilates-payment-method']")) {
+      return;
+    }
+    const row = target.closest("tr");
+    markDirtyRow(row);
+    if (target.matches("[data-role='pilates-paid']")) {
+      const statusElement = row?.querySelector("[data-role='pilates-status']");
+      setStatusBadge(statusElement, target.value === "SI");
+    }
+  });
+}
+
+if (ui.pilatesSaveAllBtn) {
+  ui.pilatesSaveAllBtn.addEventListener("click", async () => {
+    const dirtyRows = ui.pilatesList
+      ? Array.from(ui.pilatesList.querySelectorAll("tr[data-dirty='true']"))
+      : [];
+    if (!dirtyRows.length) return;
+
+    const originalText = ui.pilatesSaveAllBtn.textContent;
+    ui.pilatesSaveAllBtn.textContent = "Guardando...";
+    ui.pilatesSaveAllBtn.disabled = true;
+
+    let saved = 0;
+    const failedNames = [];
+    for (const row of dirtyRows) {
+      try {
+        await savePilatesRow(row);
+        saved += 1;
+      } catch (error) {
+        failedNames.push(row.dataset.name || row.dataset.id || "(sin nombre)");
+        console.error("Error updating pilates athlete row:", error);
+      }
+    }
+
+    await refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
+    updatePendingSaveButtons();
+    ui.pilatesSaveAllBtn.textContent = originalText;
 
     if (failedNames.length) {
       alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
@@ -4473,6 +4626,23 @@ function downloadTelasTemplate() {
   URL.revokeObjectURL(url);
 }
 
+function downloadPilatesTemplate() {
+  const headers = ["nombre", "tarifa", "pagado", "precio", "descuento", "motivo_descuento"];
+  const exampleRow = ["Lucía Pérez", "Reformer 4", "NO", "65", "10", "Funcionario"];
+
+  const csv = [headers, exampleRow]
+    .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "plantilla-pilates.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function parsePaymentExpenseCsvRows(content) {
   const lines = content
     .split(/\r?\n/)
@@ -4795,26 +4965,56 @@ if (ui.processInvoicesBtn) {
       btn.textContent = "⏳ Procesando...";
       
       // Procesar facturas de la carpeta seleccionada
-      const result = await processInvoicesFromDrive(selectedFolder.id);
-    
-      if (result.success) {
-        const data = result.data;
-        let message = `✓ Procesamiento completado\n\nCarpeta: ${selectedFolder.name}\n\n`;
-        message += `Total archivos: ${data.total}\n`;
-        message += `✓ Correctas: ${data.processed}\n`;
-        
-        if (data.skipped > 0) {
-          message += `⊙ Ya subidas: ${data.skipped}\n`;
+      try {
+        const result = await processInvoicesFromDrive(selectedFolder.id);
+      
+        if (result.success) {
+          const data = result.data;
+          let message = `✓ Procesamiento completado\n\nCarpeta: ${selectedFolder.name}\n\n`;
+          message += `Total archivos: ${data.total}\n`;
+          message += `✓ Correctas: ${data.processed}\n`;
+          
+          if (data.skipped > 0) {
+            message += `⊙ Ya subidas: ${data.skipped}\n`;
+          }
+          
+          if (data.failed > 0) {
+            message += `✗ Fallidas: ${data.failed}\n`;
+            
+            // Mostrar detalle de errores si existen
+            if (data.errors && data.errors.length > 0) {
+              message += `\n━━━━━━━━━━━━━━━\nDETALLE DE ERRORES:\n\n`;
+              data.errors.forEach((err, idx) => {
+                message += `${idx + 1}. ${err.filename}\n`;
+                message += `   Tipo: ${err.errorType}\n`;
+                message += `   Error: ${err.error}\n\n`;
+              });
+            }
+          }
+          
+          alert(message);
+          
+          // Recargar gastos para ver las nuevas facturas
+          await refreshAll();
         }
-        
-        if (data.failed > 0) {
-          message += `✗ Fallidas: ${data.failed}\n`;
+      } catch (innerError) {
+        // Si es un timeout pero el proceso está corriendo en el backend
+        if (innerError.code === 'functions/deadline-exceeded') {
+          alert(
+            `⚠️ La función está tardando más de lo esperado\n\n` +
+            `El procesamiento continúa en segundo plano.\n` +
+            `Las facturas procesadas aparecerán en unos minutos.\n\n` +
+            `Recarga la página en unos minutos para ver los resultados.`
+          );
+          // Intentar recargar después de un momento
+          setTimeout(() => {
+            if (confirm('¿Recargar gastos ahora?')) {
+              refreshAll();
+            }
+          }, 3000);
+        } else {
+          throw innerError; // Re-lanzar para que lo maneje el catch exterior
         }
-        
-        alert(message);
-        
-        // Recargar gastos para ver las nuevas facturas
-        await refreshAll();
       }
     } catch (error) {
       console.error('Error:', error);
@@ -4824,6 +5024,9 @@ if (ui.processInvoicesBtn) {
         errorMsg = "Solo usuarios OWNER pueden procesar facturas";
       } else if (error.code === 'functions/unauthenticated') {
         errorMsg = "Debes iniciar sesión para procesar facturas";
+      } else if (error.code === 'functions/deadline-exceeded') {
+        // Ya manejado arriba
+        return;
       } else if (error.message) {
         errorMsg += ": " + error.message;
       }
@@ -6479,6 +6682,152 @@ on(ui.telasCsvForm, "submit", async (event) => {
   }
 });
 
+// ========== PILATES EVENT LISTENERS ==========
+
+on(ui.pilatesForm, "submit", async (event) => {
+  event.preventDefault();
+  const rawName = ui.pilatesName.value.trim();
+  if (!rawName) return;
+  
+  const athletes = await getPilatesAthletes();
+  const existing = athletes.find(
+    (athlete) => athlete.name?.toLowerCase() === rawName.toLowerCase()
+  );
+  const athleteId = existing
+    ? existing.id
+    : await createPilatesAthlete(rawName, currentUser?.uid);
+  const athleteName = existing?.name || rawName;
+  const tariff = ui.pilatesTariff.value;
+  const plan = pilatesTariffPlanMap.get(tariff) || pilatesTariffPlanMap.get("Reformer 4");
+  const basePrice = plan.priceTotal;
+  const discountReason = ui.pilatesDiscountReason.value;
+  let discount = parseFloat(ui.pilatesDiscount.value) || 0;
+  if (discountReason === 'Familiar') discount = 15;
+  else if (discountReason === 'Funcionario') discount = 10;
+  else if (discountReason === 'Amigo') discount = 10;
+  const finalPrice = basePrice * (1 - discount / 100);
+  const price = finalPrice;
+  const paid = ui.pilatesPaid.value === "SI";
+  const paymentMethod = ui.pilatesPaymentMethod?.value || "Efectivo";
+  const startMonth = ui.pilatesPaymentMonth?.value || getMonthKey(new Date());
+  const duration = plan.durationMonths || 1;
+  
+  for (let i = 0; i < duration; i += 1) {
+    const monthKey = addMonthsToKey(startMonth, i);
+    await upsertPilatesAthleteMonth(
+      athleteId,
+      monthKey,
+      {
+        athleteName,
+        tariff,
+        price,
+        basePrice,
+        discount,
+        discountReason,
+        paid,
+        paymentMethod,
+        active: paid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
+      },
+      currentUser?.uid
+    );
+  }
+
+  ui.pilatesForm.reset();
+  ui.pilatesDiscount.value = 0;
+  ui.pilatesDiscountReason.value = "Ninguno";
+  setPilatesPriceFromTariff();
+  renderPilatesPaymentMonthOptions();
+  if (ui.pilatesModal) {
+    ui.pilatesModal.classList.add("hidden");
+  }
+  await refreshAll();
+  await refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
+});
+
+on(ui.pilatesTariff, "change", () => {
+  setPilatesPriceFromTariff();
+});
+
+on(ui.pilatesDiscountReason, "change", () => {
+  const reason = ui.pilatesDiscountReason.value;
+  let discountValue = 0;
+  if (reason === 'Familiar') discountValue = 15;
+  else if (reason === 'Funcionario') discountValue = 10;
+  else if (reason === 'Mañanas') discountValue = 10;
+  else if (reason === 'Amigo') discountValue = 10;
+  ui.pilatesDiscount.value = discountValue;
+  calculatePilatesFinalPrice();
+});
+
+on(ui.pilatesDiscount, "input", () => {
+  calculatePilatesFinalPrice();
+});
+
+on(ui.pilatesModalOpen, "click", () => {
+  ui.pilatesModal?.classList.remove("hidden");
+});
+
+on(ui.pilatesModalClose, "click", () => {
+  ui.pilatesModal?.classList.add("hidden");
+});
+
+on(ui.pilatesCsvOpen, "click", () => {
+  renderPilatesCsvMonthOptions();
+  ui.pilatesCsvModal?.classList.remove("hidden");
+});
+
+on(ui.pilatesCsvClose, "click", () => {
+  ui.pilatesCsvModal?.classList.add("hidden");
+});
+
+on(ui.pilatesCsvMonth, "change", (event) => {
+  selectedPilatesCsvMonth = event.target.value;
+});
+
+on(ui.pilatesPaymentMonth, "change", (event) => {
+  selectedPilatesPaymentMonth = event.target.value;
+});
+
+on(ui.pilatesCsvForm, "submit", async (event) => {
+  event.preventDefault();
+  if (!ui.pilatesCsvFile?.files?.length) return;
+  ui.pilatesCsvStatus.textContent = "Importando...";
+  const monthKey = ui.pilatesCsvMonth?.value || selectedPilatesCsvMonth || getMonthKey(new Date());
+  try {
+    const result = await importPilatesAthletesFromCsv(ui.pilatesCsvFile.files[0], monthKey);
+    ui.pilatesCsvStatus.textContent = `Importados ${result.success} atletas. Errores: ${result.errors}`;
+    ui.pilatesCsvForm.reset();
+    renderPilatesCsvMonthOptions();
+    ui.pilatesCsvModal?.classList.add("hidden");
+    await refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
+  } catch (error) {
+    ui.pilatesCsvStatus.textContent = `Error: ${error.message || error}`;
+  }
+});
+
+on(ui.pilatesMonthSelect, "change", (event) => {
+  selectedPilatesMonth = event.target.value;
+  refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
+});
+
+on(ui.pilatesListMonthSelect, "change", (event) => {
+  selectedPilatesListMonth = event.target.value;
+  refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
+});
+
+on(ui.pilatesPaidFilter, "change", (event) => {
+  pilatesPaidFilter = event.target.value;
+  refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
+});
+
+on(ui.pilatesSearch, "input", (event) => {
+  pilatesSearchTerm = event.target.value;
+  refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
+});
+
 // ========== SINGLE CLASSES EVENT LISTENERS ==========
 
 on(ui.singleClassesForm, "submit", async (event) => {
@@ -6755,6 +7104,21 @@ on(ui.downloadHalteTemplate, "click", () => {
 
 on(ui.downloadTelasTemplate, "click", () => {
   downloadTelasTemplate();
+});
+
+on(ui.downloadPilatesTemplate, "click", () => {
+  downloadPilatesTemplate();
+});
+
+window.addEventListener("pilates-name-updated", async () => {
+  await refreshPilatesMonthly(
+    selectedPilatesMonth,
+    selectedPilatesListMonth,
+    selectedPilatesPaymentMonth,
+    pilatesPaidFilter,
+    pilatesSearchTerm,
+    selectedPilatesCsvMonth
+  );
 });
 
 // ========== CLASES Y TURNOS ==========

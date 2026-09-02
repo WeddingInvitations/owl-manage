@@ -1738,6 +1738,48 @@ span.athlete-status-unpaid,
   gap: 12px;
 }
 
+/* Compact layout para cabecera y resumen de Pilates */
+#pilatesView {
+  gap: 12px;
+}
+
+#pilatesView .pilates-top-card,
+#pilatesView .pilates-summary-card {
+  padding: 14px 16px;
+}
+
+#pilatesView .pilates-top-card h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+#pilatesView .pilates-top-card .detail-header {
+  margin-top: 8px;
+}
+
+#pilatesView .pilates-summary-card .detail-header {
+  margin-bottom: 8px;
+}
+
+#pilatesView .pilates-summary-card .summary {
+  gap: 8px;
+}
+
+#pilatesView .pilates-summary-card .summary > div {
+  padding: 8px 10px;
+}
+
+#pilatesView .pilates-summary-card .label {
+  margin: 0;
+  font-size: 11px;
+}
+
+#pilatesView .pilates-summary-card .value {
+  margin: 2px 0 0;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
 /* ========== MOBILE RESPONSIVE ========== */
 
 /* Mobile bottom navigation */
@@ -1779,11 +1821,12 @@ span.athlete-status-unpaid,
   margin-bottom: 4px;
 }
 .athlete-table-mobile td:nth-child(2) {
-  flex: 1;
+  flex: 0 0 100%;
 }
 .athlete-table-mobile td:nth-child(2) select {
   width: 100%;
   max-width: none;
+  min-width: 0;
 }
 .athlete-table-mobile td:nth-child(3) {
   flex: 0 0 auto;
@@ -1798,14 +1841,19 @@ span.athlete-status-unpaid,
   text-align: center;
 }
 .athlete-table-mobile td:nth-child(5) {
-  flex: 1;
-  font-size: 11px;
+  flex: 0 0 100%;
+  font-size: 12px;
   color: var(--muted);
-  min-width: 80px;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+.athlete-table-mobile td:nth-child(5) select {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
 }
 .athlete-table-mobile td:nth-child(6) {
   flex: 0 0 auto;
@@ -1872,7 +1920,7 @@ span.athlete-status-unpaid,
   .athlete-table-mobile {
     display: table !important;
     width: 100%;
-    table-layout: fixed;
+    table-layout: auto;
   }
 
   .athlete-table-mobile thead {
@@ -1903,40 +1951,47 @@ span.athlete-status-unpaid,
   /* Anchos específicos para cada columna */
   .athlete-table-mobile th:nth-child(1),
   .athlete-table-mobile td:nth-child(1) {
-    width: 18%; /* Nombre */
+    width: 16%; /* Nombre */
   }
 
   .athlete-table-mobile th:nth-child(2),
   .athlete-table-mobile td:nth-child(2) {
-    width: 12%; /* Tarifa */
+    width: auto; /* Tarifa */
+    min-width: 200px;
+  }
+
+  .athlete-table-mobile td:nth-child(2) select {
+    min-width: 160px;
+    white-space: nowrap;
   }
 
   .athlete-table-mobile th:nth-child(3),
   .athlete-table-mobile td:nth-child(3) {
-    width: 9%; /* Precio */
+    width: 8%; /* Precio */
     text-align: right;
   }
 
   .athlete-table-mobile th:nth-child(4),
   .athlete-table-mobile td:nth-child(4) {
-    width: 9%; /* Descuento */
+    width: 8%; /* Descuento */
     text-align: center;
   }
 
   .athlete-table-mobile th:nth-child(5),
   .athlete-table-mobile td:nth-child(5) {
-    width: 13%; /* Motivo */
+    width: auto; /* Motivo */
+    min-width: 180px;
   }
 
   .athlete-table-mobile th:nth-child(6),
   .athlete-table-mobile td:nth-child(6) {
-    width: 11%; /* Precio Final */
+    width: 10%; /* Precio Final */
     text-align: right;
   }
 
   .athlete-table-mobile th:nth-child(7),
   .athlete-table-mobile td:nth-child(7) {
-    width: 12%; /* Pagado */
+    width: 10%; /* Pagado */
     display: table-cell;
     text-align: center;
   }
@@ -1951,6 +2006,7 @@ span.athlete-status-unpaid,
   .athlete-table-mobile select {
     max-width: 100%;
     width: 100%;
+    min-width: 0;
   }
 }
 
@@ -2229,6 +2285,31 @@ span.athlete-status-unpaid,
     font-size: 12px;
     width: 100%;
     min-width: auto;
+  }
+
+  #pilatesView {
+    gap: 10px;
+  }
+
+  #pilatesView .pilates-top-card,
+  #pilatesView .pilates-summary-card {
+    padding: 10px 12px;
+  }
+
+  #pilatesView .pilates-top-card h2 {
+    font-size: 18px;
+  }
+
+  #pilatesView .pilates-summary-card .summary {
+    gap: 6px;
+  }
+
+  #pilatesView .pilates-summary-card .summary > div {
+    padding: 7px 8px;
+  }
+
+  #pilatesView .pilates-summary-card .value {
+    font-size: 16px;
   }
 
 /* Vacations calendar */

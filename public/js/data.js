@@ -1638,6 +1638,86 @@ export async function getAllTelasAthleteMonths() {
   return records;
 }
 
+// ========== PILATES ==========
+
+export async function createPilatesAthlete(name, userId) {
+  const docRef = await addDoc(collection(db, "athletes_pilates"), {
+    name,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function updatePilatesAthlete(athleteId, athleteData, userId) {
+  await updateDoc(doc(db, "athletes_pilates", athleteId), {
+    ...athleteData,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  });
+}
+
+export async function getPilatesAthletes() {
+  const snap = await getDocs(collection(db, "athletes_pilates"));
+  const athletes = [];
+  snap.forEach((docSnap) => {
+    athletes.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return athletes;
+}
+
+export async function upsertPilatesAthleteMonth(athleteId, month, payload, userId) {
+  const snap = await getDocs(
+    query(
+      collection(db, "athlete_pilates_months"),
+      where("athleteId", "==", athleteId),
+      where("month", "==", month)
+    )
+  );
+  let docId = null;
+  snap.forEach((docSnap) => {
+    docId = docSnap.id;
+  });
+
+  if (docId) {
+    await updateDoc(doc(db, "athlete_pilates_months", docId), {
+      ...payload,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+    return docId;
+  }
+
+  const docRef = await addDoc(collection(db, "athlete_pilates_months"), {
+    athleteId,
+    month,
+    ...payload,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function getPilatesAthleteMonthsForMonth(month) {
+  const snap = await getDocs(
+    query(collection(db, "athlete_pilates_months"), where("month", "==", month))
+  );
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
+export async function getAllPilatesAthleteMonths() {
+  const snap = await getDocs(collection(db, "athlete_pilates_months"));
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
 // ========== CLASES SUELTAS ==========
 
 export async function createSingleClassesAthlete(name, userId) {
