@@ -623,6 +623,7 @@ ui.inventoryRemoveCancel = $("inventoryRemoveCancel");
 ui.wodBusterView = $("wodBusterView");
 ui.wodBusterRefreshBtn = $("wodBusterRefreshBtn");
 ui.wodBusterSyncExcelBtn = $("wodBusterSyncExcelBtn");
+ui.wodBusterExcelBtn = $("wodBusterExcelBtn");
 ui.addWodBusterUserBtn = $("addWodBusterUserBtn");
 ui.wodBusterStatus = $("wodBusterStatus");
 ui.wodBusterUsersList = $("wodBusterUsersList");

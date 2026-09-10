@@ -1,4 +1,5 @@
 import { ui, formatCurrency } from "./ui.js";
+import * as XLSX from 'https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs';
 import { 
   getWodBusterUsers, 
   setWodBusterBaseUrl, 
@@ -9,7 +10,9 @@ import {
   deleteWodBusterUser,
   syncMultipleWodBusterUsers,
   getMonthLabel,
-  updateWodBusterUserAPI
+  updateWodBusterUserAPI,
+  getAthletes,
+  getAthleteMonthsForMonth
 } from "./data.js";
 import { 
   readExcelFile, 
@@ -259,6 +262,296 @@ function isUserActive(user) {
 function getMonthKey(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${date.getFullYear()}-${month}`;
+}
+
+function normalizePersonName(name) {
+  if (!name) return '';
+  return name
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeEmailKey(email) {
+  if (!email) return '';
+  return email.toString().trim().toLowerCase();
+}
+
+function getWodBusterDisplayName(user) {
+  return (
+    user.nombreCompleto
+    || [user.nombre, user.apellidos].filter(Boolean).join(' ').trim()
+    || user.name
+    || user.email
+    || '-'
+  );
+}
+
+function formatDateForExcel(dateValue) {
+  if (!dateValue) return '-';
+  const parsed = new Date(dateValue);
+  if (isNaN(parsed.getTime())) return '-';
+  return parsed.toLocaleDateString('es-ES');
+}
+
+function getSelectedAthleteComparisonMonth() {
+  const monthSelect = document.getElementById('athleteListMonthSelect');
+  if (monthSelect && monthSelect.value) {
+    return monthSelect.value;
+  }
+  return getMonthKey(new Date());
+}
+
+async function buildAthleteWodBusterDiscrepancies() {
+  const monthKey = getSelectedAthleteComparisonMonth();
+  const [athletes, monthRecords] = await Promise.all([
+    getAthletes(),
+    getAthleteMonthsForMonth(monthKey)
+  ]);
+
+  const athleteById = new Map(athletes.map((athlete) => [athlete.id, athlete]));
+
+  // Atleta activo = pagado en el mes consultado (misma regla que el resumen de atletas).
+  const activeAthletesDetailed = monthRecords
+    .filter((record) => Boolean(record.paid))
+    .map((record) => {
+      const athlete = athleteById.get(record.athleteId);
+      const name = athlete?.name || record.athleteName || '';
+      const email = athlete?.email || record.athleteEmail || record.email || '';
+      const normalizedEmail = normalizeEmailKey(email);
+      const normalizedName = normalizePersonName(name);
+      const matchKey = normalizedEmail
+        ? `email:${normalizedEmail}`
+        : `name:${normalizedName}`;
+      return {
+        id: record.athleteId,
+        name,
+        email: email || '-',
+        normalizedEmail,
+        normalizedName,
+        matchKey
+      };
+    })
+    .filter((athlete) => athlete.normalizedEmail || athlete.normalizedName);
+
+  const activeWodBusterDetailed = (allWodBusterUsers || [])
+    .filter((user) => isUserActive(user))
+    .map((user) => {
+      const name = getWodBusterDisplayName(user);
+      const normalizedEmail = normalizeEmailKey(user.email);
+      const normalizedName = normalizePersonName(name);
+      const matchKey = normalizedEmail
+        ? `email:${normalizedEmail}`
+        : `name:${normalizedName}`;
+      return {
+        id: user.id || user.docId || '-',
+        name,
+        email: user.email || '-',
+        normalizedEmail,
+        normalizedName,
+        matchKey
+      };
+    })
+    .filter((user) => user.normalizedEmail || user.normalizedName);
+
+  const athleteMatchKeyCounts = new Map();
+  activeAthletesDetailed.forEach((athlete) => {
+    athleteMatchKeyCounts.set(
+      athlete.matchKey,
+      (athleteMatchKeyCounts.get(athlete.matchKey) || 0) + 1
+    );
+  });
+
+  const wodBusterMatchKeyCounts = new Map();
+  activeWodBusterDetailed.forEach((user) => {
+    wodBusterMatchKeyCounts.set(
+      user.matchKey,
+      (wodBusterMatchKeyCounts.get(user.matchKey) || 0) + 1
+    );
+  });
+
+  const athleteMatchKeySet = new Set(athleteMatchKeyCounts.keys());
+  const wodBusterMatchKeySet = new Set(wodBusterMatchKeyCounts.keys());
+
+  const missingInWodBuster = activeAthletesDetailed.filter(
+    (athlete) => !wodBusterMatchKeySet.has(athlete.matchKey)
+  );
+
+  const missingInAthletes = activeWodBusterDetailed.filter(
+    (user) => !athleteMatchKeySet.has(user.matchKey)
+  );
+
+  const duplicatedAthletes = activeAthletesDetailed.filter(
+    (athlete) => (athleteMatchKeyCounts.get(athlete.matchKey) || 0) > 1
+  );
+
+  const duplicatedWodBuster = activeWodBusterDetailed.filter(
+    (user) => (wodBusterMatchKeyCounts.get(user.matchKey) || 0) > 1
+  );
+
+  const matchesCount = Array.from(athleteMatchKeySet).filter((key) => wodBusterMatchKeySet.has(key)).length;
+
+  return {
+    monthKey,
+    activeAthletesCount: activeAthletesDetailed.length,
+    activeWodBusterCount: activeWodBusterDetailed.length,
+    matchesCount,
+    missingInWodBuster,
+    missingInAthletes,
+    duplicatedAthletes,
+    duplicatedWodBuster
+  };
+}
+
+async function downloadWodBusterExcel() {
+  if (!currentWodBusterUsers || currentWodBusterUsers.length === 0) {
+    alert('No hay usuarios de WodBuster para exportar.');
+    return;
+  }
+
+  try {
+    const sortedUsers = [...currentWodBusterUsers].sort((a, b) => {
+      const nameA = getWodBusterDisplayName(a);
+      const nameB = getWodBusterDisplayName(b);
+      return nameA.localeCompare(nameB, 'es');
+    });
+
+    const usersRows = [[
+      'ID',
+      'Nombre',
+      'Email',
+      'Tarifa',
+      'Precio (€)',
+      'Estado',
+      'Pago Hasta',
+      'Sincronizado'
+    ]];
+
+    sortedUsers.forEach((user) => {
+      const displayName = getWodBusterDisplayName(user);
+      const tarifa = user.tarifaExcel || getTariffNameById(user.idTarifa) || '-';
+      const tarifaName = user.tarifaExcel || getTariffNameById(user.idTarifa);
+      const price = user.precio ?? getTariffPrice(tarifaName);
+
+      usersRows.push([
+        user.id || '-',
+        displayName,
+        user.email || '-',
+        tarifa,
+        price !== null && price !== undefined ? Number(price) : '-',
+        isUserActive(user) ? 'Activo' : 'Inactivo',
+        formatDateForExcel(user.pagadoHasta),
+        user.sincronizado === false ? 'No' : 'Sí'
+      ]);
+    });
+
+    const comparison = await buildAthleteWodBusterDiscrepancies();
+
+    const discrepancyRows = [
+      ['RESUMEN COMPARATIVO'],
+      ['Mes atletas', getMonthLabel(comparison.monthKey)],
+      ['Fecha de generación', new Date().toLocaleString('es-ES')],
+      ['Atletas activos', comparison.activeAthletesCount],
+      ['Usuarios WodBuster activos', comparison.activeWodBusterCount],
+      ['Coincidencias (email prioritario + nombre fallback)', comparison.matchesCount],
+      ['Atletas activos sin usuario WodBuster', comparison.missingInWodBuster.length],
+      ['Usuarios WodBuster activos sin atleta activo', comparison.missingInAthletes.length],
+      ['Duplicados en atletas activos (email o nombre fallback)', comparison.duplicatedAthletes.length],
+      ['Duplicados en WodBuster activos (email o nombre fallback)', comparison.duplicatedWodBuster.length],
+      [''],
+      ['Tipo', 'Nombre', 'Email', 'Clave usada', 'Detalle']
+    ];
+
+    comparison.missingInWodBuster.forEach((athlete) => {
+      discrepancyRows.push([
+        'Atleta activo sin WodBuster',
+        athlete.name || '-',
+        athlete.email || '-',
+        athlete.normalizedEmail ? 'Email' : 'Nombre',
+        'Existe en atletas activos pero no aparece en usuarios activos WodBuster (email prioritario, nombre como respaldo).'
+      ]);
+    });
+
+    comparison.missingInAthletes.forEach((user) => {
+      discrepancyRows.push([
+        'WodBuster activo sin atleta',
+        user.name || '-',
+        user.email || '-',
+        user.normalizedEmail ? 'Email' : 'Nombre',
+        'Existe en usuarios activos WodBuster pero no aparece en atletas activos (email prioritario, nombre como respaldo).'
+      ]);
+    });
+
+    comparison.duplicatedAthletes.forEach((athlete) => {
+      discrepancyRows.push([
+        'Duplicado en atletas activos',
+        athlete.name || '-',
+        athlete.email || '-',
+        athlete.normalizedEmail ? 'Email' : 'Nombre',
+        'Hay más de un atleta activo con la misma clave de comparación (email o nombre fallback).'
+      ]);
+    });
+
+    comparison.duplicatedWodBuster.forEach((user) => {
+      discrepancyRows.push([
+        'Duplicado en WodBuster activos',
+        user.name || '-',
+        user.email || '-',
+        user.normalizedEmail ? 'Email' : 'Nombre',
+        'Hay más de un usuario activo WodBuster con la misma clave de comparación (email o nombre fallback).'
+      ]);
+    });
+
+    if (discrepancyRows.length === 12) {
+      discrepancyRows.push([
+        'Sin discrepancias',
+        '-',
+        '-',
+        '-',
+        'No se detectaron diferencias para el criterio actual.'
+      ]);
+    }
+
+    const workbook = XLSX.utils.book_new();
+    const wsUsers = XLSX.utils.aoa_to_sheet(usersRows);
+    const wsDiscrepancies = XLSX.utils.aoa_to_sheet(discrepancyRows);
+
+    wsUsers['!cols'] = [
+      { wch: 10 },
+      { wch: 30 },
+      { wch: 35 },
+      { wch: 25 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 14 },
+      { wch: 14 }
+    ];
+
+    wsDiscrepancies['!cols'] = [
+      { wch: 38 },
+      { wch: 30 },
+      { wch: 35 },
+      { wch: 14 },
+      { wch: 80 }
+    ];
+
+    XLSX.utils.book_append_sheet(workbook, wsUsers, 'Usuarios WodBuster');
+    XLSX.utils.book_append_sheet(workbook, wsDiscrepancies, 'Discrepancias');
+
+    const monthSuffix = selectedWodBusterMonth || getMonthKey(new Date());
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const excelBlob = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+
+    downloadExcel(excelBlob, `usuarios-wodbuster-${monthSuffix}.xlsx`);
+  } catch (error) {
+    console.error('Error al generar Excel de WodBuster:', error);
+    alert(`Error al generar el Excel: ${error.message}`);
+  }
 }
 
 // Renderizar opciones de selector de mes
@@ -1892,6 +2185,13 @@ export async function initializeWodBuster() {
     if (ui.wodBusterSyncExcelBtn) {
       ui.wodBusterSyncExcelBtn.addEventListener("click", () => {
         handleExcelSync();
+      });
+    }
+
+    // Event listener para descargar listado de usuarios en Excel
+    if (ui.wodBusterExcelBtn) {
+      ui.wodBusterExcelBtn.addEventListener("click", async () => {
+        await downloadWodBusterExcel();
       });
     }
     

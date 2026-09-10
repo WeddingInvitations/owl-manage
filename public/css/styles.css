@@ -4018,6 +4018,280 @@ span[data-role="singleclasses-status"].athlete-status-unpaid {
   border: 1px solid rgba(22, 101, 52, 0.25) !important;
 }
 
+/* ============================================
+   CORRECCIÓN UX RESPONSIVE: Listados de atletas
+   CrossFit, Acrobacias, Halterofilia, Telas,
+   Clases sueltas y Pilates
+   ============================================ */
+
+@media (max-width: 1180px) {
+  .app-header {
+    padding: 18px 20px;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .header-right,
+  .auth-status {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .main-shell {
+    grid-template-columns: minmax(208px, 220px) minmax(0, 1fr);
+  }
+
+  .content {
+    min-width: 0;
+    padding: 20px 20px 32px;
+    gap: 14px;
+  }
+
+  .card {
+    min-width: 0;
+    padding: 18px;
+  }
+
+  .detail-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .table-actions {
+    flex-wrap: wrap;
+  }
+
+  .summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .athlete-list-header {
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .athlete-list-header h3 {
+    margin: 0;
+    flex: 1 0 100%;
+  }
+
+  .athlete-list-header .filter-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .athlete-list-header .filter-row input,
+  .athlete-list-header .filter-row select,
+  .athlete-list-header .filter-row .btn {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .athlete-list-header .filter-row .btn {
+    justify-content: center;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -18px;
+    padding: 0 18px 4px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1180px) {
+  .side-menu {
+    padding: 18px 12px;
+  }
+
+  .menu-btn {
+    min-height: 42px;
+    height: auto;
+    max-height: none;
+    padding: 8px 10px;
+  }
+
+  .athlete-table-mobile {
+    display: block !important;
+    width: 100%;
+  }
+
+  .athlete-table-mobile thead {
+    display: none !important;
+  }
+
+  .athlete-table-mobile tbody {
+    display: flex !important;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .athlete-table-mobile tr {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--card) 78%, var(--accent) 22%);
+    align-items: start;
+  }
+
+  .athlete-table-mobile td {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding: 0;
+    border: none;
+  }
+
+  .athlete-table-mobile td:nth-child(1),
+  .athlete-table-mobile td:nth-child(2),
+  .athlete-table-mobile td:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+
+  .athlete-table-mobile td:nth-child(1) {
+    margin-bottom: 2px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .athlete-table-mobile td:nth-child(2) select,
+  .athlete-table-mobile td:nth-child(5) select,
+  .athlete-table-mobile td:nth-child(7) select,
+  .athlete-table-mobile td:nth-child(8) select {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .athlete-table-mobile td:nth-child(3)::before {
+    content: "Precio";
+  }
+
+  .athlete-table-mobile td:nth-child(4)::before {
+    content: "Descuento";
+  }
+
+  .athlete-table-mobile td:nth-child(5)::before {
+    content: "Motivo";
+  }
+
+  .athlete-table-mobile td:nth-child(6)::before {
+    content: "Precio final";
+  }
+
+  .athlete-table-mobile td:nth-child(7)::before {
+    content: "Pagado";
+  }
+
+  .athlete-table-mobile td:nth-child(8)::before {
+    content: "Forma de pago";
+  }
+
+  .athlete-table-mobile td:nth-child(n + 3)::before {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .athlete-table-mobile td:nth-child(3),
+  .athlete-table-mobile td:nth-child(4),
+  .athlete-table-mobile td:nth-child(6) {
+    font-weight: 600;
+  }
+
+  .athlete-table-mobile td:nth-child(7),
+  .athlete-table-mobile td:nth-child(8) {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 768px) {
+  .athlete-list-header .filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .table-container {
+    margin: 0 -12px;
+    padding: 0 12px 4px;
+  }
+
+  .athlete-table-mobile tr {
+    gap: 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+
+  .athlete-table-mobile td {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .athlete-table-mobile td:nth-child(2),
+  .athlete-table-mobile td:nth-child(5),
+  .athlete-table-mobile td:nth-child(8) {
+    flex: 0 0 100%;
+  }
+
+  .athlete-table-mobile td:nth-child(3),
+  .athlete-table-mobile td:nth-child(4),
+  .athlete-table-mobile td:nth-child(6),
+  .athlete-table-mobile td:nth-child(7) {
+    flex: 1 1 calc(50% - 5px);
+    min-width: calc(50% - 5px);
+  }
+
+  .athlete-table-mobile td:nth-child(3)::before {
+    content: "Precio";
+  }
+
+  .athlete-table-mobile td:nth-child(4)::before {
+    content: "Descuento";
+  }
+
+  .athlete-table-mobile td:nth-child(5)::before {
+    content: "Motivo";
+  }
+
+  .athlete-table-mobile td:nth-child(6)::before {
+    content: "Precio final";
+  }
+
+  .athlete-table-mobile td:nth-child(7)::before {
+    content: "Pagado";
+  }
+
+  .athlete-table-mobile td:nth-child(8)::before {
+    content: "Forma de pago";
+  }
+
+  .athlete-table-mobile td:nth-child(n + 3)::before {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .athlete-table-mobile td:nth-child(7) select,
+  .athlete-table-mobile td:nth-child(8) select {
+    width: 100%;
+    max-width: none;
+  }
+}
+
 .light .table span[data-role="status"].athlete-status-unpaid,
 .light .table span[data-role="acro-status"].athlete-status-unpaid,
 .light .table span[data-role="halte-status"].athlete-status-unpaid,
