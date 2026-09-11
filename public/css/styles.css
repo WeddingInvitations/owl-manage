@@ -4103,7 +4103,7 @@ span[data-role="singleclasses-status"].athlete-status-unpaid {
   }
 }
 
-@media (min-width: 769px) and (max-width: 1180px) {
+@media (min-width: 769px) and (max-width: 1024px) {
   .side-menu {
     padding: 18px 12px;
   }
@@ -4213,6 +4213,114 @@ span[data-role="singleclasses-status"].athlete-status-unpaid {
   .athlete-table-mobile td:nth-child(7),
   .athlete-table-mobile td:nth-child(8) {
     justify-content: flex-end;
+  }
+}
+
+@media (min-width: 1025px) and (max-width: 1180px) {
+  .main-shell {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+
+  .content {
+    padding: 18px 18px 28px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .athlete-list-header .filter-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .athlete-list-header .filter-row .btn:last-child {
+    grid-column: span 1;
+  }
+
+  .athlete-table-mobile {
+    display: table !important;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  .athlete-table-mobile thead {
+    display: table-header-group !important;
+  }
+
+  .athlete-table-mobile tbody {
+    display: table-row-group !important;
+  }
+
+  .athlete-table-mobile tr {
+    display: table-row !important;
+    background: transparent;
+    border: none;
+  }
+
+  .athlete-table-mobile td,
+  .athlete-table-mobile th {
+    display: table-cell !important;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    font-size: 12px;
+  }
+
+  .athlete-table-mobile th {
+    font-size: 11px;
+  }
+
+  .athlete-table-mobile td::before {
+    content: none !important;
+  }
+
+  .athlete-table-mobile th:nth-child(1),
+  .athlete-table-mobile td:nth-child(1) {
+    width: 18%;
+  }
+
+  .athlete-table-mobile th:nth-child(2),
+  .athlete-table-mobile td:nth-child(2) {
+    width: 21%;
+  }
+
+  .athlete-table-mobile th:nth-child(3),
+  .athlete-table-mobile td:nth-child(3),
+  .athlete-table-mobile th:nth-child(4),
+  .athlete-table-mobile td:nth-child(4),
+  .athlete-table-mobile th:nth-child(6),
+  .athlete-table-mobile td:nth-child(6) {
+    width: 9%;
+    text-align: center;
+  }
+
+  .athlete-table-mobile th:nth-child(5),
+  .athlete-table-mobile td:nth-child(5) {
+    width: 14%;
+  }
+
+  .athlete-table-mobile th:nth-child(7),
+  .athlete-table-mobile td:nth-child(7) {
+    width: 9%;
+    text-align: center;
+  }
+
+  .athlete-table-mobile th:nth-child(8),
+  .athlete-table-mobile td:nth-child(8) {
+    width: 11%;
+    text-align: center;
+  }
+
+  .athlete-table-mobile td:nth-child(2) select,
+  .athlete-table-mobile td:nth-child(5) select,
+  .athlete-table-mobile td:nth-child(7) select,
+  .athlete-table-mobile td:nth-child(8) select,
+  .athlete-table-mobile select {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 8px 10px;
+    font-size: 12px;
   }
 }
 
