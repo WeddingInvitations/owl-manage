@@ -4393,6 +4393,610 @@ span[data-role="singleclasses-status"].athlete-status-unpaid {
     color: var(--muted);
   }
 
+
+@media (max-width: 767px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+  }
+
+  .app-header {
+    position: sticky;
+    top: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .header-left,
+  .header-right,
+  .header-controls,
+  .auth-status,
+  .user-badge {
+    min-width: 0;
+  }
+
+  .header-right {
+    gap: 6px;
+  }
+
+  .logo-img {
+    width: 44px;
+    height: 44px;
+  }
+
+  .title-section {
+    min-width: 0;
+  }
+
+  .title-section h1,
+  .title-section .muted,
+  .auth-status .badge {
+    display: none;
+  }
+
+  #logoutBtn {
+    min-width: 0;
+    width: auto;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .main-shell {
+    grid-template-columns: 1fr;
+    min-height: calc(100dvh - 68px);
+    padding-bottom: calc(74px + env(safe-area-inset-bottom));
+  }
+
+  .content {
+    min-width: 0;
+    gap: 12px;
+    padding: 12px 12px calc(84px + env(safe-area-inset-bottom));
+  }
+
+  .view {
+    min-width: 0;
+    gap: 12px;
+  }
+
+  .card {
+    min-width: 0;
+    padding: 14px;
+    border-radius: 14px;
+    box-shadow: 0 2px 10px var(--shadow);
+  }
+
+  .card:hover {
+    transform: none;
+    box-shadow: 0 2px 10px var(--shadow);
+  }
+
+  .summary,
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .value {
+    font-size: 22px;
+  }
+
+  .detail-header,
+  .athlete-list-header,
+  .filter-row,
+  .form-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .detail-header > *,
+  .athlete-list-header > *,
+  .filter-row > *,
+  .form-actions > * {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .detail-header h2,
+  .detail-header h3,
+  .athlete-list-header h3 {
+    margin: 0;
+  }
+
+  .btn,
+  .btn.small,
+  .btn.ghost.small {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .table-responsive,
+  .table-container {
+    width: calc(100% + 4px);
+    max-width: calc(100% + 4px);
+    margin: 0 -2px;
+    padding: 0 2px 6px;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-responsive > .table:not(.athlete-table-mobile),
+  .table-container > .table:not(.athlete-table-mobile) {
+    min-width: 640px;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 8px;
+  }
+
+  .athlete-table-mobile {
+    display: block !important;
+  }
+
+  .athlete-table-mobile tbody {
+    display: grid !important;
+    gap: 10px;
+  }
+
+  .athlete-table-mobile tr {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--card) 88%, var(--accent) 12%);
+  }
+
+  .athlete-table-mobile td {
+    display: flex !important;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    padding: 0;
+    border: none;
+  }
+
+  .athlete-table-mobile td:nth-child(1),
+  .athlete-table-mobile td:nth-child(2),
+  .athlete-table-mobile td:nth-child(5),
+  .athlete-table-mobile td:nth-child(8) {
+    grid-column: 1 / -1;
+  }
+
+  .athlete-table-mobile td:nth-child(1) {
+    margin-bottom: 2px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .athlete-table-mobile td:nth-child(2) select,
+  .athlete-table-mobile td:nth-child(5) select,
+  .athlete-table-mobile td:nth-child(7) select,
+  .athlete-table-mobile td:nth-child(8) select,
+  .athlete-table-mobile select {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .athlete-table-mobile td:nth-child(3)::before {
+    content: "Precio";
+  }
+
+  .athlete-table-mobile td:nth-child(4)::before {
+    content: "Descuento";
+  }
+
+  .athlete-table-mobile td:nth-child(5)::before {
+    content: "Motivo";
+  }
+
+  .athlete-table-mobile td:nth-child(6)::before {
+    content: "Precio final";
+  }
+
+  .athlete-table-mobile td:nth-child(7)::before {
+    content: "Pagado";
+  }
+
+  .athlete-table-mobile td:nth-child(8)::before {
+    content: "Forma de pago";
+  }
+
+  .athlete-table-mobile td:nth-child(n + 3)::before {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .modal {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-content,
+  #athleteModal .modal-content,
+  #moreMenu .modal-content,
+  #bulkAssignModal .modal-content {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    margin: 0;
+    padding: 16px 14px calc(16px + env(safe-area-inset-bottom));
+    border-radius: 18px 18px 0 0;
+  }
+
+  #moreMenu.modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  #moreMenu .modal-content {
+    max-height: 88dvh;
+  }
+
+  #acroKidsCalendar {
+    min-width: 0;
+  }
+
+  #acroKidsCalendar .fc,
+  .fc {
+    min-width: 0;
+  }
+
+  .fc .fc-toolbar,
+  .fc .fc-header-toolbar {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  .fc .fc-toolbar-chunk {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    min-width: 0;
+  }
+
+  .fc .fc-toolbar-title {
+    font-size: 1rem !important;
+    text-align: center !important;
+  }
+
+  .fc .fc-button {
+    min-height: 40px !important;
+    padding: 0.45rem 0.7rem !important;
+    font-size: 0.84rem !important;
+  }
+
+  .fc .fc-timegrid-slot-label,
+  .fc .fc-col-header-cell-cushion,
+  .fc .fc-timegrid-axis-cushion,
+  .fc .fc-daygrid-day-number {
+    font-size: 11px;
+  }
+
+  .mobile-nav {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 6px 8px calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .mobile-nav-btn {
+    max-width: none;
+    min-height: 52px;
+    padding: 8px 2px;
+    font-size: 9px;
+  }
+
+  .mobile-nav-btn .icon {
+    font-size: 18px;
+  }
+
+  #cajaView .detail-header,
+  #wodBusterView .detail-header,
+  #classesView .detail-header,
+  #acroKidsCalendarView .detail-header {
+    align-items: stretch;
+  }
+
+  #cajaView .filter-row,
+  #wodBusterView .header-actions,
+  #wodBusterView .filter-row,
+  #classesView .header-actions,
+  #classesView .filter-row,
+  #acroKidsCalendarView .header-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  #cajaView .filter-row > *,
+  #wodBusterView .header-actions > *,
+  #wodBusterView .filter-row > *,
+  #classesView .header-actions > *,
+  #classesView .filter-row > *,
+  #acroKidsCalendarView .header-actions > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #cajaView .card > .card {
+    margin: 0;
+    padding: 14px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--card) 82%, var(--accent) 18%);
+  }
+
+  #cajaView .table-responsive > .table {
+    min-width: 540px;
+  }
+
+  #cajaView #cajaSummaryTotals {
+    line-height: 1.45;
+  }
+
+  #cajaView #cajaEmpty {
+    margin-top: 10px;
+    border-radius: 12px;
+  }
+
+  #cajaModal .modal-content {
+    gap: 12px;
+  }
+
+  #acroKidsCalendarView > .card {
+    padding: 12px !important;
+  }
+
+  #acroKidsCalendarView > .card > .detail-header:first-child h2 {
+    font-size: 1.2rem;
+  }
+
+  #acroKidsCalendarView > .card > .detail-header:first-child .muted {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  #acroKidsCalendarView > .card > div[style*="min-height: 620px"] {
+    min-height: 0 !important;
+  }
+
+  #acroKidsCalendar {
+    border-radius: 12px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--card) 90%, var(--accent) 10%);
+    padding: 6px;
+  }
+
+  #acroKidsCalendarModal .modal-content,
+  #acroKidsCalendarSummaryModal .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  #acroKidsCalendarModal .modal-content > div[style*="grid-template-columns"] {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  #acroKidsCalendarModal .card,
+  #acroKidsCalendarSummaryModal .card {
+    border-radius: 14px;
+  }
+
+  #acroKidsCalendarChildrenList {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #acroKidsCalendarSummaryModal div[style*="max-height: 600px"] {
+    max-height: none !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+
+  #acroKidsCalendarSummaryModal table {
+    min-width: 640px;
+  }
+
+  #classesView .header-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #classesView .header-actions .btn:first-child,
+  #classesView .header-actions .btn:nth-child(2) {
+    grid-column: span 1;
+  }
+
+  #classesView .header-actions .btn:nth-child(3),
+  #classesView .header-actions .btn:nth-child(4) {
+    grid-column: span 1;
+  }
+
+  #classesView .filter-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #classesView .filter-row .week-select,
+  #classesView .filter-row label[for="weekSelect"] {
+    grid-column: 1 / -1;
+  }
+
+  #classesView .filter-row label[for="weekSelect"] {
+    display: none;
+  }
+
+  #classesView .mobile-day-tabs,
+  #bulkAssignModal .mobile-day-tabs {
+    margin: 2px 0 6px;
+    padding-bottom: 2px;
+    gap: 6px;
+  }
+
+  #classesView .day-tab,
+  #bulkAssignModal .day-tab {
+    min-width: 52px;
+    border-radius: 12px;
+  }
+
+  #classesView .schedule-container,
+  #bulkAssignModal .bulk-schedule-container {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--card) 92%, var(--accent) 8%);
+    padding: 6px;
+  }
+
+  #classesView .table-container > .schedule-table,
+  #bulkAssignModal .table-container > .bulk-schedule-table {
+    min-width: 100%;
+  }
+
+  #classesView .time-header,
+  #bulkAssignModal .time-header {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--card);
+  }
+
+  #classesView .class-slot,
+  #bulkAssignModal .class-slot {
+    border-radius: 12px;
+    min-height: 72px;
+    padding: 8px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  #classesView .class-slot .class-name,
+  #bulkAssignModal .class-slot .class-name {
+    line-height: 1.2;
+  }
+
+  #classesView .teacher-table {
+    min-width: 540px;
+  }
+
+  #classesView .teacher-specialties {
+    gap: 6px;
+  }
+
+  #classesView .specialty-badge {
+    white-space: nowrap;
+  }
+
+  #teacherModal select[multiple] {
+    min-height: 160px;
+  }
+
+  #bulkAssignModal .modal-content {
+    border-radius: 18px 18px 0 0;
+  }
+
+  #bulkAssignModal .info-card {
+    margin-bottom: 0;
+    border-radius: 14px;
+    padding: 14px;
+    background: color-mix(in srgb, var(--card) 72%, white 28%);
+  }
+
+  #bulkAssignModal .week-navigation {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 0;
+  }
+
+  #bulkAssignModal .current-week-text {
+    grid-column: 1 / -1;
+    line-height: 1.35;
+    border-radius: 10px;
+    background: var(--accent);
+  }
+
+  #wodBusterView .header-actions .btn,
+  #wodBusterView .filter-row input,
+  #wodBusterView .filter-row select {
+    min-height: 44px;
+  }
+
+  #wodBusterView .summary {
+    grid-template-columns: 1fr;
+  }
+
+  #wodBusterView .table-responsive > .table {
+    min-width: 820px;
+  }
+
+  #wodBusterView #wodBusterUsersCount,
+  #wodBusterView #wodBusterStatus {
+    line-height: 1.45;
+  }
+
+  #syncExcelModal .modal-content,
+  #wodBusterUserModal .modal-content,
+  #wodBusterConfigModal .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  #syncExcelModal .btn-group,
+  #wodBusterUserModal .btn-group,
+  #wodBusterConfigModal .btn-group {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  #syncExcelModal div[style*="grid-template-columns: 1fr 1fr"],
+  #syncExcelModal div[style*="display: grid; grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  #syncExcelModal #syncColumnMapping,
+  #syncExcelModal #syncUnsyncedList > div {
+    max-height: 220px;
+    overflow: auto;
+  }
+
+  #wodBusterUserModal .btn-group .btn[style*="margin-left: auto"] {
+    margin-left: 0 !important;
+  }
+}
   .athlete-table-mobile td:nth-child(7) select,
   .athlete-table-mobile td:nth-child(8) select {
     width: 100%;
