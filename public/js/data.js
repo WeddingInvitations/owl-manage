@@ -1482,6 +1482,85 @@ export async function getAllAcroAthleteMonths() {
   return records;
 }
 
+// AcroKids functions
+export async function createAcroKidsAthlete(name, userId) {
+  const docRef = await addDoc(collection(db, "athletes_acrokids"), {
+    name,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function updateAcroKidsAthlete(athleteId, athleteData, userId) {
+  await updateDoc(doc(db, "athletes_acrokids", athleteId), {
+    ...athleteData,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  });
+}
+
+export async function getAcroKidsAthletes() {
+  const snap = await getDocs(collection(db, "athletes_acrokids"));
+  const athletes = [];
+  snap.forEach((docSnap) => {
+    athletes.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return athletes;
+}
+
+export async function upsertAcroKidsAthleteMonth(athleteId, month, payload, userId) {
+  const snap = await getDocs(
+    query(
+      collection(db, "athlete_acrokids_months"),
+      where("athleteId", "==", athleteId),
+      where("month", "==", month)
+    )
+  );
+  let docId = null;
+  snap.forEach((docSnap) => {
+    docId = docSnap.id;
+  });
+
+  if (docId) {
+    await updateDoc(doc(db, "athlete_acrokids_months", docId), {
+      ...payload,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+    return docId;
+  }
+
+  const docRef = await addDoc(collection(db, "athlete_acrokids_months"), {
+    athleteId,
+    month,
+    ...payload,
+    createdAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return docRef.id;
+}
+
+export async function getAcroKidsAthleteMonthsForMonth(month) {
+  const snap = await getDocs(
+    query(collection(db, "athlete_acrokids_months"), where("month", "==", month))
+  );
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
+export async function getAllAcroKidsAthleteMonths() {
+  const snap = await getDocs(collection(db, "athlete_acrokids_months"));
+  const records = [];
+  snap.forEach((docSnap) => {
+    records.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  return records;
+}
+
 export async function createHalteAthlete(name, userId) {
   const docRef = await addDoc(collection(db, "athletes_halterofilia"), {
     name,

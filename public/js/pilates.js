@@ -11,10 +11,11 @@ import {
 
 let pilatesInitialized = false;
 let pilatesListCacheData = null;
+let pilatesNameSortDirection = null;
 
 const pilatesTariffPlans = [
   { key: "Reformer 4", durationMonths: 1, priceTotal: 65 },
-  { key: "Reformer 8", durationMonths: 1, priceTotal: 105 },
+  { key: "Reformer 8", durationMonths: 1, priceTotal: 109 },
   { key: "Reformer 12", durationMonths: 1, priceTotal: 145 },
   { key: "Barre 4", durationMonths: 1, priceTotal: 55 },
   { key: "Barre 8", durationMonths: 1, priceTotal: 85 },
@@ -56,6 +57,35 @@ export function initializePilates() {
   renderPilatesMonthOptions();
   renderPilatesListMonthOptions();
   setPilatesPriceFromTariff();
+  updatePilatesNameSortHeader();
+
+  if (ui.pilatesNameSortHeader) {
+    ui.pilatesNameSortHeader.addEventListener("click", () => {
+      pilatesNameSortDirection = pilatesNameSortDirection === "asc" ? "desc" : "asc";
+      updatePilatesNameSortHeader();
+      filterAndRenderPilatesList(ui.pilatesSearch?.value || "", ui.pilatesPaidFilter?.value || "ALL");
+    });
+  }
+}
+
+function getPilatesSortableName(name) {
+  return (name || "").trim().toLocaleLowerCase("es");
+}
+
+function updatePilatesNameSortHeader() {
+  if (!ui.pilatesNameSortHeader) return;
+
+  if (pilatesNameSortDirection === "asc") {
+    ui.pilatesNameSortHeader.textContent = "Nombre ▲";
+    return;
+  }
+
+  if (pilatesNameSortDirection === "desc") {
+    ui.pilatesNameSortHeader.textContent = "Nombre ▼";
+    return;
+  }
+
+  ui.pilatesNameSortHeader.textContent = "Nombre";
 }
 
 export function renderPilatesPaymentMonthOptions() {
@@ -288,6 +318,7 @@ function attachPilatesRowListeners() {
 function filterAndRenderPilatesList(searchTerm, paidFilter) {
   if (!pilatesListCacheData || !ui.pilatesList) return;
   const { allAthletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory } = pilatesListCacheData;
+  updatePilatesNameSortHeader();
   const searchValue = (searchTerm || "").trim().toLowerCase();
   const filteredAthletes = searchValue
     ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
@@ -301,6 +332,11 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
     const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
     return { ...athlete, lastUpdate };
   }).sort((a, b) => {
+    if (pilatesNameSortDirection) {
+      const comparison = getPilatesSortableName(a.name).localeCompare(getPilatesSortableName(b.name), "es");
+      return pilatesNameSortDirection === "asc" ? comparison : -comparison;
+    }
+
     if (!a.lastUpdate && !b.lastUpdate) return 0;
     if (!a.lastUpdate) return 1;
     if (!b.lastUpdate) return -1;

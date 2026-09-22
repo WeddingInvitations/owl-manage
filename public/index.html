@@ -122,6 +122,12 @@
               </svg>
               Atletas Acrobacias
             </button>
+            <button class="menu-btn" data-view="acroKidsView">
+              <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+              AcroKids
+            </button>
             <button class="menu-btn" data-view="halteView">
               <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M3 10a1 1 0 011-1h1V6a1 1 0 112 0v3h2V6a1 1 0 112 0v3h2V6a1 1 0 112 0v3h1a1 1 0 110 2h-1v3a1 1 0 11-2 0v-3h-2v3a1 1 0 11-2 0v-3H7v3a1 1 0 11-2 0v-3H4a1 1 0 01-1-1z"/>
@@ -145,7 +151,7 @@
               <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10.5 1.5H9.5C8.94772 1.5 8.5 1.94772 8.5 2.5V8H5C4.44772 8 4 8.44772 4 9V11C4 11.5523 4.44772 12 5 12H8.5V18C8.5 18.5523 8.94772 19 9.5 19H10.5C11.0523 19 11.5 18.5523 11.5 18V12H15C15.5523 12 16 11.5523 16 11V9C16 8.44772 15.5523 8 15 8H11.5V2.5C11.5 1.94772 11.0523 1.5 10.5 1.5Z"/>
               </svg>
-              Pilates
+              The Nest
             </button>
             <button class="menu-btn" data-view="wodBusterView">
               <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
@@ -1434,7 +1440,7 @@
                   <select id="acroTariff">
                     <option value="4/mes">4/mes - 45€</option>
                     <option value="8/mes">8/mes - 65€</option>
-                    <option value="Open Mensual">Open Mensual - 70€</option>
+                    <option value="Open Ilimitado">Open Ilimitado - 70€</option>
                     <option value="12/mes">12/mes - 85€</option>
                     <option value="Ilimitado">Ilimitado - 105€</option>
                   </select>
@@ -1570,6 +1576,185 @@
                   </tr>
                 </thead>
                 <tbody id="acroList"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== ACROKIDS ========== -->
+        <section id="acroKidsView" class="view hidden">
+          <div class="card">
+            <h2>Control de pagos · AcroKids</h2>
+            <div class="detail-header">
+              <div class="table-actions">
+                <button id="acroKidsCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
+                  📄 CSV
+                </button>
+                <button id="acroKidsModalOpen" class="btn" type="button">
+                  Alta de usuario
+                </button>
+              </div>
+            </div>
+          </div>
+          <div id="acroKidsModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Alta de usuario</h3>
+                <button id="acroKidsModalClose" class="btn ghost small" type="button">
+                  Cerrar
+                </button>
+              </div>
+              <form id="acroKidsForm" class="stack">
+                <label>
+                  Nombre
+                  <input id="acroKidsName" type="text" list="acroKidsNameList" required />
+                </label>
+                <datalist id="acroKidsNameList"></datalist>
+                <label>
+                  Mes de pago
+                  <select id="acroKidsPaymentMonth"></select>
+                </label>
+                <label>
+                  Tarifa
+                  <select id="acroKidsTariff">
+                    <option value="4/mes">4/mes - 45€</option>
+                    <option value="8/mes">8/mes - 65€</option>
+                    <option value="Open Ilimitado">Open Ilimitado - 70€</option>
+                    <option value="12/mes">12/mes - 85€</option>
+                    <option value="Ilimitado">Ilimitado - 105€</option>
+                  </select>
+                </label>
+                <label>
+                  Precio (€)
+                  <input id="acroKidsPrice" type="number" min="0" step="0.01" readonly />
+                </label>
+                <label>
+                  Motivo del descuento
+                  <select id="acroKidsDiscountReason">
+                    <option value="Ninguno">Ninguno (0%)</option>
+                    <option value="Familiar">Familiar (15%)</option>
+                    <option value="Funcionario">Funcionario (10%)</option>
+                    <option value="Mañanas">Mañanas (10%)</option>
+                    <option value="Amigo">Amigo</option>
+                  </select>
+                </label>
+                <label>
+                  Descuento (%)
+                  <input id="acroKidsDiscount" type="number" min="0" max="100" step="0.1" value="0" />
+                </label>
+                <label>
+                  Precio final (€)
+                  <input id="acroKidsFinalPrice" type="number" min="0" step="0.01" readonly />
+                </label>
+                <label>
+                  Pagado
+                  <select id="acroKidsPaid">
+                    <option value="SI">SI</option>
+                    <option value="NO">NO</option>
+                  </select>
+                </label>
+                <label>
+                  Forma de pago
+                  <select id="acroKidsPaymentMethod">
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Tarjeta">Tarjeta</option>
+                  </select>
+                </label>
+                <button class="btn" type="submit">Añadir atleta</button>
+              </form>
+            </div>
+          </div>
+          <div id="acroKidsCsvModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Carga masiva de atletas</h3>
+                <button id="acroKidsCsvClose" class="btn ghost small" type="button">
+                  Cerrar
+                </button>
+              </div>
+              <form id="acroKidsCsvForm" class="stack">
+                <p class="muted">El CSV debe tener las columnas: nombre, tarifa, pagado, precio (opcional), descuento (opcional), motivo_descuento (opcional). Formatos aceptados: nombre/name, tarifa/plan, pagado/paid, precio/price, descuento/discount, motivo_descuento/discount_reason.</p>
+                <div class="flex gap-2 mb-3">
+                  <button id="downloadAcroKidsTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
+                    📥 Descargar plantilla
+                  </button>
+                </div>
+                <label>
+                  Archivo CSV
+                  <input id="acroKidsCsvFile" type="file" accept=".csv,text/csv" required />
+                </label>
+                <label>
+                  Mes de pago
+                  <select id="acroKidsCsvMonth"></select>
+                </label>
+                <button class="btn" type="submit">Importar</button>
+                <p id="acroKidsCsvStatus" class="muted"></p>
+              </form>
+            </div>
+          </div>
+          <div class="card">
+            <div class="detail-header">
+              <h3>Resumen mensual</h3>
+              <select id="acroKidsMonthSelect"></select>
+            </div>
+            <div class="summary">
+              <div>
+                <p class="label">Activos</p>
+                <p id="acroKidsSummaryActive" class="value">0</p>
+              </div>
+              <div>
+                <p class="label">Tarifa media</p>
+                <p id="acroKidsSummaryAverage" class="value">0 €</p>
+              </div>
+              <div>
+                <p class="label">Altas nuevas</p>
+                <p id="acroKidsSummaryNew" class="value">0</p>
+              </div>
+              <div>
+                <p class="label">Bajas</p>
+                <p id="acroKidsSummaryDrop" class="value">0</p>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="detail-header athlete-list-header">
+              <h3>Listado mensual</h3>
+              <div class="filter-row">
+                <select id="acroKidsListMonthSelect"></select>
+                <input
+                  id="acroKidsSearch"
+                  type="text"
+                  inputmode="search"
+                  autocomplete="off"
+                  placeholder="Buscar..."
+                />
+                <select id="acroKidsPaidFilter">
+                  <option value="ALL">Todos</option>
+                  <option value="SI">Pagado</option>
+                  <option value="NO">No pagado</option>
+                </select>
+                <button id="acroKidsSaveAllBtn" class="btn" type="button" disabled>
+                  Guardar cambios (0)
+                </button>
+              </div>
+            </div>
+            <datalist id="acroKidsSearchList"></datalist>
+            <p id="acroKidsListCount" class="muted" style="margin: 8px 0; font-size: 14px;"></p>
+            <div class="table-container">
+              <table class="table athlete-table-mobile">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Tarifa</th>
+                    <th>Precio</th>
+                    <th>Descuento</th>
+                    <th>Motivo</th>
+                    <th>Precio Final</th>
+                    <th>Pagado</th>
+                    <th>Forma de pago</th>
+                  </tr>
+                </thead>
+                <tbody id="acroKidsList"></tbody>
               </table>
             </div>
           </div>
@@ -1788,6 +1973,7 @@
                     <option value="4/mes">4/mes - 45€</option>
                     <option value="8/mes">8/mes - 65€</option>
                     <option value="12/mes">12/mes - 85€</option>
+                    <option value="Open Ilimitado">Open Ilimitado - 70€</option>
                     <option value="Ilimitado">Ilimitado - 105€</option>
                   </select>
                 </label>
@@ -1970,6 +2156,8 @@
                     <option value="Bono 10 Clases Telas">Bono 10 Clases Telas - 135€</option>
                     <option value="Open Acrobacias 1h">Open Acrobacias 1h - 10€</option>
                     <option value="Open Acrobacias 2h">Open Acrobacias 2h - 15€</option>
+                                      <option value="Open Telas 1h">Open Telas 1h - 10€</option>
+                                      <option value="Open Telas 2h">Open Telas 2h - 15€</option>
                   </select>
                 </label>
                 <label>
@@ -2111,7 +2299,7 @@
         <!-- ========== PILATES ========== -->
         <section id="pilatesView" class="view hidden">
           <div class="card pilates-top-card">
-            <h2>Control de pagos · Pilates</h2>
+            <h2>Control de pagos · The Nest</h2>
             <div class="detail-header">
               <div class="table-actions">
                 <button id="pilatesCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
@@ -2145,7 +2333,7 @@
                   Tarifa
                   <select id="pilatesTariff">
                     <option value="Reformer 4">Reformer 4 sesiones - 65€</option>
-                    <option value="Reformer 8">Reformer 8 sesiones - 105€</option>
+                    <option value="Reformer 8">Reformer 8 sesiones - 109€</option>
                     <option value="Reformer 12">Reformer 12 sesiones - 145€</option>
                     <option value="Barre 4">Barre 4 sesiones - 55€</option>
                     <option value="Barre 8">Barre 8 sesiones - 85€</option>
@@ -2272,7 +2460,7 @@
               <table class="table athlete-table-mobile">
                 <thead>
                   <tr>
-                    <th>Nombre</th>
+                    <th id="pilatesNameSortHeader" style="cursor: pointer; user-select: none;">Nombre</th>
                     <th>Tarifa</th>
                     <th>Precio</th>
                     <th>Descuento</th>
@@ -2933,7 +3121,9 @@
                     <select id="bulkTeacherSelect">
                       <option value="">Seleccionar profesor...</option>
                       <!-- Opciones generadas dinámicamente -->
-                    </select>
+                    <option value="Open Telas 1h">Open Telas 1h - 10€</option>
+                    <option value="Open Telas 2h">Open Telas 2h - 15€</option>
+                  </select>
                   </label>
                 </div>
               </div>
@@ -3127,6 +3317,10 @@
       <button class="mobile-nav-btn" data-view="acroView">
         <span class="icon">🤸</span>
         <span>Acro</span>
+      </button>
+      <button class="mobile-nav-btn" data-view="acroKidsView">
+        <span class="icon">👶</span>
+        <span>AcroKids</span>
       </button>
       <button class="mobile-nav-btn" data-view="vacationsView">
         <span class="icon">🏖️</span>
