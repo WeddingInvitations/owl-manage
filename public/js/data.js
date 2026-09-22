@@ -5,6 +5,7 @@ import {
   addDoc,
   getDocs,
   getDoc,
+  setDoc,
   query,
   orderBy,
   where,
@@ -1559,6 +1560,74 @@ export async function getAllAcroKidsAthleteMonths() {
     records.push({ id: docSnap.id, ...docSnap.data() });
   });
   return records;
+}
+
+// AcroKids Calendar functions (Firestore-based)
+export async function getAcroKidsCalendarEntry(dateKey, slotId) {
+  const docId = `${dateKey}__${slotId}`;
+  try {
+    const docSnap = await getDoc(doc(db, "acrokids_calendar", docId));
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
+    }
+
+    const legacySnap = await getDocs(
+      query(
+        collection(db, "acrokids_calendar"),
+        where("dateKey", "==", dateKey),
+        where("slotId", "==", slotId)
+      )
+    );
+    if (!legacySnap.empty) {
+      const legacyDoc = legacySnap.docs[0];
+      return { id: legacyDoc.id, ...legacyDoc.data() };
+    }
+
+    return { id: docId, dateKey, slotId, children: [] };
+  } catch (error) {
+    console.error("Error getting calendar entry:", error);
+    return { id: docId, dateKey, slotId, children: [] };
+  }
+}
+
+export async function updateAcroKidsCalendarEntry(dateKey, slotId, children, userId) {
+  const docId = `${dateKey}__${slotId}`;
+  const docRef = doc(db, "acrokids_calendar", docId);
+  await setDoc(
+    docRef,
+    {
+      dateKey,
+      slotId,
+      children,
+      createdAt: serverTimestamp(),
+      createdBy: userId || null,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    },
+    { merge: true }
+  );
+}
+
+export async function getAcroKidsCalendarDateRangeData(startDate, endDate) {
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, "acrokids_calendar"),
+        where("dateKey", ">=", startDate),
+        where("dateKey", "<=", endDate)
+      )
+    );
+    const records = {};
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const key = data.dateKey + "__" + data.slotId;
+      records[key] = data;
+    });
+    return records;
+  } catch (error) {
+    console.error("Error loading calendar data:", error);
+    return {};
+  }
 }
 
 export async function createHalteAthlete(name, userId) {

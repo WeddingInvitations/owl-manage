@@ -6,6 +6,7 @@ const viewsInitialized = {
   athletesView: false,
   acroView: false,
   acroKidsView: false,
+  acroKidsCalendarView: false,
   halteView: false,
   telasView: false,
   singleClassesView: false,
@@ -112,6 +113,9 @@ import {
   getAllAcroKidsAthleteMonths,
   getAcroKidsAthleteMonthsForMonth,
   upsertAcroKidsAthleteMonth,
+  getAcroKidsCalendarEntry,
+  updateAcroKidsCalendarEntry,
+  getAcroKidsCalendarDateRangeData,
   createHalteAthlete,
   getHalteAthletes,
   updateHalteAthlete,
@@ -329,6 +333,18 @@ let selectedAcroKidsPaymentMonth = "";
 let acroKidsPaidFilter = "ALL";
 let acroKidsSearchTerm = "";
 let selectedAcroKidsCsvMonth = "";
+let acroKidsCalendarSelectedSlotId = "";
+let acroKidsCalendarStore = null;
+
+const acroKidsCalendarStorageKey = "acroKidsCalendarScheduleV1";
+const acroKidsCalendarEndDate = "2026-12-31";
+const acroKidsCalendarSlots = [
+  { id: "mon-17-18", daysOfWeek: [1], startTime: "17:00", endTime: "18:00", label: "Lunes 17:00-18:00" },
+  { id: "mon-18-19", daysOfWeek: [1], startTime: "18:00", endTime: "19:00", label: "Lunes 18:00-19:00" },
+  { id: "mon-19-20", daysOfWeek: [1], startTime: "19:00", endTime: "20:00", label: "Lunes 19:00-20:00" },
+  { id: "tue-to-fri-17-18", daysOfWeek: [2, 3, 4, 5], startTime: "17:00", endTime: "18:00", label: "Martes a viernes 17:00-18:00" },
+  { id: "tue-to-fri-18-19", daysOfWeek: [2, 3, 4, 5], startTime: "18:00", endTime: "19:00", label: "Martes a viernes 18:00-19:00" },
+];
 
 // Halterofilia state
 let selectedHalteMonth = "";
@@ -2067,6 +2083,476 @@ async function refreshAcroKidsMonthly() {
   if (ui.acroKidsSummaryAverage) ui.acroKidsSummaryAverage.textContent = formatCurrency(averageTariff);
   if (ui.acroKidsSummaryNew) ui.acroKidsSummaryNew.textContent = String(totalNew);
   if (ui.acroKidsSummaryDrop) ui.acroKidsSummaryDrop.textContent = String(totalDrop);
+}
+
+function acroKidsCalendarFormatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function acroKidsCalendarGetSlotKey(dateKey, slotId) {
+  return `${dateKey}__${slotId}`;
+}
+
+function acroKidsCalendarFormatDateLabel(dateKey) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return dateKey;
+  return new Intl.DateTimeFormat("es-ES", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+function acroKidsCalendarNormalizeName(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+async function acroKidsCalendarEnsureAthletesLoaded(forceReload = false) {
+  if (!forceReload && currentAcroKidsAthletes.length > 0) {
+    return currentAcroKidsAthletes;
+  }
+  const athletes = await getAcroKidsAthletes();
+  currentAcroKidsAthletes = athletes;
+  return athletes;
+}
+
+function acroKidsCalendarPopulateAthleteOptions(children = []) {
+  const childSelect = ui.acroKidsCalendarChildName;
+  if (!childSelect) return 0;
+
+  const assignedIds = new Set(
+    children.map((child) => child.athleteId).filter(Boolean)
+  );
+  const assignedNames = new Set(
+    children.map((child) => acroKidsCalendarNormalizeName(child.name)).filter(Boolean)
+  );
+  const availableAthletes = currentAcroKidsAthletes
+    .filter((athlete) => athlete?.name)
+    .filter((athlete) => !assignedIds.has(athlete.id))
+    .filter((athlete) => !assignedNames.has(acroKidsCalendarNormalizeName(athlete.name)))
+    .sort((first, second) => first.name.localeCompare(second.name, "es"));
+
+  childSelect.innerHTML = '<option value="">Selecciona un niño dado de alta</option>';
+  availableAthletes.forEach((athlete) => {
+    const option = document.createElement("option");
+    option.value = athlete.id;
+    option.textContent = athlete.name;
+    childSelect.appendChild(option);
+  });
+  childSelect.value = "";
+  return availableAthletes.length;
+}
+
+function acroKidsCalendarLoadStore() {
+  // Legacy function kept for compatibility - data now loaded directly from Firestore
+  if (acroKidsCalendarStore) return acroKidsCalendarStore;
+  acroKidsCalendarStore = {};
+  return acroKidsCalendarStore;
+}
+
+function acroKidsCalendarSaveStore() {
+  // Legacy function kept for compatibility - data saved directly to Firestore in individual operations
+}
+
+async function acroKidsCalendarGetEntry(dateKey, slotId) {
+  return await getAcroKidsCalendarEntry(dateKey, slotId);
+}
+
+async function acroKidsCalendarBuildEvents() {
+  const events = [];
+  const startDate = new Date();
+  startDate.setHours(0, 0, 0, 0);
+  
+  // Format start and end dates for Firestore query
+  const startDateKey = acroKidsCalendarFormatDateKey(startDate);
+  const endDateKey = acroKidsCalendarEndDate;
+  
+  try {
+    // Load all calendar data from Firestore for the date range
+    const allData = await getAcroKidsCalendarDateRangeData(startDateKey, endDateKey);
+    
+    // Build events
+    for (const date = new Date(startDate); date <= new Date(`${endDateKey}T23:59:59`); date.setDate(date.getDate() + 1)) {
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+      const dateKey = acroKidsCalendarFormatDateKey(date);
+
+      acroKidsCalendarSlots.forEach((slot) => {
+        if (!slot.daysOfWeek.includes(dayOfWeek)) return;
+        const slotKey = acroKidsCalendarGetSlotKey(dateKey, slot.id);
+        const entry = allData[slotKey] || { children: [] };
+        const children = Array.isArray(entry.children) ? entry.children : [];
+        
+        // Build title with child count and names
+        const childCount = children.length;
+        const attendedCount = children.filter(c => c.attended).length;
+        const childrenNames = children.map((child) => child.name).filter(Boolean);
+        
+        let title;
+        if (childCount === 0) {
+          title = `${slot.startTime}-${slot.endTime}`;
+        } else if (childCount === 1) {
+          title = `${slot.startTime}-${slot.endTime} · ${childrenNames[0]} (${attendedCount}/${childCount})`;
+        } else {
+          title = `${slot.startTime}-${slot.endTime} · ${childCount} niños (${attendedCount})`;
+        }
+
+        events.push({
+          id: slotKey,
+          title: title,
+          start: `${dateKey}T${slot.startTime}:00`,
+          end: `${dateKey}T${slot.endTime}:00`,
+          backgroundColor: childCount > 0 ? "#4f46e5" : "#9ca3af",
+          borderColor: childCount > 0 ? "#4f46e5" : "#9ca3af",
+          textColor: "#fff",
+          allDay: false,
+          extendedProps: {
+            dateKey,
+            slotId: slot.id,
+            slotLabel: slot.label,
+            children,
+            childCount,
+            attendedCount,
+          },
+        });
+      });
+    }
+  } catch (error) {
+    console.error("Error building calendar events:", error);
+  }
+
+  return events;
+}
+
+async function acroKidsCalendarRenderSidebar() {
+  const modal = ui.acroKidsCalendarModal;
+  const selectedLabel = ui.acroKidsCalendarSelectedDateLabel;
+  const selectedSlotLabel = ui.acroKidsCalendarSelectedSlotLabel;
+  const childrenList = ui.acroKidsCalendarChildrenList;
+  const addButton = ui.acroKidsCalendarAddChildBtn;
+  const childSelect = ui.acroKidsCalendarChildName;
+  const help = ui.acroKidsCalendarHelp;
+
+  if (!modal || !selectedSlotLabel || !childrenList || !addButton || !childSelect || !help) return;
+
+  const [dateKey, slotId] = (acroKidsCalendarSelectedSlotId || "").split("__");
+  if (!dateKey || !slotId) {
+    if (selectedLabel) selectedLabel.textContent = "";
+    selectedSlotLabel.textContent = "Selecciona una clase del calendario.";
+    childrenList.innerHTML = "";
+    addButton.disabled = true;
+    childSelect.disabled = true;
+    childSelect.innerHTML = '<option value="">Selecciona un niño dado de alta</option>';
+    help.textContent = "Selecciona una clase para añadir niños y marcar asistencia.";
+    modal.classList.add("hidden");
+    return;
+  }
+
+  const slot = acroKidsCalendarSlots.find((item) => item.id === slotId);
+  await acroKidsCalendarEnsureAthletesLoaded();
+  const entry = await acroKidsCalendarGetEntry(dateKey, slotId);
+  const children = Array.isArray(entry.children) ? entry.children : [];
+  const availableChildren = acroKidsCalendarPopulateAthleteOptions(children);
+
+  if (selectedLabel) selectedLabel.textContent = acroKidsCalendarFormatDateLabel(dateKey);
+  selectedSlotLabel.textContent = slot ? slot.label : slotId;
+  addButton.disabled = availableChildren === 0;
+  childSelect.disabled = availableChildren === 0;
+  help.textContent = children.length > 0
+    ? `${children.length} niño(s) en esta clase. ${availableChildren} disponibles para añadir.`
+    : availableChildren > 0
+      ? `Todavía no hay niños en esta clase. ${availableChildren} disponibles para añadir.`
+      : "Todos los niños dados de alta ya están añadidos en esta clase.";
+  modal.classList.remove("hidden");
+
+  childrenList.innerHTML = "";
+  if (children.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "Sin niños asignados todavía.";
+    childrenList.appendChild(empty);
+    return;
+  }
+
+  const list = document.createElement("div");
+  list.className = "stack";
+  children.forEach((child, index) => {
+    const row = document.createElement("div");
+    row.className = "card";
+    row.style.margin = "0";
+    row.style.padding = "12px";
+    row.innerHTML = `
+      <div style="display: flex; justify-content: space-between; gap: 12px; align-items: center;">
+        <strong>${child.name || "Sin nombre"}</strong>
+        <button class="btn ghost small" type="button" data-action="remove-child" data-index="${index}">Borrar</button>
+      </div>
+      <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+        <input type="checkbox" data-action="attendance" data-index="${index}" ${child.attended ? "checked" : ""} />
+        Asistió
+      </label>
+    `;
+    list.appendChild(row);
+  });
+  childrenList.appendChild(list);
+}
+
+function acroKidsCalendarRender() {
+  if (!ui.acroKidsCalendar) return;
+  acroKidsCalendarLoadStore();
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const currentCalendarDate = ui._acroKidsCalendar ? ui._acroKidsCalendar.getDate() : now;
+
+  // Load events asynchronously
+  acroKidsCalendarBuildEvents().then((events) => {
+    if (!ui._acroKidsCalendar) {
+      const calendar = new window.FullCalendar.Calendar(ui.acroKidsCalendar, {
+        initialView: "timeGridWeek",
+        initialDate: now,
+        locale: "es",
+        firstDay: 1,
+        height: 620,
+        contentHeight: 590,
+        nowIndicator: true,
+        allDaySlot: false,
+        weekends: false,
+        slotMinTime: "16:30:00",
+        slotMaxTime: "20:30:00",
+        validRange: {
+          start: acroKidsCalendarFormatDateKey(now),
+          end: "2027-01-01",
+        },
+        headerToolbar: {
+          left: "prev,next today",
+          center: "title",
+          right: "timeGridWeek,dayGridMonth",
+        },
+        buttonText: {
+          today: "Hoy",
+          week: "Semana",
+          month: "Mes",
+        },
+        eventClick: (info) => {
+          info.jsEvent.preventDefault();
+          acroKidsCalendarSelectedSlotId = info.event.id;
+          acroKidsCalendarRenderSidebar().catch((error) => {
+            console.error("Error abriendo clase:", error);
+          });
+        },
+        datesSet: () => {
+          // Keep the first view focused on the current date range.
+        },
+      });
+      calendar.render();
+      ui._acroKidsCalendar = calendar;
+    }
+
+    ui._acroKidsCalendar.removeAllEvents();
+    events.forEach((event) => ui._acroKidsCalendar.addEvent(event));
+    ui._acroKidsCalendar.gotoDate(currentCalendarDate || now);
+    // Only render sidebar if a slot is selected
+    if (acroKidsCalendarSelectedSlotId) {
+      acroKidsCalendarRenderSidebar().catch((error) => {
+        console.error("Error rendering sidebar after load:", error);
+      });
+    }
+  }).catch((error) => {
+    console.error("Error rendering calendar:", error);
+    showToast("Error al cargar calendario", "error");
+  });
+}
+
+async function acroKidsCalendarAddChild() {
+  const childSelect = ui.acroKidsCalendarChildName;
+  if (!childSelect || !acroKidsCalendarSelectedSlotId) return;
+  const athleteId = childSelect.value;
+  if (!athleteId) {
+    showToast("Selecciona un niño de AcroKids", "error");
+    return;
+  }
+
+  const [dateKey, slotId] = acroKidsCalendarSelectedSlotId.split("__");
+  if (!dateKey || !slotId) return;
+
+  try {
+    await acroKidsCalendarEnsureAthletesLoaded();
+    const athlete = currentAcroKidsAthletes.find((item) => item.id === athleteId);
+    if (!athlete?.name) {
+      showToast("No se ha encontrado el niño seleccionado", "error");
+      return;
+    }
+
+    const entry = await acroKidsCalendarGetEntry(dateKey, slotId);
+    const children = Array.isArray(entry.children) ? entry.children : [];
+    const alreadyAssigned = children.some((child) => {
+      if (child.athleteId && child.athleteId === athlete.id) return true;
+      return acroKidsCalendarNormalizeName(child.name) === acroKidsCalendarNormalizeName(athlete.name);
+    });
+    if (alreadyAssigned) {
+      showToast("Ese niño ya está asignado a esta clase", "error");
+      return;
+    }
+
+    children.push({
+      id: athlete.id,
+      athleteId: athlete.id,
+      name: athlete.name,
+      attended: false,
+    });
+    childSelect.value = "";
+    await updateAcroKidsCalendarEntry(dateKey, slotId, children, currentUser?.uid || null);
+    acroKidsCalendarRender();
+  } catch (error) {
+    console.error("Error adding child:", error);
+    showToast("Error al añadir niño", "error");
+  }
+}
+
+async function acroKidsCalendarToggleAttendance(childIndex, attended) {
+  if (!acroKidsCalendarSelectedSlotId) return;
+  const [dateKey, slotId] = acroKidsCalendarSelectedSlotId.split("__");
+  if (!dateKey || !slotId) return;
+  
+  try {
+    const entry = await acroKidsCalendarGetEntry(dateKey, slotId);
+    const children = Array.isArray(entry.children) ? entry.children : [];
+    if (!children[childIndex]) return;
+    children[childIndex].attended = attended;
+    await updateAcroKidsCalendarEntry(dateKey, slotId, children, currentUser?.uid || null);
+    acroKidsCalendarRender();
+  } catch (error) {
+    console.error("Error toggling attendance:", error);
+    showToast("Error al marcar asistencia", "error");
+  }
+}
+
+async function acroKidsCalendarRemoveChild(childIndex) {
+  if (!acroKidsCalendarSelectedSlotId) return;
+  const [dateKey, slotId] = acroKidsCalendarSelectedSlotId.split("__");
+  if (!dateKey || !slotId) return;
+  
+  try {
+    const entry = await acroKidsCalendarGetEntry(dateKey, slotId);
+    const children = Array.isArray(entry.children) ? entry.children : [];
+    children.splice(childIndex, 1);
+    await updateAcroKidsCalendarEntry(dateKey, slotId, children, currentUser?.uid || null);
+    acroKidsCalendarRender();
+  } catch (error) {
+    console.error("Error removing child:", error);
+    showToast("Error al borrar niño", "error");
+  }
+}
+
+function acroKidsCalendarGetWeekDates() {
+  // Get current week (Monday-Friday, since we only have weekday classes)
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  
+  // Calculate Monday of current week
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  monday.setHours(0, 0, 0, 0);
+  
+  // Friday will be Monday + 4 days
+  const friday = new Date(monday);
+  friday.setDate(monday.getDate() + 4);
+  
+  // Build array of Monday through Friday
+  const dates = {};
+  const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+  
+  for (let i = 0; i < 5; i++) {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + i);
+    const dateKey = acroKidsCalendarFormatDateKey(date);
+    dates[dayNames[i]] = dateKey;
+  }
+  
+  return dates;
+}
+
+async function acroKidsCalendarRenderSummary() {
+  const modal = ui.acroKidsCalendarSummaryModal;
+  const tbody = ui.acroKidsCalendarSummaryTableBody;
+  
+  if (!modal || !tbody) return;
+  
+  try {
+    modal.classList.remove("hidden");
+    
+    // Get week dates
+    const weekDates = acroKidsCalendarGetWeekDates();
+    const dayNames = Object.keys(weekDates);
+    
+    // Load all calendar data for the week
+    const startKey = weekDates[dayNames[0]];
+    const endKey = weekDates[dayNames[4]];
+    const allWeekData = await getAcroKidsCalendarDateRangeData(startKey, endKey);
+    
+    // Collect all unique children and their attendance
+    const childrenSummary = {};
+    
+    // Iterate through each day and each slot
+    dayNames.forEach((dayName, dayIndex) => {
+      const dateKey = weekDates[dayName];
+      
+      acroKidsCalendarSlots.forEach((slot) => {
+        const slotKey = acroKidsCalendarGetSlotKey(dateKey, slot.id);
+        const entry = allWeekData[slotKey] || { children: [] };
+        const children = Array.isArray(entry.children) ? entry.children : [];
+        
+        children.forEach((child) => {
+          const childKey = child.athleteId || acroKidsCalendarNormalizeName(child.name) || child.id;
+          if (!childKey) return;
+          if (!childrenSummary[childKey]) {
+            childrenSummary[childKey] = {
+              name: child.name,
+              attendance: { Lunes: false, Martes: false, Miércoles: false, Jueves: false, Viernes: false }
+            };
+          }
+          if (child.attended) {
+            childrenSummary[childKey].attendance[dayName] = true;
+          }
+        });
+      });
+    });
+    
+    // Generate table rows
+    if (Object.keys(childrenSummary).length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="padding: 24px; text-align: center; color: var(--text-muted);">Sin datos de asistencia para esta semana.</td></tr>`;
+      return;
+    }
+    
+    let html = "";
+    Object.values(childrenSummary)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach((child) => {
+        const attendance = child.attendance;
+        const total = dayNames.filter(day => attendance[day]).length;
+        
+        html += `<tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 12px; text-align: left;"><strong>${child.name}</strong></td>`;
+        
+        dayNames.forEach((day) => {
+          const attended = attendance[day];
+          html += `<td style="padding: 12px; text-align: center; color: ${attended ? '#4f46e5' : '#9ca3af'};">
+            ${attended ? '✓' : '·'}
+          </td>`;
+        });
+        
+        html += `<td style="padding: 12px; text-align: center; font-weight: 600; color: #4f46e5;">${total}/5</td></tr>`;
+      });
+    
+    tbody.innerHTML = html;
+  } catch (error) {
+    console.error("Error rendering summary:", error);
+    tbody.innerHTML = `<tr><td colspan="7" style="padding: 24px; text-align: center; color: #ef4444;">Error al cargar datos de asistencia.</td></tr>`;
+  }
 }
 
 // ========== HALTEROFILIA ==========
@@ -3924,6 +4410,12 @@ async function initializeViewIfNeeded(viewId) {
       await refreshAcroKidsMonthly();
       viewsInitialized.acroKidsView = true;
       break;
+
+    case "acroKidsCalendarView":
+      await acroKidsCalendarEnsureAthletesLoaded();
+      acroKidsCalendarRender();
+      viewsInitialized.acroKidsCalendarView = true;
+      break;
       
     case "halteView":
       await refreshHalteMonthly();
@@ -4236,6 +4728,53 @@ async function saveAcroRow(row) {
   for (let i = 0; i < duration; i += 1) {
     const targetMonth = addMonthsToKey(monthKey, i);
     await upsertAcroAthleteMonth(
+      athleteId,
+      targetMonth,
+      {
+        athleteName,
+        tariff: newTariff,
+        price: newPrice,
+        basePrice,
+        discount: newDiscount,
+        discountReason: newDiscountReason,
+        paid: newPaid,
+        paymentMethod: newPaymentMethod,
+        active: newPaid,
+        durationMonths: plan.durationMonths,
+        priceMonthly: plan.priceMonthly,
+        isPaymentMonth: i === 0,
+      },
+      currentUser?.uid
+    );
+  }
+}
+
+async function saveAcroKidsRow(row) {
+  const athleteId = row?.dataset?.id;
+  const athleteName = row?.dataset?.name || "";
+  const tariffSelect = row?.querySelector("[data-role='acroKids-tariff']");
+  const paidSelect = row?.querySelector("[data-role='acroKids-paid']");
+  const discountReasonInput = row?.querySelector("[data-role='acroKids-discount-reason']");
+  const paymentMethodSelect = row?.querySelector("[data-role='acroKids-payment-method']");
+
+  if (!athleteId || !tariffSelect || !paidSelect) {
+    throw new Error("Fila inválida");
+  }
+
+  const newTariff = tariffSelect.value;
+  const newPaid = paidSelect.value === "SI";
+  const newDiscountReason = discountReasonInput ? discountReasonInput.value.trim() : "";
+  const newDiscount = calculateDiscountFromReason(newDiscountReason);
+  const newPaymentMethod = paymentMethodSelect ? paymentMethodSelect.value : "Efectivo";
+  const plan = acroKidsTariffPlanMap.get(newTariff) || acroKidsTariffPlanMap.get("4/mes");
+  const basePrice = plan.priceTotal;
+  const newPrice = basePrice * (1 - newDiscount / 100);
+  const monthKey = selectedAcroKidsListMonth || selectedAcroKidsMonth;
+  const duration = plan.durationMonths || 1;
+
+  for (let i = 0; i < duration; i += 1) {
+    const targetMonth = addMonthsToKey(monthKey, i);
+    await upsertAcroKidsAthleteMonth(
       athleteId,
       targetMonth,
       {
@@ -6913,63 +7452,76 @@ on(ui.acroKidsForm, "submit", async (event) => {
   const rawName = ui.acroKidsName.value.trim();
   if (!rawName) return;
   
-  const athletes = await getAcroKidsAthletes();
-  const existing = athletes.find(
-    (athlete) => athlete.name?.toLowerCase() === rawName.toLowerCase()
-  );
-  const athleteId = existing
-    ? existing.id
-    : await createAcroKidsAthlete(rawName, currentUser?.uid);
-  const athleteName = existing?.name || rawName;
-  const tariff = ui.acroKidsTariff.value;
-  const plan = acroKidsTariffPlanMap.get(tariff) || acroKidsTariffPlanMap.get("4/mes");
-  const basePrice = plan.priceTotal;
-  const discountReason = ui.acroKidsDiscountReason.value;
-  let discount = parseFloat(ui.acroKidsDiscount.value) || 0;
-  // Apply predefined discounts
-  if (discountReason === 'Familiar') discount = 15;
-  else if (discountReason === 'Funcionario') discount = 10;
-  else if (discountReason === 'Mañanas') discount = 10;
-  else if (discountReason === 'Ninguno') discount = 0;
-  const finalPrice = basePrice * (1 - discount / 100);
-  const price = finalPrice; // Use final price with discount applied
-  const paid = ui.acroKidsPaid.value === "SI";
-  const paymentMethod = ui.acroKidsPaymentMethod?.value || "Efectivo";
-  const startMonth = ui.acroKidsPaymentMonth?.value || selectedAcroKidsPaymentMonth || selectedAcroKidsMonth;
-  const duration = plan.durationMonths || 1;
-  
-  for (let i = 0; i < duration; i += 1) {
-    const monthKey = addMonthsToKey(startMonth, i);
-    await upsertAcroKidsAthleteMonth(
-      athleteId,
-      monthKey,
-      {
-        athleteName,
-        tariff,
-        price,
-        basePrice,
-        discount,
-        discountReason,
-        paid,
-        paymentMethod,
-        active: paid,
-        durationMonths: plan.durationMonths,
-        priceMonthly: plan.priceMonthly,
-        isPaymentMonth: i === 0,
-      },
-      currentUser?.uid
+  try {
+    const athletes = await getAcroKidsAthletes();
+    const existing = athletes.find(
+      (athlete) => athlete.name?.toLowerCase() === rawName.toLowerCase()
     );
+    const athleteId = existing
+      ? existing.id
+      : await createAcroKidsAthlete(rawName, currentUser?.uid);
+    const athleteName = existing?.name || rawName;
+    const tariff = ui.acroKidsTariff.value;
+    const plan = acroKidsTariffPlanMap.get(tariff) || acroKidsTariffPlanMap.get("4/mes");
+    const basePrice = plan.priceTotal;
+    const discountReason = ui.acroKidsDiscountReason.value;
+    let discount = parseFloat(ui.acroKidsDiscount.value) || 0;
+    // Apply predefined discounts
+    if (discountReason === 'Familiar') discount = 15;
+    else if (discountReason === 'Funcionario') discount = 10;
+    else if (discountReason === 'Mañanas') discount = 10;
+    else if (discountReason === 'Ninguno') discount = 0;
+    const finalPrice = basePrice * (1 - discount / 100);
+    const price = finalPrice; // Use final price with discount applied
+    const paid = ui.acroKidsPaid.value === "SI";
+    const paymentMethod = ui.acroKidsPaymentMethod?.value || "Efectivo";
+    const startMonth = ui.acroKidsPaymentMonth?.value || selectedAcroKidsPaymentMonth || selectedAcroKidsMonth;
+    const duration = plan.durationMonths || 1;
+    
+    for (let i = 0; i < duration; i += 1) {
+      const monthKey = addMonthsToKey(startMonth, i);
+      await upsertAcroKidsAthleteMonth(
+        athleteId,
+        monthKey,
+        {
+          athleteName,
+          tariff,
+          price,
+          basePrice,
+          discount,
+          discountReason,
+          paid,
+          paymentMethod,
+          active: paid,
+          durationMonths: plan.durationMonths,
+          priceMonthly: plan.priceMonthly,
+          isPaymentMonth: i === 0,
+        },
+        currentUser?.uid
+      );
+    }
+    
+    ui.acroKidsForm.reset();
+    ui.acroKidsDiscount.value = 0;
+    ui.acroKidsDiscountReason.value = "Ninguno";
+    setAcroKidsPriceFromTariff();
+    renderAcroKidsPaymentMonthOptions();
+    if (ui.acroKidsModal) {
+      ui.acroKidsModal.classList.add("hidden");
+    }
+    showToast("Usuario dado de alta correctamente", "success");
+    await refreshAcroKidsMonthly();
+  } catch (error) {
+    console.error("Error al dar de alta usuario AcroKids:", error);
+    const errorMsg = error?.message || String(error);
+    if (errorMsg.includes("permission-denied") || errorMsg.includes("PERMISSION_DENIED")) {
+      showToast("Permisos insuficientes para crear usuarios. Contacta a un administrador.", "error");
+    } else if (errorMsg.includes("not-found")) {
+      showToast("Error: no se encontró el mes seleccionado", "error");
+    } else {
+      showToast(`Error: ${errorMsg}`, "error");
+    }
   }
-  
-  ui.acroKidsForm.reset();
-  ui.acroKidsDiscount.value = 0;
-  ui.acroKidsDiscountReason.value = "Ninguno";
-  setAcroKidsPriceFromTariff();
-  renderAcroKidsPaymentMonthOptions();
-  if (ui.acroKidsModal) {
-    ui.acroKidsModal.classList.add("hidden");
-  }
-  await refreshAcroKidsMonthly();
 });
 
 on(ui.acroKidsTariff, "change", () => {
@@ -6990,7 +7542,22 @@ on(ui.acroKidsDiscount, "input", () => {
   calculateAcroKidsFinalPrice();
 });
 
+on(ui.acroKidsCalendarOpen, "click", async () => {
+  setActiveView("acroKidsCalendarView", ui);
+  updateMobileNavActive("acroKidsCalendarView");
+  await initializeViewIfNeeded("acroKidsCalendarView");
+  await acroKidsCalendarEnsureAthletesLoaded(true);
+  acroKidsCalendarRender();
+});
+
+on(ui.acroKidsCalendarBackBtn, "click", async () => {
+  setActiveView("acroKidsView", ui);
+  updateMobileNavActive("acroKidsView");
+  await initializeViewIfNeeded("acroKidsView");
+});
+
 on(ui.acroKidsModalOpen, "click", () => {
+  renderAcroKidsPaymentMonthOptions();
   ui.acroKidsModal?.classList.remove("hidden");
 });
 
@@ -7092,9 +7659,88 @@ on(ui.acroKidsList, "change", async (event) => {
     if (finalPriceSpan) finalPriceSpan.textContent = finalPrice.toFixed(2);
   }
 
-  // Mark changes for save
-  ui.acroKidsSaveAllBtn?.classList.remove("disabled");
-  ui.acroKidsSaveAllBtn.textContent = `Guardar cambios (${document.querySelectorAll("#acroKidsList [data-id]").length})`;
+  // Mark row as dirty for save
+  markDirtyRow(row);
+});
+
+on(ui.acroKidsCalendarTodayBtn, "click", () => {
+  acroKidsCalendarSelectedSlotId = "";
+  if (ui._acroKidsCalendar) {
+    ui._acroKidsCalendar.today();
+  }
+  acroKidsCalendarRender();
+});
+
+on(ui.acroKidsCalendarAddChildBtn, "click", () => {
+  void acroKidsCalendarAddChild();
+});
+
+on(ui.acroKidsCalendarCloseBtn, "click", () => {
+  ui.acroKidsCalendarModal?.classList.add("hidden");
+});
+
+on(ui.acroKidsCalendarSummaryBtn, "click", () => {
+  acroKidsCalendarRenderSummary();
+});
+
+on(ui.acroKidsCalendarSummaryCloseBtn, "click", () => {
+  ui.acroKidsCalendarSummaryModal?.classList.add("hidden");
+});
+
+on(ui.acroKidsCalendarChildName, "keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    void acroKidsCalendarAddChild();
+  }
+});
+
+on(ui.acroKidsCalendarChildrenList, "click", (event) => {
+  const removeButton = event.target.closest('[data-action="remove-child"]');
+  if (!removeButton) return;
+  const childIndex = Number(removeButton.dataset.index);
+  if (Number.isNaN(childIndex)) return;
+  acroKidsCalendarRemoveChild(childIndex);
+});
+
+on(ui.acroKidsCalendarChildrenList, "change", (event) => {
+  const checkbox = event.target.closest('[data-action="attendance"]');
+  if (!checkbox) return;
+  const childIndex = Number(checkbox.dataset.index);
+  if (Number.isNaN(childIndex)) return;
+  acroKidsCalendarToggleAttendance(childIndex, checkbox.checked);
+});
+
+on(ui.acroKidsSaveAllBtn, "click", async () => {
+  const dirtyRows = ui.acroKidsList
+    ? Array.from(ui.acroKidsList.querySelectorAll("tr[data-dirty='true']"))
+    : [];
+  if (!dirtyRows.length) return;
+
+  const originalText = ui.acroKidsSaveAllBtn.textContent;
+  ui.acroKidsSaveAllBtn.textContent = "Guardando...";
+  ui.acroKidsSaveAllBtn.disabled = true;
+
+  let saved = 0;
+  const failedNames = [];
+  for (const row of dirtyRows) {
+    try {
+      await saveAcroKidsRow(row);
+      saved += 1;
+    } catch (error) {
+      failedNames.push(row.dataset.name || row.dataset.id || "(sin nombre)");
+      console.error("Error updating acroKids athlete row:", error);
+    }
+  }
+
+  await refreshAcroKidsMonthly();
+  updatePendingSaveButtons();
+  ui.acroKidsSaveAllBtn.textContent = originalText;
+
+  if (failedNames.length) {
+    alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
+    return;
+  }
+  alert(`Guardados ${saved} cambios.`);
 });
 
 // ========== HALTEROFILIA EVENT LISTENERS ==========

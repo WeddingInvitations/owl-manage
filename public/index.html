@@ -1587,6 +1587,9 @@
             <h2>Control de pagos · AcroKids</h2>
             <div class="detail-header">
               <div class="table-actions">
+                <button id="acroKidsCalendarOpen" class="btn ghost small" type="button" data-view="acroKidsCalendarView" title="Abrir calendario">
+                  📅 Calendario
+                </button>
                 <button id="acroKidsCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
                   📄 CSV
                 </button>
@@ -1756,6 +1759,102 @@
                 </thead>
                 <tbody id="acroKidsList"></tbody>
               </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========== ACROKIDS CALENDARIO ========== -->
+        <section id="acroKidsCalendarView" class="view hidden">
+          <div class="card" style="padding: 14px;">
+            <div class="detail-header" style="margin-bottom: 8px;">
+              <div>
+                <h2 style="margin: 0;">Calendario · AcroKids</h2>
+                <p class="muted" style="margin: 8px 0 0 0;">Haz clic en una clase para asignar niños dados de alta en AcroKids, borrarlos y marcar asistencia.</p>
+              </div>
+              <div class="header-actions">
+                <button id="acroKidsCalendarBackBtn" class="btn ghost small" type="button" data-view="acroKidsView">← Volver a AcroKids</button>
+                <button id="acroKidsCalendarTodayBtn" class="btn ghost small" type="button">Hoy</button>
+                <button id="acroKidsCalendarSummaryBtn" class="btn ghost small" type="button">📊 Resumen</button>
+              </div>
+            </div>
+            <div class="detail-header" style="margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+              <div class="muted" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 999px; background: #4f46e5; display: inline-block;"></span> Con niños</span>
+                <span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 999px; background: #9ca3af; display: inline-block;"></span> Sin niños</span>
+              </div>
+            </div>
+            <div style="min-height: 620px;">
+              <div id="acroKidsCalendar"></div>
+            </div>
+          </div>
+          <div id="acroKidsCalendarModal" class="modal hidden">
+            <div class="modal-content card" style="max-width: 980px; width: min(980px, calc(100vw - 24px));">
+              <div class="detail-header" style="margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                  <h3 style="margin: 0;">Detalle de clase</h3>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px;">
+                    <span id="acroKidsCalendarSelectedDateLabel" class="muted"></span>
+                    <span id="acroKidsCalendarSelectedSlotLabel" class="muted"></span>
+                  </div>
+                </div>
+                <div class="header-actions">
+                  <button id="acroKidsCalendarCloseBtn" class="btn ghost small" type="button">Cerrar</button>
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: minmax(300px, 340px) minmax(0, 1fr); gap: 16px; align-items: start;">
+                <div class="card" style="margin: 0; padding: 16px;">
+                  <div class="stack">
+                    <label>
+                      Añadir niño desde AcroKids
+                      <select id="acroKidsCalendarChildName" disabled>
+                        <option value="">Selecciona un niño dado de alta</option>
+                      </select>
+                    </label>
+                    <button id="acroKidsCalendarAddChildBtn" class="btn" type="button" disabled>Añadir niño</button>
+                    <p id="acroKidsCalendarHelp" class="muted" style="font-size: 13px; margin-bottom: 0;">Selecciona una clase en el calendario para abrir esta ventana.</p>
+                  </div>
+                </div>
+                <div class="card" style="margin: 0; padding: 16px; min-height: 320px;">
+                  <div class="detail-header" style="margin-bottom: 10px;">
+                    <h3 style="margin: 0;">Niños en la clase</h3>
+                    <span class="muted" style="font-size: 13px;">Asistencia y borrado rápido</span>
+                  </div>
+                  <div id="acroKidsCalendarChildrenList" style="max-height: 520px; overflow: auto;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="acroKidsCalendarSummaryModal" class="modal hidden">
+            <div class="modal-content card" style="max-width: 1000px; width: min(1000px, calc(100vw - 24px));">
+              <div class="detail-header" style="margin-bottom: 12px;">
+                <div>
+                  <h3 style="margin: 0;">Resumen de asistencia semanal</h3>
+                  <p class="muted" style="margin: 6px 0 0 0; font-size: 13px;">Asistencias del domingo pasado al próximo sábado</p>
+                </div>
+                <div class="header-actions">
+                  <button id="acroKidsCalendarSummaryCloseBtn" class="btn ghost small" type="button">Cerrar</button>
+                </div>
+              </div>
+              <div style="max-height: 600px; overflow: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                  <thead>
+                    <tr style="background: var(--bg-secondary); border-bottom: 1px solid var(--border);">
+                      <th style="padding: 12px; text-align: left; font-weight: 600;">Niño</th>
+                      <th style="padding: 12px; text-align: center; font-weight: 600;">Lunes</th>
+                      <th style="padding: 12px; text-align: center; font-weight: 600;">Martes</th>
+                      <th style="padding: 12px; text-align: center; font-weight: 600;">Miércoles</th>
+                      <th style="padding: 12px; text-align: center; font-weight: 600;">Jueves</th>
+                      <th style="padding: 12px; text-align: center; font-weight: 600;">Viernes</th>
+                      <th style="padding: 12px; text-align: center; font-weight: 600;">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody id="acroKidsCalendarSummaryTableBody">
+                    <tr>
+                      <td colspan="7" style="padding: 24px; text-align: center; color: var(--text-muted);">Cargando datos de asistencia...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </section>
