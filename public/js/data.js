@@ -1501,6 +1501,33 @@ export async function updateAcroKidsAthlete(athleteId, athleteData, userId) {
   });
 }
 
+export async function deleteAcroKidsAthlete(athleteId) {
+  const monthSnap = await getDocs(
+    query(collection(db, "athlete_acrokids_months"), where("athleteId", "==", athleteId))
+  );
+  await Promise.all(monthSnap.docs.map((docSnap) => deleteDoc(docSnap.ref)));
+
+  const calendarSnap = await getDocs(collection(db, "acrokids_calendar"));
+  await Promise.all(
+    calendarSnap.docs.map(async (docSnap) => {
+      const data = docSnap.data();
+      const children = Array.isArray(data.children) ? data.children : [];
+      const filteredChildren = children.filter(
+        (child) => child?.athleteId !== athleteId && child?.id !== athleteId
+      );
+      if (filteredChildren.length === children.length) {
+        return;
+      }
+      await updateDoc(docSnap.ref, {
+        children: filteredChildren,
+        updatedAt: serverTimestamp(),
+      });
+    })
+  );
+
+  await deleteDoc(doc(db, "athletes_acrokids", athleteId));
+}
+
 export async function getAcroKidsAthletes() {
   const snap = await getDocs(collection(db, "athletes_acrokids"));
   const athletes = [];

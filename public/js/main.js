@@ -110,6 +110,7 @@ import {
   createAcroKidsAthlete,
   getAcroKidsAthletes,
   updateAcroKidsAthlete,
+  deleteAcroKidsAthlete,
   getAllAcroKidsAthleteMonths,
   getAcroKidsAthleteMonthsForMonth,
   upsertAcroKidsAthleteMonth,
@@ -1783,6 +1784,7 @@ function filterAndRenderAcroKidsList() {
         <div style="display: flex; align-items: flex-start; gap: 6px;">
           <span data-role="acroKids-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
           <button class="edit-name-btn" data-role="edit-acroKids-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+          <button class="edit-name-btn" data-role="delete-acroKids-athlete" data-id="${athlete.id}" data-name="${athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
       </td>
       <td>
@@ -1848,6 +1850,24 @@ function filterAndRenderAcroKidsList() {
           console.error('Error al actualizar el nombre del atleta:', error);
           alert('Error al actualizar el nombre del atleta');
         }
+      }
+    });
+  });
+  ui.acroKidsList.querySelectorAll('[data-role="delete-acroKids-athlete"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.currentTarget.dataset.id;
+      const athleteName = e.currentTarget.dataset.name || "este usuario";
+      if (!athleteId) return;
+      if (!confirm(`¿Eliminar a ${athleteName} de AcroKids? Se borrarán también sus mensualidades y se quitará del calendario.`)) {
+        return;
+      }
+      try {
+        await deleteAcroKidsAthlete(athleteId);
+        await refreshAcroKidsMonthly();
+        showToast("Usuario eliminado correctamente", "success");
+      } catch (error) {
+        console.error("Error al eliminar el atleta de AcroKids:", error);
+        showToast("Error al eliminar usuario", "error");
       }
     });
   });
@@ -4616,6 +4636,9 @@ function updatePendingSaveButtons() {
   const acroPending = ui.acroList
     ? ui.acroList.querySelectorAll("tr[data-dirty='true']").length
     : 0;
+  const acroKidsPending = ui.acroKidsList
+    ? ui.acroKidsList.querySelectorAll("tr[data-dirty='true']").length
+    : 0;
   const haltePending = ui.halteList
     ? ui.halteList.querySelectorAll("tr[data-dirty='true']").length
     : 0;
@@ -4633,6 +4656,10 @@ function updatePendingSaveButtons() {
   if (ui.acroSaveAllBtn) {
     ui.acroSaveAllBtn.disabled = acroPending === 0;
     ui.acroSaveAllBtn.textContent = `Guardar cambios (${acroPending})`;
+  }
+  if (ui.acroKidsSaveAllBtn) {
+    ui.acroKidsSaveAllBtn.disabled = acroKidsPending === 0;
+    ui.acroKidsSaveAllBtn.textContent = `Guardar cambios (${acroKidsPending})`;
   }
   if (ui.halteSaveAllBtn) {
     ui.halteSaveAllBtn.disabled = haltePending === 0;
@@ -7622,15 +7649,15 @@ on(ui.acroKidsPaidFilter, "change", (event) => {
 
 on(ui.acroKidsList, "change", async (event) => {
   const { target } = event;
-  const athleteId = target.dataset.id;
-  if (!athleteId) return;
+  if (!target.matches('[data-role="acroKids-tariff"], [data-role="acroKids-discount-reason"], [data-role="acroKids-paid"], [data-role="acroKids-payment-method"]')) {
+    return;
+  }
 
   const row = target.closest("tr");
   if (!row) return;
 
   const tariffSelect = row.querySelector('[data-role="acroKids-tariff"]');
   const discountReasonSelect = row.querySelector('[data-role="acroKids-discount-reason"]');
-  const paidSelect = row.querySelector('[data-role="acroKids-paid"]');
   const paymentMethodSelect = row.querySelector('[data-role="acroKids-payment-method"]');
   const priceSpan = row.querySelector('[data-role="acroKids-price"]');
   const finalPriceSpan = row.querySelector('[data-role="acroKids-final-price"]');
@@ -7661,6 +7688,9 @@ on(ui.acroKidsList, "change", async (event) => {
 
   // Mark row as dirty for save
   markDirtyRow(row);
+  if (target.matches('[data-role="acroKids-paid"]')) {
+    setStatusBadge(target, target.value === "SI");
+  }
 });
 
 on(ui.acroKidsCalendarTodayBtn, "click", () => {
