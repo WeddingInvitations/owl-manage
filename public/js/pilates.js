@@ -90,6 +90,7 @@ function updatePilatesFamilyUI() {
   if (!ui.pilatesView) return;
 
   const config = getPilatesFamilyConfig();
+  ui.pilatesView.dataset.pilatesFamily = activePilatesFamily;
   ui.pilatesView.querySelectorAll("[data-pilates-family-tab]").forEach((button) => {
     const isActive = button.dataset.pilatesFamilyTab === activePilatesFamily;
     button.classList.toggle("is-active", isActive);
@@ -406,6 +407,9 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
   updatePilatesNameSortHeader();
   const familyConfig = getPilatesFamilyConfig();
   const familyTariffs = new Set(familyConfig.tariffs);
+  const familyTariffOptions = familyConfig.tariffs
+    .map((tariffKey) => `<option value="${tariffKey}">${tariffKey}</option>`)
+    .join("");
   const searchValue = (searchTerm || "").trim().toLowerCase();
   const filteredAthletes = searchValue
     ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
@@ -462,6 +466,7 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
     const row = document.createElement("tr");
     row.dataset.id = athlete.id;
     row.dataset.name = athlete.name || "";
+    row.dataset.family = getPilatesFamilyForTariff(tariff);
     row.innerHTML = `
       <td style="max-width: 200px;">
         <div style="display: flex; align-items: flex-start; gap: 6px;">
@@ -471,7 +476,7 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
       </td>
       <td>
         <select data-role="pilates-tariff" data-id="${athlete.id}">
-          ${pilatesTariffPlans.map((option) => `<option value="${option.key}" ${option.key === tariff ? "selected" : ""}>${option.key}</option>`).join("")}
+          ${familyTariffOptions.replace(`value="${tariff}"`, `value="${tariff}" selected`)}
         </select>
       </td>
       <td><span data-role="pilates-price" data-id="${athlete.id}">${Number(price).toFixed(2)}</span> €</td>
