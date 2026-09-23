@@ -1916,7 +1916,7 @@ span.athlete-status-unpaid,
 }
 
 /* En escritorio mostramos tabla clásica con cabeceras visibles */
-@media (min-width: 769px) {
+@media (min-width: 768px) {
   .athlete-table-mobile {
     display: table !important;
     width: 100%;
@@ -2012,7 +2012,7 @@ span.athlete-status-unpaid,
 
 /* Fin forzado layout tipo tarjeta */
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   /* Header mobile */
   .app-header {
     padding: 8px 12px;
@@ -2497,7 +2497,7 @@ span.athlete-status-unpaid,
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .vacation-table {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -3306,7 +3306,7 @@ span.athlete-status-unpaid,
 }
 
 /* Responsive para las tablas de horarios */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   /* Header: wrap action buttons into compact row */
   .header-actions {
     flex-wrap: wrap;
@@ -3528,7 +3528,7 @@ span.athlete-status-unpaid,
 }
 
 /* Móvil: 1 columna */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   #wodBusterView .filter-row {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -3814,7 +3814,7 @@ span.athlete-status-unpaid,
 }
 
 /* Menu toggle and mobile styles */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .side-menu {
     position: fixed;
     top: 0;
@@ -3851,7 +3851,7 @@ span.athlete-status-unpaid,
 }
 
 /* Responsive para asignación masiva */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   #bulkAssignModal {
     padding: 0;
     align-items: flex-start;
@@ -3919,7 +3919,7 @@ span.athlete-status-unpaid,
 }
 
 /* Responsividad y animaciones */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .main-shell {
     grid-template-columns: 1fr;
   }
@@ -4103,7 +4103,7 @@ span[data-role="singleclasses-status"].athlete-status-unpaid {
   }
 }
 
-@media (min-width: 769px) and (max-width: 1024px) {
+@media (min-width: 768px) and (max-width: 1024px) {
   .side-menu {
     padding: 18px 12px;
   }
@@ -4114,109 +4114,9 @@ span[data-role="singleclasses-status"].athlete-status-unpaid {
     max-height: none;
     padding: 8px 10px;
   }
-
-  .athlete-table-mobile {
-    display: block !important;
-    width: 100%;
-  }
-
-  .athlete-table-mobile thead {
-    display: none !important;
-  }
-
-  .athlete-table-mobile tbody {
-    display: flex !important;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .athlete-table-mobile tr {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    padding: 16px;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--card) 78%, var(--accent) 22%);
-    align-items: start;
-  }
-
-  .athlete-table-mobile td {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-    padding: 0;
-    border: none;
-  }
-
-  .athlete-table-mobile td:nth-child(1),
-  .athlete-table-mobile td:nth-child(2),
-  .athlete-table-mobile td:nth-child(5) {
-    grid-column: 1 / -1;
-  }
-
-  .athlete-table-mobile td:nth-child(1) {
-    margin-bottom: 2px;
-    font-size: 15px;
-    font-weight: 700;
-  }
-
-  .athlete-table-mobile td:nth-child(2) select,
-  .athlete-table-mobile td:nth-child(5) select,
-  .athlete-table-mobile td:nth-child(7) select,
-  .athlete-table-mobile td:nth-child(8) select {
-    width: 100%;
-    min-width: 0;
-    max-width: none;
-  }
-
-  .athlete-table-mobile td:nth-child(3)::before {
-    content: "Precio";
-  }
-
-  .athlete-table-mobile td:nth-child(4)::before {
-    content: "Descuento";
-  }
-
-  .athlete-table-mobile td:nth-child(5)::before {
-    content: "Motivo";
-  }
-
-  .athlete-table-mobile td:nth-child(6)::before {
-    content: "Precio final";
-  }
-
-  .athlete-table-mobile td:nth-child(7)::before {
-    content: "Pagado";
-  }
-
-  .athlete-table-mobile td:nth-child(8)::before {
-    content: "Forma de pago";
-  }
-
-  .athlete-table-mobile td:nth-child(n + 3)::before {
-    display: block;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .athlete-table-mobile td:nth-child(3),
-  .athlete-table-mobile td:nth-child(4),
-  .athlete-table-mobile td:nth-child(6) {
-    font-weight: 600;
-  }
-
-  .athlete-table-mobile td:nth-child(7),
-  .athlete-table-mobile td:nth-child(8) {
-    justify-content: flex-end;
-  }
 }
 
-@media (min-width: 1025px) and (max-width: 1180px) {
+@media (min-width: 768px) and (max-width: 1180px) {
   .main-shell {
     grid-template-columns: 200px minmax(0, 1fr);
   }
@@ -4324,7 +4224,7 @@ span[data-role="singleclasses-status"].athlete-status-unpaid {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .athlete-list-header .filter-row {
     grid-template-columns: 1fr;
   }
