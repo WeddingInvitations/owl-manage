@@ -29,6 +29,91 @@ const pilatesTariffPlanMap = new Map(
   }])
 );
 
+const pilatesFamilyConfig = {
+  pilates: {
+    label: "The Nest Pilates",
+    familyLabel: "Tarifas Reformer",
+    tariffs: ["Reformer 4", "Reformer 8", "Reformer 12"],
+  },
+  barre: {
+    label: "The Nest Barre",
+    familyLabel: "Tarifas Barre",
+    tariffs: ["Barre 4", "Barre 8", "Barre 12"],
+  },
+};
+
+let activePilatesFamily = "pilates";
+
+function getPilatesFamilyConfig(family = activePilatesFamily) {
+  return pilatesFamilyConfig[family] || pilatesFamilyConfig.pilates;
+}
+
+function getPilatesFamilyForTariff(tariff) {
+  const normalizedTariff = String(tariff || "").trim().toLowerCase();
+  if (!normalizedTariff) return "pilates";
+  if (normalizedTariff.includes("barre")) return "barre";
+  if (normalizedTariff.includes("reformer")) return "pilates";
+  return "pilates";
+}
+
+function extractPilatesTariff(record) {
+  return record?.tariff || record?.tarifa || record?.plan || record?.idTarifa || "";
+}
+
+function getPilatesTariffFromRecords(current, previous, lastPaid) {
+  return extractPilatesTariff(current) || extractPilatesTariff(previous) || extractPilatesTariff(lastPaid) || "Reformer 4";
+}
+
+function renderPilatesTariffOptions() {
+  if (!ui.pilatesTariff) return;
+
+  const config = getPilatesFamilyConfig();
+  const previousValue = ui.pilatesTariff.value;
+
+  ui.pilatesTariff.innerHTML = "";
+  config.tariffs.forEach((tariffKey) => {
+    const plan = pilatesTariffPlanMap.get(tariffKey);
+    if (!plan) return;
+    const option = document.createElement("option");
+    option.value = plan.key;
+    option.textContent = `${plan.key} - ${plan.priceTotal}€`;
+    ui.pilatesTariff.appendChild(option);
+  });
+
+  const nextValue = config.tariffs.includes(previousValue) ? previousValue : config.tariffs[0];
+  if (nextValue) {
+    ui.pilatesTariff.value = nextValue;
+  }
+}
+
+function updatePilatesFamilyUI() {
+  if (!ui.pilatesView) return;
+
+  const config = getPilatesFamilyConfig();
+  ui.pilatesView.querySelectorAll("[data-pilates-family-tab]").forEach((button) => {
+    const isActive = button.dataset.pilatesFamilyTab === activePilatesFamily;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  const familyLabel = ui.pilatesView.querySelector("[data-pilates-family-label]");
+  if (familyLabel) {
+    familyLabel.textContent = config.familyLabel;
+  }
+
+  renderPilatesTariffOptions();
+  setPilatesPriceFromTariff();
+}
+
+export function setPilatesFamily(family) {
+  activePilatesFamily = pilatesFamilyConfig[family] ? family : "pilates";
+  updatePilatesFamilyUI();
+}
+
+export function getPilatesFamily() {
+  return activePilatesFamily;
+}
+
 function getMonthKey(date) {
   const year = date.getFullYear();
   const month = date.getMonth() + 1;
@@ -56,7 +141,7 @@ export function initializePilates() {
   renderPilatesPaymentMonthOptions();
   renderPilatesMonthOptions();
   renderPilatesListMonthOptions();
-  setPilatesPriceFromTariff();
+  updatePilatesFamilyUI();
   updatePilatesNameSortHeader();
 
   if (ui.pilatesNameSortHeader) {
@@ -319,10 +404,13 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
   if (!pilatesListCacheData || !ui.pilatesList) return;
   const { allAthletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory } = pilatesListCacheData;
   updatePilatesNameSortHeader();
+  const familyConfig = getPilatesFamilyConfig();
+  const familyTariffs = new Set(familyConfig.tariffs);
   const searchValue = (searchTerm || "").trim().toLowerCase();
   const filteredAthletes = searchValue
     ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
     : allAthletes;
+
   let listAthletes = !searchValue && filteredAthletes.length === 0 ? athletesFallback : filteredAthletes;
 
   listAthletes = listAthletes.map((athlete) => {
@@ -331,6 +419,13 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
     const mostRecent = history.length > 0 ? history[0] : null;
     const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
     return { ...athlete, lastUpdate };
+  }).filter((athlete) => {
+    const current = listMonthMap.get(athlete.id);
+    const previous = listPreviousMap.get(athlete.id);
+    const history = athleteHistory.get(athlete.id) || [];
+    const lastPaid = history.find((record) => record.paid);
+    const tariff = getPilatesTariffFromRecords(current, previous, lastPaid);
+    return familyTariffs.has(tariff);
   }).sort((a, b) => {
     if (pilatesNameSortDirection) {
       const comparison = getPilatesSortableName(a.name).localeCompare(getPilatesSortableName(b.name), "es");
@@ -352,7 +447,7 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
     const previous = listPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
-    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "Reformer 4";
+    const tariff = getPilatesTariffFromRecords(current, previous, lastPaid);
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = pilatesTariffPlanMap.get(tariff) || pilatesTariffPlanMap.get("Reformer 4") || fallbackPlan;
     const price = current?.price ?? previous?.price ?? lastPaid?.price ?? plan.priceTotal ?? 0;
@@ -450,6 +545,8 @@ export async function refreshPilatesMonthly(
   if (ui.pilatesListMonthSelect) ui.pilatesListMonthSelect.value = listMonth;
 
   const athletes = await getPilatesAthletes();
+  const familyConfig = getPilatesFamilyConfig();
+  const familyTariffs = new Set(familyConfig.tariffs);
   if (ui.pilatesNameList) {
     const names = Array.from(new Set(athletes.map((athlete) => athlete.name).filter(Boolean))).sort((a, b) => a.localeCompare(b));
     ui.pilatesNameList.innerHTML = "";
@@ -494,7 +591,8 @@ export async function refreshPilatesMonthly(
     const previous = summaryPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
-    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "Reformer 4";
+    const tariff = getPilatesTariffFromRecords(current, previous, lastPaid);
+    if (!familyTariffs.has(tariff)) return;
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = pilatesTariffPlanMap.get(tariff) || pilatesTariffPlanMap.get("Reformer 4") || fallbackPlan;
     const paid = Boolean(current?.paid);

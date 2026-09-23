@@ -1753,6 +1753,41 @@ span.athlete-status-unpaid,
   font-size: 20px;
 }
 
+#pilatesView .pilates-family-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+#pilatesView .pilates-family-tab {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--accent);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+#pilatesView .pilates-family-tab:hover {
+  transform: translateY(-1px);
+}
+
+#pilatesView .pilates-family-tab.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+#pilatesView .pilates-family-label {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
 #pilatesView .pilates-top-card .detail-header {
   margin-top: 8px;
 }

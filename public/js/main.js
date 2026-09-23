@@ -42,6 +42,7 @@ import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js";
 import {
   initializePilates,
   refreshPilatesMonthly,
+  setPilatesFamily,
   setPilatesPriceFromTariff,
   calculatePilatesFinalPrice,
   renderPilatesPaymentMonthOptions,
@@ -8145,6 +8146,23 @@ on(ui.pilatesSearch, "input", (event) => {
   pilatesSearchTerm = event.target.value;
   refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
 });
+
+if (ui.pilatesView) {
+  ui.pilatesView.querySelectorAll("[data-pilates-family-tab]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const family = button.dataset.pilatesFamilyTab || "pilates";
+      setPilatesFamily(family);
+      await refreshPilatesMonthly(
+        selectedPilatesMonth,
+        selectedPilatesListMonth,
+        selectedPilatesPaymentMonth,
+        pilatesPaidFilter,
+        pilatesSearchTerm,
+        selectedPilatesCsvMonth
+      );
+    });
+  });
+}
 
 // ========== SINGLE CLASSES EVENT LISTENERS ==========
 
