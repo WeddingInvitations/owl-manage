@@ -1625,7 +1625,7 @@ span.athlete-status-unpaid,
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 .modal {
