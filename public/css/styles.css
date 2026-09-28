@@ -376,6 +376,12 @@ div, span, p, li, td, th, label, button, input, select, textarea {
   gap: 16px;
 }
 
+.view > .btn {
+  width: fit-content;
+  align-self: start;
+  white-space: nowrap;
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--border);

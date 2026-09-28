@@ -7,7 +7,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#151824" />
     <title>OwlManage</title>
-    <link rel="stylesheet" href="css/styles.css?v=20260922b" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="stylesheet" href="css/styles.css?v=20260928a" />
     <link rel="stylesheet" href="css/fullcalendar-dark-override.css?v=20250225" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
 
@@ -1207,19 +1210,9 @@
         </section>
 
         <section id="athletesView" class="view hidden">
-          <div class="card">
-            <h2>Control de pagos de usuarios</h2>
-            <div class="detail-header">
-              <div class="table-actions">
-                <button id="athleteCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
-                  📄 CSV
-                </button>
-                <button id="athleteModalOpen" class="btn" type="button">
-                  Alta de usuario
-                </button>
-              </div>
-            </div>
-          </div>
+          <button id="athleteModalOpen" class="btn" type="button">
+            Alta de usuario
+          </button>
           <div id="athleteModal" class="modal hidden">
             <div class="modal-content card">
               <div class="detail-header">
@@ -1301,34 +1294,6 @@
               </form>
             </div>
           </div>
-          <div id="athleteCsvModal" class="modal hidden">
-            <div class="modal-content card">
-              <div class="detail-header">
-                <h3>Carga masiva de atletas</h3>
-                <button id="athleteCsvClose" class="btn ghost small" type="button">
-                  Cerrar
-                </button>
-              </div>
-              <form id="athleteCsvForm" class="stack">
-                <p class="muted">El CSV debe tener las columnas: nombre, tarifa, pagado, precio (opcional), descuento (opcional), motivo_descuento (opcional). Formatos aceptados: nombre/name, tarifa/plan, pagado/paid, precio/price, descuento/discount, motivo_descuento/discount_reason.</p>
-                <div class="flex gap-2 mb-3">
-                  <button id="downloadAthleteTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
-                    📥 Descargar plantilla
-                  </button>
-                </div>
-                <label>
-                  Archivo CSV
-                  <input id="athleteCsvFile" type="file" accept=".csv,text/csv" required />
-                </label>
-                <label>
-                  Mes de pago
-                  <select id="athleteCsvMonth"></select>
-                </label>
-                <button class="btn" type="submit">Importar</button>
-                <p id="athleteCsvStatus" class="muted"></p>
-              </form>
-            </div>
-          </div>
           <div class="card">
             <div class="detail-header">
               <h3>Resumen mensual</h3>
@@ -1340,16 +1305,12 @@
                 <p id="athleteSummaryActive" class="value">0</p>
               </div>
               <div>
-                <p class="label">Tarifa media</p>
-                <p id="athleteSummaryAverage" class="value">0 €</p>
-              </div>
-              <div>
                 <p class="label">Altas nuevas</p>
                 <p id="athleteSummaryNew" class="value">0</p>
               </div>
               <div>
-                <p class="label">Bajas</p>
-                <p id="athleteSummaryDrop" class="value">0</p>
+                <p class="label">Usuarios totales</p>
+                <p id="athleteSummaryTotal" class="value">0</p>
               </div>
             </div>
           </div>

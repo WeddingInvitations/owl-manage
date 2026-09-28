@@ -318,7 +318,6 @@ let athleteSearchTerm = "";
 let selectedAthletePaymentMonth = "";
 let athletePaidFilter = "ALL";
 let athleteTariffFilter = "ALL";
-let selectedAthleteCsvMonth = "";
 
 // Acrobacias state
 let selectedAcroMonth = "";
@@ -894,36 +893,6 @@ function renderAthletePaymentMonthOptions() {
   ui.athletePaymentMonth.value = selectedAthletePaymentMonth;
 }
 
-function renderAthleteCsvMonthOptions() {
-  if (!ui.athleteCsvMonth) return;
-  const now = new Date();
-  const options = [];
-  for (let i = 12; i >= 0; i -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
-  for (let i = 1; i <= 6; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    options.push(getMonthKey(date));
-  }
-  ui.athleteCsvMonth.innerHTML = "";
-  options.forEach((key) => {
-    const option = document.createElement("option");
-    option.value = key;
-    option.textContent = getMonthLabel(key);
-    ui.athleteCsvMonth.appendChild(option);
-  });
-  selectedAthleteCsvMonth = getMonthKey(now);
-  ui.athleteCsvMonth.value = selectedAthleteCsvMonth;
-}
-
-function normalizeTariff(value, plans, fallbackKey) {
-  if (!value) return fallbackKey;
-  const normalized = value.trim();
-  const match = plans.find((plan) => plan.key.toLowerCase() === normalized.toLowerCase());
-  return match ? match.key : fallbackKey;
-}
-
 function parseCsvRows(content) {
   const lines = content
     .split(/\r?\n/)
@@ -931,9 +900,9 @@ function parseCsvRows(content) {
     .filter(Boolean);
   if (lines.length === 0) return [];
   const [headerLine, ...dataLines] = lines;
-  const headers = headerLine.split(",").map((h) => h.trim().toLowerCase());
+  const headers = headerLine.split(",").map((header) => header.trim().toLowerCase());
   return dataLines.map((line) => {
-    const values = line.split(",").map((v) => v.trim());
+    const values = line.split(",").map((value) => value.trim());
     const row = {};
     headers.forEach((key, index) => {
       row[key] = values[index] ?? "";
@@ -942,65 +911,11 @@ function parseCsvRows(content) {
   });
 }
 
-async function importAthletesFromCsv(file, monthKey) {
-  const text = await file.text();
-  const rows = parseCsvRows(text);
-  if (rows.length === 0) {
-    throw new Error("CSV vacío o sin datos");
-  }
-  const athletes = await getAthletes();
-  const athleteMap = new Map(
-    athletes.map((athlete) => [athlete.name?.toLowerCase(), athlete])
-  );
-  let processed = 0;
-
-  for (const row of rows) {
-    const name = row.nombre || row.name || "";
-    if (!name) continue;
-    const paidValue = (row.pagado || row.paid || "").toString().trim().toUpperCase();
-    const paid = paidValue === "SI" || paidValue === "TRUE" || paidValue === "1" || paidValue === "YES";
-    const tariff = normalizeTariff(row.tarifa || row.plan || "", tariffPlans, "8/mes");
-    const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes");
-    const basePrice = row.precio ? Number(row.precio) : plan.priceTotal;
-    const discount = row.descuento || row.discount || 0;
-    const discountReason = row.motivo_descuento || row.discount_reason || "";
-    const finalPrice = basePrice * (1 - discount / 100);
-    const price = finalPrice; // Use final price with discount applied
-    const duration = plan.durationMonths || 1;
-
-    let athlete = athleteMap.get(name.toLowerCase());
-    if (!athlete) {
-      const id = await createAthlete(name, currentUser?.uid);
-      athlete = { id, name };
-      athleteMap.set(name.toLowerCase(), athlete);
-    }
-
-    for (let i = 0; i < duration; i += 1) {
-      const targetMonth = addMonthsToKey(monthKey, i);
-      await upsertAthleteMonth(
-        athlete.id,
-        targetMonth,
-        {
-          athleteName: athlete.name,
-          tariff,
-          price,
-          basePrice,
-          discount: Number(discount),
-          discountReason,
-          paid,
-          active: paid,
-          durationMonths: plan.durationMonths,
-          priceMonthly: plan.priceMonthly,
-          isPaymentMonth: i === 0,
-        },
-        currentUser?.uid
-      );
-    }
-
-    processed += 1;
-  }
-
-  return processed;
+function normalizeTariff(value, plans, fallbackKey) {
+  if (!value) return fallbackKey;
+  const normalized = value.trim();
+  const match = plans.find((plan) => plan.key.toLowerCase() === normalized.toLowerCase());
+  return match ? match.key : fallbackKey;
 }
 
 function setAthletePriceFromTariff() {
@@ -1175,10 +1090,6 @@ async function refreshAthleteMonthly() {
   }
   const allMonthRecords = await getAllAthleteMonths();
   const summaryMonthRecords = await getAthleteMonthsForMonth(selectedAthleteMonth);
-  const summaryPreviousMonth = getPreviousMonthKey(selectedAthleteMonth);
-  const summaryPreviousRecords = summaryPreviousMonth
-    ? await getAthleteMonthsForMonth(summaryPreviousMonth)
-    : [];
 
   const listMonthRecords = await getAthleteMonthsForMonth(selectedAthleteListMonth);
   const listPreviousMonth = getPreviousMonthKey(selectedAthleteListMonth);
@@ -1188,8 +1099,6 @@ async function refreshAthleteMonthly() {
 
   const summaryMonthMap = new Map();
   summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
-  const summaryPreviousMap = new Map();
-  summaryPreviousRecords.forEach((record) => summaryPreviousMap.set(record.athleteId, record));
 
   const listMonthMap = new Map();
   listMonthRecords.forEach((record) => listMonthMap.set(record.athleteId, record));
@@ -1207,20 +1116,18 @@ async function refreshAthleteMonthly() {
   );
 
   const activeNow = new Set();
-  const activePrev = new Set();
-  let totalIncome = 0;
+  const newAthletes = new Set();
 
   athletes.forEach((athlete) => {
     const current = summaryMonthMap.get(athlete.id);
-    const previous = summaryPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
 
-    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "8/mes";
+    const tariff = current?.tariff || lastPaid?.tariff || "8/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = tariffPlanMap.get(tariff) || tariffPlanMap.get("8/mes") || fallbackPlan;
     const basePrice = plan.priceTotal ?? 0;
-    const discountReason = current?.discountReason || previous?.discountReason || lastPaid?.discountReason || "";
+    const discountReason = current?.discountReason || lastPaid?.discountReason || "";
     let discount = 0;
     if (discountReason === 'Familiar') discount = 15;
     else if (discountReason === 'Funcionario') discount = 10;
@@ -1240,11 +1147,10 @@ async function refreshAthleteMonthly() {
 
     if (paid) {
       activeNow.add(athlete.id);
-      const divisor = current?.durationMonths || plan.durationMonths || 1;
-      totalIncome += Number((current?.price ?? plan.priceTotal) || 0) / divisor;
-    }
-    if (previous?.paid) {
-      activePrev.add(athlete.id);
+      const hasPreviousRecord = history.some((record) => record.month < selectedAthleteMonth);
+      if (!hasPreviousRecord) {
+        newAthletes.add(athlete.id);
+      }
     }
   });
 
@@ -1259,14 +1165,11 @@ async function refreshAthleteMonthly() {
   filterAndRenderAthleteList();
 
   const totalActive = activeNow.size;
-  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
-  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
-  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+  const totalNew = newAthletes.size;
 
   ui.athleteSummaryActive.textContent = String(totalActive);
-  ui.athleteSummaryAverage.textContent = formatCurrency(averageTariff);
   ui.athleteSummaryNew.textContent = String(totalNew);
-  ui.athleteSummaryDrop.textContent = String(totalDrop);
+  ui.athleteSummaryTotal.textContent = String(athletes.length);
 }
 
 // ========== ACROBACIAS ==========
@@ -4596,7 +4499,6 @@ renderAthleteMonthOptions();
 setAthletePriceFromTariff();
 renderAthletePaymentMonthOptions();
 renderAthleteListMonthOptions();
-renderAthleteCsvMonthOptions();
 
 // Poblar el filtro de tarifas con las tarifas disponibles
 if (ui.athleteTariffFilter) {
@@ -4609,9 +4511,6 @@ if (ui.athleteTariffFilter) {
 }
 if (ui.athleteModal) {
   ui.athleteModal.classList.add("hidden");
-}
-if (ui.athleteCsvModal) {
-  ui.athleteCsvModal.classList.add("hidden");
 }
 
 function calculateDiscountFromReason(reason) {
@@ -5574,23 +5473,6 @@ function downloadAthleteExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Atletas");
   XLSX.writeFile(wb, `atletas-${month}.xlsx`);
-}
-
-function downloadAthleteTemplate() {
-  const headers = ["nombre", "tarifa", "pagado", "precio", "descuento", "motivo_descuento"];
-  const exampleRow = ["Juan Pérez", "8/mes", "SI", "80", "10", "Estudiante"];
-  
-  const csv = [headers, exampleRow]
-    .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
-    .join("\n");
-  
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "plantilla-atletas.csv";
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 function downloadAcroTemplate() {
@@ -7322,37 +7204,6 @@ on(ui.athleteModalClose, "click", () => {
   ui.athleteModal?.classList.add("hidden");
 });
 
-on(ui.athleteCsvOpen, "click", () => {
-  renderAthleteCsvMonthOptions();
-  ui.athleteCsvModal?.classList.remove("hidden");
-});
-
-on(ui.athleteCsvClose, "click", () => {
-  ui.athleteCsvModal?.classList.add("hidden");
-});
-
-on(ui.athleteCsvMonth, "change", (event) => {
-  selectedAthleteCsvMonth = event.target.value;
-});
-
-on(ui.athleteCsvForm, "submit", async (event) => {
-  event.preventDefault();
-  if (!ui.athleteCsvFile?.files?.length) return;
-  ui.athleteCsvStatus.textContent = "Importando...";
-  const monthKey = ui.athleteCsvMonth?.value || selectedAthleteCsvMonth || getMonthKey(new Date());
-  try {
-    const processed = await importAthletesFromCsv(ui.athleteCsvFile.files[0], monthKey);
-    ui.athleteCsvStatus.textContent = `Importados ${processed} atletas.`;
-    ui.athleteCsvForm.reset();
-    renderAthleteCsvMonthOptions();
-    ui.athleteCsvModal?.classList.add("hidden");
-    await refreshAll();
-    await refreshAthleteMonthly();
-  } catch (error) {
-    ui.athleteCsvStatus.textContent = `Error: ${error.message || error}`;
-  }
-});
-
 on(ui.acroForm, "submit", async (event) => {
   event.preventDefault();
   const rawName = ui.acroName.value.trim();
@@ -8420,10 +8271,6 @@ on(ui.downloadPaymentTemplate, "click", () => {
 
 on(ui.downloadExpenseTemplate, "click", () => {
   downloadCsvTemplate('plantilla_gastos.csv', 'expense');
-});
-
-on(ui.downloadAthleteTemplate, "click", () => {
-  downloadAthleteTemplate();
 });
 
 on(ui.athleteExcelBtn, "click", () => {
