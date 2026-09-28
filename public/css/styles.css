@@ -382,6 +382,15 @@ div, span, p, li, td, th, label, button, input, select, textarea {
   white-space: nowrap;
 }
 
+#acroKidsView {
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+#acroKidsView > .card {
+  align-self: start;
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--border);

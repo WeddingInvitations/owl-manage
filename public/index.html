@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" href="css/styles.css?v=20260928a" />
+    <link rel="stylesheet" href="css/styles.css?v=20260928b" />
     <link rel="stylesheet" href="css/fullcalendar-dark-override.css?v=20250225" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
 
@@ -1365,19 +1365,9 @@
         </section>
 
         <section id="acroView" class="view hidden">
-          <div class="card">
-            <h2>Control de pagos · Atletas Acrobacias</h2>
-            <div class="detail-header">
-              <div class="table-actions">
-                <button id="acroCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
-                  📄 CSV
-                </button>
-                <button id="acroModalOpen" class="btn" type="button">
-                  Alta de usuario
-                </button>
-              </div>
-            </div>
-          </div>
+          <button id="acroModalOpen" class="btn" type="button">
+            Alta de usuario
+          </button>
           <div id="acroModal" class="modal hidden">
             <div class="modal-content card">
               <div class="detail-header">
@@ -1540,22 +1530,9 @@
 
         <!-- ========== ACROKIDS ========== -->
         <section id="acroKidsView" class="view hidden">
-          <div class="card">
-            <h2>Control de pagos · AcroKids</h2>
-            <div class="detail-header">
-              <div class="table-actions">
-                <button id="acroKidsCalendarOpen" class="btn ghost small" type="button" data-view="acroKidsCalendarView" title="Abrir calendario">
-                  📅 Calendario
-                </button>
-                <button id="acroKidsCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
-                  📄 CSV
-                </button>
-                <button id="acroKidsModalOpen" class="btn" type="button">
-                  Alta de usuario
-                </button>
-              </div>
-            </div>
-          </div>
+          <button id="acroKidsModalOpen" class="btn" type="button">
+            Alta de usuario
+          </button>
           <div id="acroKidsModal" class="modal hidden">
             <div class="modal-content card">
               <div class="detail-header">
@@ -1813,19 +1790,9 @@
         </section>
 
         <section id="halteView" class="view hidden">
-          <div class="card">
-            <h2>Control de pagos · Halterofilia</h2>
-            <div class="detail-header">
-              <div class="table-actions">
-                <button id="halteCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
-                  📄 CSV
-                </button>
-                <button id="halteModalOpen" class="btn" type="button">
-                  Alta de usuario
-                </button>
-              </div>
-            </div>
-          </div>
+          <button id="halteModalOpen" class="btn" type="button">
+            Alta de usuario
+          </button>
           <div id="halteModal" class="modal hidden">
             <div class="modal-content card">
               <div class="detail-header">
@@ -1984,19 +1951,9 @@
         </section>
 
         <section id="telasView" class="view hidden">
-          <div class="card">
-            <h2>Control de pagos · Telas</h2>
-            <div class="detail-header">
-              <div class="table-actions">
-                <button id="telasCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
-                  📄 CSV
-                </button>
-                <button id="telasModalOpen" class="btn" type="button">
-                  Alta de usuario
-                </button>
-              </div>
-            </div>
-          </div>
+          <button id="telasModalOpen" class="btn" type="button">
+            Alta de usuario
+          </button>
           <div id="telasModal" class="modal hidden">
             <div class="modal-content card">
               <div class="detail-header">
@@ -2158,19 +2115,9 @@
         </section>
 
         <section id="singleClassesView" class="view hidden">
-          <div class="card">
-            <h2>Control de pagos · Clases Sueltas</h2>
-            <div class="detail-header">
-              <div class="table-actions">
-                <button id="singleClassesCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
-                  📄 CSV
-                </button>
-                <button id="singleClassesModalOpen" class="btn" type="button">
-                  Alta de usuario
-                </button>
-              </div>
-            </div>
-          </div>
+          <button id="singleClassesModalOpen" class="btn" type="button">
+            Alta de usuario
+          </button>
           <div id="singleClassesModal" class="modal hidden">
             <div class="modal-content card">
               <div class="detail-header">
@@ -2338,28 +2285,17 @@
 
         <!-- ========== PILATES ========== -->
         <section id="pilatesView" class="view hidden">
-          <div class="card pilates-top-card">
-            <h2>Control de pagos · The Nest</h2>
-            <div class="pilates-family-tabs" role="tablist" aria-label="Familias The Nest">
-              <button class="pilates-family-tab is-active" type="button" data-pilates-family-tab="pilates" aria-selected="true">
-                The Nest Pilates
-              </button>
-              <button class="pilates-family-tab" type="button" data-pilates-family-tab="barre" aria-selected="false">
-                The Nest Barre
-              </button>
-            </div>
-            <!-- <p class="muted pilates-family-label" data-pilates-family-label>Tarifas Reformer</p> -->
-            <div class="detail-header">
-              <div class="table-actions">
-                <button id="pilatesCsvOpen" class="btn ghost small" type="button" title="Carga masiva CSV">
-                  📄 CSV
-                </button>
-                <button id="pilatesModalOpen" class="btn" type="button">
-                  Alta de usuario
-                </button>
-              </div>
-            </div>
+          <div class="pilates-family-tabs" role="tablist" aria-label="Familias The Nest">
+            <button class="pilates-family-tab is-active" type="button" data-pilates-family-tab="pilates" aria-selected="true">
+              The Nest Pilates
+            </button>
+            <button class="pilates-family-tab" type="button" data-pilates-family-tab="barre" aria-selected="false">
+              The Nest Barre
+            </button>
           </div>
+          <button id="pilatesModalOpen" class="btn" type="button">
+            Alta de usuario
+          </button>
           <div id="pilatesModal" class="modal hidden">
             <div class="modal-content card">
               <div class="detail-header">
