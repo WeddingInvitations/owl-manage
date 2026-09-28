@@ -1809,11 +1809,6 @@ async function refreshAcroMonthly() {
 
   const allMonthRecords = await getAllAcroAthleteMonths();
   const summaryMonthRecords = await getAcroAthleteMonthsForMonth(selectedAcroMonth);
-  const summaryPreviousMonth = getPreviousMonthKey(selectedAcroMonth);
-  const summaryPreviousRecords = summaryPreviousMonth
-    ? await getAcroAthleteMonthsForMonth(summaryPreviousMonth)
-    : [];
-
   const listMonthRecords = await getAcroAthleteMonthsForMonth(selectedAcroListMonth);
   const listPreviousMonth = getPreviousMonthKey(selectedAcroListMonth);
   const listPreviousRecords = listPreviousMonth
@@ -1822,9 +1817,6 @@ async function refreshAcroMonthly() {
 
   const summaryMonthMap = new Map();
   summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
-  const summaryPreviousMap = new Map();
-  summaryPreviousRecords.forEach((record) => summaryPreviousMap.set(record.athleteId, record));
-
   const listMonthMap = new Map();
   listMonthRecords.forEach((record) => listMonthMap.set(record.athleteId, record));
   const listPreviousMap = new Map();
@@ -1842,20 +1834,18 @@ async function refreshAcroMonthly() {
   );
 
   const activeNow = new Set();
-  const activePrev = new Set();
-  let totalIncome = 0;
+  const newAthletes = new Set();
 
   athletes.forEach((athlete) => {
     const current = summaryMonthMap.get(athlete.id);
-    const previous = summaryPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
 
-    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
+    const tariff = current?.tariff || lastPaid?.tariff || "4/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = acroTariffPlanMap.get(tariff) || acroTariffPlanMap.get("4/mes") || fallbackPlan;
     const basePrice = plan.priceTotal ?? 0;
-    const discountReason = current?.discountReason || previous?.discountReason || lastPaid?.discountReason || "";
+    const discountReason = current?.discountReason || lastPaid?.discountReason || "";
     let discount = 0;
     if (discountReason === 'Familiar') discount = 15;
     else if (discountReason === 'Funcionario') discount = 10;
@@ -1866,11 +1856,9 @@ async function refreshAcroMonthly() {
 
     if (paid) {
       activeNow.add(athlete.id);
-      const divisor = current?.durationMonths || plan.durationMonths || 1;
-      totalIncome += Number((current?.price ?? plan.priceTotal) || 0) / divisor;
-    }
-    if (previous?.paid) {
-      activePrev.add(athlete.id);
+      if (!history.some((record) => record.month < selectedAcroMonth)) {
+        newAthletes.add(athlete.id);
+      }
     }
   });
 
@@ -1885,14 +1873,11 @@ async function refreshAcroMonthly() {
   filterAndRenderAcroList();
 
   const totalActive = activeNow.size;
-  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
-  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
-  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+  const totalNew = newAthletes.size;
 
   if (ui.acroSummaryActive) ui.acroSummaryActive.textContent = String(totalActive);
-  if (ui.acroSummaryAverage) ui.acroSummaryAverage.textContent = formatCurrency(averageTariff);
   if (ui.acroSummaryNew) ui.acroSummaryNew.textContent = String(totalNew);
-  if (ui.acroSummaryDrop) ui.acroSummaryDrop.textContent = String(totalDrop);
+  if (ui.acroSummaryTotal) ui.acroSummaryTotal.textContent = String(athletes.length);
 }
 
 async function refreshAcroKidsMonthly() {
@@ -1923,11 +1908,6 @@ async function refreshAcroKidsMonthly() {
 
   const allMonthRecords = await getAllAcroKidsAthleteMonths();
   const summaryMonthRecords = await getAcroKidsAthleteMonthsForMonth(selectedAcroKidsMonth);
-  const summaryPreviousMonth = getPreviousMonthKey(selectedAcroKidsMonth);
-  const summaryPreviousRecords = summaryPreviousMonth
-    ? await getAcroKidsAthleteMonthsForMonth(summaryPreviousMonth)
-    : [];
-
   const listMonthRecords = await getAcroKidsAthleteMonthsForMonth(selectedAcroKidsListMonth);
   const listPreviousMonth = getPreviousMonthKey(selectedAcroKidsListMonth);
   const listPreviousRecords = listPreviousMonth
@@ -1936,9 +1916,6 @@ async function refreshAcroKidsMonthly() {
 
   const summaryMonthMap = new Map();
   summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
-  const summaryPreviousMap = new Map();
-  summaryPreviousRecords.forEach((record) => summaryPreviousMap.set(record.athleteId, record));
-
   const listMonthMap = new Map();
   listMonthRecords.forEach((record) => listMonthMap.set(record.athleteId, record));
   const listPreviousMap = new Map();
@@ -1956,20 +1933,18 @@ async function refreshAcroKidsMonthly() {
   );
 
   const activeNow = new Set();
-  const activePrev = new Set();
-  let totalIncome = 0;
+  const newAthletes = new Set();
 
   athletes.forEach((athlete) => {
     const current = summaryMonthMap.get(athlete.id);
-    const previous = summaryPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
 
-    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
+    const tariff = current?.tariff || lastPaid?.tariff || "4/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = acroKidsTariffPlanMap.get(tariff) || acroKidsTariffPlanMap.get("4/mes") || fallbackPlan;
     const basePrice = plan.priceTotal ?? 0;
-    const discountReason = current?.discountReason || previous?.discountReason || lastPaid?.discountReason || "";
+    const discountReason = current?.discountReason || lastPaid?.discountReason || "";
     let discount = 0;
     if (discountReason === 'Familiar') discount = 15;
     else if (discountReason === 'Funcionario') discount = 10;
@@ -1980,11 +1955,9 @@ async function refreshAcroKidsMonthly() {
 
     if (paid) {
       activeNow.add(athlete.id);
-      const divisor = current?.durationMonths || plan.durationMonths || 1;
-      totalIncome += Number((current?.price ?? plan.priceTotal) || 0) / divisor;
-    }
-    if (previous?.paid) {
-      activePrev.add(athlete.id);
+      if (!history.some((record) => record.month < selectedAcroKidsMonth)) {
+        newAthletes.add(athlete.id);
+      }
     }
   });
 
@@ -1999,14 +1972,11 @@ async function refreshAcroKidsMonthly() {
   filterAndRenderAcroKidsList();
 
   const totalActive = activeNow.size;
-  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
-  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
-  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+  const totalNew = newAthletes.size;
 
   if (ui.acroKidsSummaryActive) ui.acroKidsSummaryActive.textContent = String(totalActive);
-  if (ui.acroKidsSummaryAverage) ui.acroKidsSummaryAverage.textContent = formatCurrency(averageTariff);
   if (ui.acroKidsSummaryNew) ui.acroKidsSummaryNew.textContent = String(totalNew);
-  if (ui.acroKidsSummaryDrop) ui.acroKidsSummaryDrop.textContent = String(totalDrop);
+  if (ui.acroKidsSummaryTotal) ui.acroKidsSummaryTotal.textContent = String(athletes.length);
 }
 
 function acroKidsCalendarFormatDateKey(date) {
@@ -2801,11 +2771,6 @@ async function refreshHalteMonthly() {
 
   const allMonthRecords = await getAllHalteAthleteMonths();
   const summaryMonthRecords = await getHalteAthleteMonthsForMonth(selectedHalteMonth);
-  const summaryPreviousMonth = getPreviousMonthKey(selectedHalteMonth);
-  const summaryPreviousRecords = summaryPreviousMonth
-    ? await getHalteAthleteMonthsForMonth(summaryPreviousMonth)
-    : [];
-
   const listMonthRecords = await getHalteAthleteMonthsForMonth(selectedHalteListMonth);
   const listPreviousMonth = getPreviousMonthKey(selectedHalteListMonth);
   const listPreviousRecords = listPreviousMonth
@@ -2814,9 +2779,6 @@ async function refreshHalteMonthly() {
 
   const summaryMonthMap = new Map();
   summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
-  const summaryPreviousMap = new Map();
-  summaryPreviousRecords.forEach((record) => summaryPreviousMap.set(record.athleteId, record));
-
   const listMonthMap = new Map();
   listMonthRecords.forEach((record) => listMonthMap.set(record.athleteId, record));
   const listPreviousMap = new Map();
@@ -2834,20 +2796,18 @@ async function refreshHalteMonthly() {
   );
 
   const activeNow = new Set();
-  const activePrev = new Set();
-  let totalIncome = 0;
+  const newAthletes = new Set();
 
   athletes.forEach((athlete) => {
     const current = summaryMonthMap.get(athlete.id);
-    const previous = summaryPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
 
-    const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
+    const tariff = current?.tariff || lastPaid?.tariff || "4/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = halteTariffPlanMap.get(tariff) || halteTariffPlanMap.get("4/mes") || fallbackPlan;
     const basePrice = plan.priceTotal ?? 0;
-    const discountReason = current?.discountReason || previous?.discountReason || lastPaid?.discountReason || "";
+    const discountReason = current?.discountReason || lastPaid?.discountReason || "";
     let discount = 0;
     if (discountReason === 'Familiar') discount = 15;
     else if (discountReason === 'Funcionario') discount = 10;
@@ -2858,11 +2818,9 @@ async function refreshHalteMonthly() {
 
     if (paid) {
       activeNow.add(athlete.id);
-      const divisor = current?.durationMonths || plan.durationMonths || 1;
-      totalIncome += Number((current?.price ?? plan.priceTotal) || 0) / divisor;
-    }
-    if (previous?.paid) {
-      activePrev.add(athlete.id);
+      if (!history.some((record) => record.month < selectedHalteMonth)) {
+        newAthletes.add(athlete.id);
+      }
     }
   });
 
@@ -2877,14 +2835,11 @@ async function refreshHalteMonthly() {
   filterAndRenderHalteList();
 
   const totalActive = activeNow.size;
-  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
-  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
-  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+  const totalNew = newAthletes.size;
 
   if (ui.halteSummaryActive) ui.halteSummaryActive.textContent = String(totalActive);
-  if (ui.halteSummaryAverage) ui.halteSummaryAverage.textContent = formatCurrency(averageTariff);
   if (ui.halteSummaryNew) ui.halteSummaryNew.textContent = String(totalNew);
-  if (ui.halteSummaryDrop) ui.halteSummaryDrop.textContent = String(totalDrop);
+  if (ui.halteSummaryTotal) ui.halteSummaryTotal.textContent = String(athletes.length);
 }
 
 // ========== TELAS ==========
@@ -3225,23 +3180,17 @@ async function refreshTelasMonthly() {
   if (!monthKey || !ui.telasList) return;
   const allAthletes = await getTelasAthletes();
   currentTelasAthletes = allAthletes;
+  const allMonthRecords = await getAllTelasAthleteMonths();
   const athleteMonths = await getTelasAthleteMonthsForMonth(monthKey);
   const athleteMonthsMap = new Map();
   for (const am of athleteMonths) {
     athleteMonthsMap.set(am.athleteId, am);
   }
-  const [y, m] = monthKey.split("-").map(Number);
-  let prevMonthKey = "";
-  if (m === 1) {
-    prevMonthKey = `${y - 1}-12`;
-  } else {
-    const pm = m - 1;
-    prevMonthKey = `${y}-${pm < 10 ? "0" : ""}${pm}`;
-  }
-  const prevMonths = await getTelasAthleteMonthsForMonth(prevMonthKey);
-  const activePrev = new Set(
-    prevMonths.filter((am) => am.tariff && am.tariff !== "").map((am) => am.athleteId)
-  );
+  const athleteHistory = new Map();
+  allMonthRecords.forEach((record) => {
+    if (!athleteHistory.has(record.athleteId)) athleteHistory.set(record.athleteId, []);
+    athleteHistory.get(record.athleteId).push(record);
+  });
   const entries = [];
   for (const athlete of allAthletes) {
     const am = athleteMonthsMap.get(athlete.id);
@@ -3291,25 +3240,23 @@ async function refreshTelasMonthly() {
   filterAndRenderTelasList();
 
   const activeNow = new Set();
-  let totalIncome = 0;
+  const newAthletes = new Set();
   for (const e of entries) {
     if (e.tariff && e.tariff !== "") {
       activeNow.add(e.athlete.id);
-      if (e.paid && e.isPaymentMonth) {
-        totalIncome += e.price;
+      const history = athleteHistory.get(e.athlete.id) || [];
+      if (!history.some((record) => record.month < monthKey)) {
+        newAthletes.add(e.athlete.id);
       }
     }
   }
 
   const totalActive = activeNow.size;
-  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
-  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
-  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+  const totalNew = newAthletes.size;
 
   if (ui.telasSummaryActive) ui.telasSummaryActive.textContent = String(totalActive);
-  if (ui.telasSummaryAverage) ui.telasSummaryAverage.textContent = formatCurrency(averageTariff);
   if (ui.telasSummaryNew) ui.telasSummaryNew.textContent = String(totalNew);
-  if (ui.telasSummaryDrop) ui.telasSummaryDrop.textContent = String(totalDrop);
+  if (ui.telasSummaryTotal) ui.telasSummaryTotal.textContent = String(allAthletes.length);
 }
 
 // ========== SINGLE CLASSES AUXILIARY FUNCTIONS ==========
@@ -3460,23 +3407,17 @@ async function refreshSingleClassesMonthly() {
   ui.singleClassesList.innerHTML = "";
   const allAthletes = await getSingleClassesAthletes();
   currentSingleClassesAthletes = allAthletes;
+  const allMonthRecords = await getAllSingleClassesAthleteMonths();
   const athleteMonths = await getSingleClassesAthleteMonthsForMonth(monthKey);
   const athleteMonthsMap = new Map();
   for (const am of athleteMonths) {
     athleteMonthsMap.set(am.athleteId, am);
   }
-  const [y, m] = monthKey.split("-").map(Number);
-  let prevMonthKey = "";
-  if (m === 1) {
-    prevMonthKey = `${y - 1}-12`;
-  } else {
-    const pm = m - 1;
-    prevMonthKey = `${y}-${pm < 10 ? "0" : ""}${pm}`;
-  }
-  const prevMonths = await getSingleClassesAthleteMonthsForMonth(prevMonthKey);
-  const activePrev = new Set(
-    prevMonths.filter((am) => am.tariff && am.tariff !== "").map((am) => am.athleteId)
-  );
+  const athleteHistory = new Map();
+  allMonthRecords.forEach((record) => {
+    if (!athleteHistory.has(record.athleteId)) athleteHistory.set(record.athleteId, []);
+    athleteHistory.get(record.athleteId).push(record);
+  });
   const entries = [];
   for (const athlete of allAthletes) {
     const am = athleteMonthsMap.get(athlete.id);
@@ -3535,12 +3476,13 @@ async function refreshSingleClassesMonthly() {
   }
   const visibleCount = filtered.length;
   const activeNow = new Set();
-  let totalIncome = 0;
+  const newAthletes = new Set();
   for (const e of entries) {
     if (e.tariff && e.tariff !== "") {
       activeNow.add(e.athlete.id);
-      if (e.paid && e.isPaymentMonth) {
-        totalIncome += e.price;
+      const history = athleteHistory.get(e.athlete.id) || [];
+      if (!history.some((record) => record.month < monthKey)) {
+        newAthletes.add(e.athlete.id);
       }
     }
   }
@@ -3653,14 +3595,11 @@ async function refreshSingleClassesMonthly() {
   updatePendingSaveButtons();
 
   const totalActive = activeNow.size;
-  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
-  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
-  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+  const totalNew = newAthletes.size;
 
   if (ui.singleClassesSummaryActive) ui.singleClassesSummaryActive.textContent = String(totalActive);
-  if (ui.singleClassesSummaryAverage) ui.singleClassesSummaryAverage.textContent = formatCurrency(averageTariff);
   if (ui.singleClassesSummaryNew) ui.singleClassesSummaryNew.textContent = String(totalNew);
-  if (ui.singleClassesSummaryDrop) ui.singleClassesSummaryDrop.textContent = String(totalDrop);
+  if (ui.singleClassesSummaryTotal) ui.singleClassesSummaryTotal.textContent = String(allAthletes.length);
 }
 
 function renderYearOptions() {
