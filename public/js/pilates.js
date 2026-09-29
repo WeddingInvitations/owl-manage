@@ -549,27 +549,20 @@ export async function refreshPilatesMonthly(
   if (ui.pilatesMonthSelect) ui.pilatesMonthSelect.value = summaryMonth;
   if (ui.pilatesListMonthSelect) ui.pilatesListMonthSelect.value = listMonth;
 
-  const summaryPreviousMonth = getPreviousMonthKey(summaryMonth);
   const listPreviousMonth = getPreviousMonthKey(listMonth);
   const athletesPromise = getPilatesAthletes();
   const allMonthRecordsPromise = getAllPilatesAthleteMonths();
   const summaryMonthRecordsPromise = getPilatesAthleteMonthsForMonth(summaryMonth);
-  const summaryPreviousRecordsPromise = summaryPreviousMonth
-    ? getPilatesAthleteMonthsForMonth(summaryPreviousMonth)
-    : Promise.resolve([]);
   const listMonthRecordsPromise = listMonth === summaryMonth
     ? summaryMonthRecordsPromise
     : getPilatesAthleteMonthsForMonth(listMonth);
-  const listPreviousRecordsPromise = listPreviousMonth === summaryPreviousMonth
-    ? summaryPreviousRecordsPromise
-    : listPreviousMonth
-      ? getPilatesAthleteMonthsForMonth(listPreviousMonth)
-      : Promise.resolve([]);
-  const [athletes, allMonthRecords, summaryMonthRecords, summaryPreviousRecords, listMonthRecords, listPreviousRecords] = await Promise.all([
+  const listPreviousRecordsPromise = listPreviousMonth
+    ? getPilatesAthleteMonthsForMonth(listPreviousMonth)
+    : Promise.resolve([]);
+  const [athletes, allMonthRecords, summaryMonthRecords, listMonthRecords, listPreviousRecords] = await Promise.all([
     athletesPromise,
     allMonthRecordsPromise,
     summaryMonthRecordsPromise,
-    summaryPreviousRecordsPromise,
     listMonthRecordsPromise,
     listPreviousRecordsPromise,
   ]);
@@ -587,8 +580,6 @@ export async function refreshPilatesMonthly(
 
   const summaryMonthMap = new Map();
   summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
-  const summaryPreviousMap = new Map();
-  summaryPreviousRecords.forEach((record) => summaryPreviousMap.set(record.athleteId, record));
   const listMonthMap = new Map();
   listMonthRecords.forEach((record) => listMonthMap.set(record.athleteId, record));
   const listPreviousMap = new Map();
@@ -604,25 +595,22 @@ export async function refreshPilatesMonthly(
   athleteHistory.forEach((records) => records.sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0)));
 
   const activeNow = new Set();
-  const activePrev = new Set();
-  let totalIncome = 0;
+  const newAthletes = new Set();
+  const familyAthletes = new Set();
   athletes.forEach((athlete) => {
     const current = summaryMonthMap.get(athlete.id);
-    const previous = summaryPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
     const lastPaid = history.find((record) => record.paid);
-    const tariff = getPilatesTariffFromRecords(current, previous, lastPaid);
+    const latestRecord = history[0];
+    const tariff = getPilatesTariffFromRecords(current, latestRecord, lastPaid);
     if (!familyTariffs.has(tariff)) return;
-    const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
-    const plan = pilatesTariffPlanMap.get(tariff) || pilatesTariffPlanMap.get("Reformer 4") || fallbackPlan;
+    familyAthletes.add(athlete.id);
     const paid = Boolean(current?.paid);
     if (paid) {
       activeNow.add(athlete.id);
-      const divisor = current?.durationMonths || plan.durationMonths || 1;
-      totalIncome += Number((current?.price ?? plan.priceTotal) || 0) / divisor;
-    }
-    if (previous?.paid) {
-      activePrev.add(athlete.id);
+      if (!history.some((record) => record.month < summaryMonth)) {
+        newAthletes.add(athlete.id);
+      }
     }
   });
 
@@ -636,13 +624,10 @@ export async function refreshPilatesMonthly(
   filterAndRenderPilatesList(pilatesSearchTerm, pilatesPaidFilter);
 
   const totalActive = activeNow.size;
-  const averageTariff = totalActive > 0 ? totalIncome / totalActive : 0;
-  const totalNew = Array.from(activeNow).filter((id) => !activePrev.has(id)).length;
-  const totalDrop = Array.from(activePrev).filter((id) => !activeNow.has(id)).length;
+  const totalNew = newAthletes.size;
   if (ui.pilatesSummaryActive) ui.pilatesSummaryActive.textContent = String(totalActive);
-  if (ui.pilatesSummaryAverage) ui.pilatesSummaryAverage.textContent = formatCurrency(averageTariff);
   if (ui.pilatesSummaryNew) ui.pilatesSummaryNew.textContent = String(totalNew);
-  if (ui.pilatesSummaryDrop) ui.pilatesSummaryDrop.textContent = String(totalDrop);
+  if (ui.pilatesSummaryTotal) ui.pilatesSummaryTotal.textContent = String(familyAthletes.size);
 }
 
 export { pilatesTariffPlanMap };

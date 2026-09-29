@@ -1791,7 +1791,25 @@ function filterAndRenderAcroKidsList() {
   if (ui.acroKidsListCount) {
     ui.acroKidsListCount.textContent = `Mostrando ${visibleCount} atletas`;
   }
+  updateAcroKidsActiveSummaryFromList();
   updatePendingSaveButtons();
+}
+
+function updateAcroKidsActiveSummaryFromList() {
+  if (!acroKidsListCacheData || !ui.acroKidsSummaryActive) return;
+  const { allAthletes, listMonthMap } = acroKidsListCacheData;
+  const paidByAthlete = new Map(
+    allAthletes.map((athlete) => [athlete.id, isPaidValue(listMonthMap.get(athlete.id)?.paid)])
+  );
+  ui.acroKidsList?.querySelectorAll("tr[data-id]").forEach((row) => {
+    const paidSelect = row.querySelector('[data-role="acroKids-paid"]');
+    if (paidSelect) {
+      paidByAthlete.set(row.dataset.id, paidSelect.value === "SI");
+    }
+  });
+  ui.acroKidsSummaryActive.textContent = String(
+    Array.from(paidByAthlete.values()).filter(Boolean).length
+  );
 }
 
 async function refreshAcroMonthly() {
@@ -1911,6 +1929,12 @@ async function refreshAcroKidsMonthly() {
     renderAcroKidsListMonthOptions();
   }
 
+  const selectedMonth = selectedAcroKidsListMonth || selectedAcroKidsMonth;
+  selectedAcroKidsMonth = selectedMonth;
+  selectedAcroKidsListMonth = selectedMonth;
+  if (ui.acroKidsMonthSelect) ui.acroKidsMonthSelect.value = selectedMonth;
+  if (ui.acroKidsListMonthSelect) ui.acroKidsListMonthSelect.value = selectedMonth;
+
   const listPreviousMonth = getPreviousMonthKey(selectedAcroKidsListMonth);
   const athletesPromise = getAcroKidsAthletes();
   const allMonthRecordsPromise = getAllAcroKidsAthleteMonths();
@@ -2006,6 +2030,7 @@ async function refreshAcroKidsMonthly() {
   if (ui.acroKidsSummaryActive) ui.acroKidsSummaryActive.textContent = String(totalActive);
   if (ui.acroKidsSummaryNew) ui.acroKidsSummaryNew.textContent = String(totalNew);
   if (ui.acroKidsSummaryTotal) ui.acroKidsSummaryTotal.textContent = String(athletes.length);
+  updateAcroKidsActiveSummaryFromList();
 }
 
 function acroKidsCalendarFormatDateKey(date) {
@@ -7538,6 +7563,7 @@ on(ui.acroKidsList, "change", async (event) => {
   markDirtyRow(row);
   if (target.matches('[data-role="acroKids-paid"]')) {
     setStatusBadge(target, target.value === "SI");
+    updateAcroKidsActiveSummaryFromList();
   }
 });
 
