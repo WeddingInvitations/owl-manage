@@ -458,6 +458,12 @@ const on = (element, eventName, handler) => {
   element.addEventListener(eventName, handler);
 };
 
+function isPaidValue(value) {
+  if (value === true || value === 1) return true;
+  if (typeof value !== "string") return false;
+  return ["SI", "SÍ", "TRUE", "1", "YES"].includes(value.trim().toUpperCase());
+}
+
 /**
  * Debounce: retrasa la ejecución hasta que el usuario deje de escribir.
  * Imprescindible en móviles/tablets donde cada tecla dispararía llamadas a Firestore.
@@ -1075,7 +1081,23 @@ async function refreshAthleteMonthly() {
   if (!selectedAthleteListMonth) {
     renderAthleteListMonthOptions();
   }
-  const athletes = await getAthletes();
+  const listPreviousMonth = getPreviousMonthKey(selectedAthleteListMonth);
+  const athletesPromise = getAthletes();
+  const allMonthRecordsPromise = getAllAthleteMonths();
+  const summaryMonthRecordsPromise = getAthleteMonthsForMonth(selectedAthleteMonth);
+  const listMonthRecordsPromise = selectedAthleteListMonth === selectedAthleteMonth
+    ? summaryMonthRecordsPromise
+    : getAthleteMonthsForMonth(selectedAthleteListMonth);
+  const listPreviousRecordsPromise = listPreviousMonth
+    ? getAthleteMonthsForMonth(listPreviousMonth)
+    : Promise.resolve([]);
+  const [athletes, allMonthRecords, summaryMonthRecords, listMonthRecords, listPreviousRecords] = await Promise.all([
+    athletesPromise,
+    allMonthRecordsPromise,
+    summaryMonthRecordsPromise,
+    listMonthRecordsPromise,
+    listPreviousRecordsPromise,
+  ]);
   currentAthletes = athletes; // Store globally for event listeners
   if (ui.athleteNameList) {
     const names = Array.from(
@@ -1088,15 +1110,6 @@ async function refreshAthleteMonthly() {
       ui.athleteNameList.appendChild(option);
     });
   }
-  const allMonthRecords = await getAllAthleteMonths();
-  const summaryMonthRecords = await getAthleteMonthsForMonth(selectedAthleteMonth);
-
-  const listMonthRecords = await getAthleteMonthsForMonth(selectedAthleteListMonth);
-  const listPreviousMonth = getPreviousMonthKey(selectedAthleteListMonth);
-  const listPreviousRecords = listPreviousMonth
-    ? await getAthleteMonthsForMonth(listPreviousMonth)
-    : [];
-
   const summaryMonthMap = new Map();
   summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
 
@@ -1662,7 +1675,7 @@ function filterAndRenderAcroKidsList() {
     const current = listMonthMap.get(athlete.id);
     const previous = listPreviousMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
-    const lastPaid = history.find((record) => record.paid);
+    const lastPaid = history.find((record) => isPaidValue(record.paid));
     const tariff = current?.tariff || previous?.tariff || lastPaid?.tariff || "4/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
     const plan = acroKidsTariffPlanMap.get(tariff) || acroKidsTariffPlanMap.get("4/mes") || fallbackPlan;
@@ -1674,7 +1687,7 @@ function filterAndRenderAcroKidsList() {
     else if (discountReason === 'Funcionario') displayDiscount = 10;
     else if (discountReason === 'Mañanas') displayDiscount = 10;
     else if (discountReason === 'Ninguno') displayDiscount = 0;
-    const paid = Boolean(current?.paid);
+    const paid = isPaidValue(current?.paid);
     const paymentMethod = current?.paymentMethod || previous?.paymentMethod || lastPaid?.paymentMethod || "Efectivo";
     if (acroKidsPaidFilter === "SI" && !paid) return;
     if (acroKidsPaidFilter === "NO" && paid) return;
@@ -1791,7 +1804,23 @@ async function refreshAcroMonthly() {
     renderAcroListMonthOptions();
   }
 
-  const athletes = await getAcroAthletes();
+  const listPreviousMonth = getPreviousMonthKey(selectedAcroListMonth);
+  const athletesPromise = getAcroAthletes();
+  const allMonthRecordsPromise = getAllAcroAthleteMonths();
+  const summaryMonthRecordsPromise = getAcroAthleteMonthsForMonth(selectedAcroMonth);
+  const listMonthRecordsPromise = selectedAcroListMonth === selectedAcroMonth
+    ? summaryMonthRecordsPromise
+    : getAcroAthleteMonthsForMonth(selectedAcroListMonth);
+  const listPreviousRecordsPromise = listPreviousMonth
+    ? getAcroAthleteMonthsForMonth(listPreviousMonth)
+    : Promise.resolve([]);
+  const [athletes, allMonthRecords, summaryMonthRecords, listMonthRecords, listPreviousRecords] = await Promise.all([
+    athletesPromise,
+    allMonthRecordsPromise,
+    summaryMonthRecordsPromise,
+    listMonthRecordsPromise,
+    listPreviousRecordsPromise,
+  ]);
   currentAcroAthletes = athletes; // Store globally for event listeners
 
   // Populate name datalists
@@ -1806,14 +1835,6 @@ async function refreshAcroMonthly() {
       ui.acroNameList.appendChild(option);
     });
   }
-
-  const allMonthRecords = await getAllAcroAthleteMonths();
-  const summaryMonthRecords = await getAcroAthleteMonthsForMonth(selectedAcroMonth);
-  const listMonthRecords = await getAcroAthleteMonthsForMonth(selectedAcroListMonth);
-  const listPreviousMonth = getPreviousMonthKey(selectedAcroListMonth);
-  const listPreviousRecords = listPreviousMonth
-    ? await getAcroAthleteMonthsForMonth(listPreviousMonth)
-    : [];
 
   const summaryMonthMap = new Map();
   summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
@@ -1890,7 +1911,23 @@ async function refreshAcroKidsMonthly() {
     renderAcroKidsListMonthOptions();
   }
 
-  const athletes = await getAcroKidsAthletes();
+  const listPreviousMonth = getPreviousMonthKey(selectedAcroKidsListMonth);
+  const athletesPromise = getAcroKidsAthletes();
+  const allMonthRecordsPromise = getAllAcroKidsAthleteMonths();
+  const summaryMonthRecordsPromise = getAcroKidsAthleteMonthsForMonth(selectedAcroKidsMonth);
+  const listMonthRecordsPromise = selectedAcroKidsListMonth === selectedAcroKidsMonth
+    ? summaryMonthRecordsPromise
+    : getAcroKidsAthleteMonthsForMonth(selectedAcroKidsListMonth);
+  const listPreviousRecordsPromise = listPreviousMonth
+    ? getAcroKidsAthleteMonthsForMonth(listPreviousMonth)
+    : Promise.resolve([]);
+  const [athletes, allMonthRecords, summaryMonthRecords, listMonthRecords, listPreviousRecords] = await Promise.all([
+    athletesPromise,
+    allMonthRecordsPromise,
+    summaryMonthRecordsPromise,
+    listMonthRecordsPromise,
+    listPreviousRecordsPromise,
+  ]);
   currentAcroKidsAthletes = athletes; // Store globally for event listeners
 
   // Populate name datalists
@@ -1905,14 +1942,6 @@ async function refreshAcroKidsMonthly() {
       ui.acroKidsNameList.appendChild(option);
     });
   }
-
-  const allMonthRecords = await getAllAcroKidsAthleteMonths();
-  const summaryMonthRecords = await getAcroKidsAthleteMonthsForMonth(selectedAcroKidsMonth);
-  const listMonthRecords = await getAcroKidsAthleteMonthsForMonth(selectedAcroKidsListMonth);
-  const listPreviousMonth = getPreviousMonthKey(selectedAcroKidsListMonth);
-  const listPreviousRecords = listPreviousMonth
-    ? await getAcroKidsAthleteMonthsForMonth(listPreviousMonth)
-    : [];
 
   const summaryMonthMap = new Map();
   summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
@@ -1938,7 +1967,7 @@ async function refreshAcroKidsMonthly() {
   athletes.forEach((athlete) => {
     const current = summaryMonthMap.get(athlete.id);
     const history = athleteHistory.get(athlete.id) || [];
-    const lastPaid = history.find((record) => record.paid);
+    const lastPaid = history.find((record) => isPaidValue(record.paid));
 
     const tariff = current?.tariff || lastPaid?.tariff || "4/mes";
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
@@ -1950,7 +1979,7 @@ async function refreshAcroKidsMonthly() {
     else if (discountReason === 'Funcionario') discount = 10;
     else if (discountReason === 'Mañanas') discount = 10;
     const price = basePrice * (1 - discount / 100);
-    const paid = Boolean(current?.paid);
+    const paid = isPaidValue(current?.paid);
     const active = paid;
 
     if (paid) {
@@ -2753,7 +2782,23 @@ async function refreshHalteMonthly() {
     renderHalteListMonthOptions();
   }
 
-  const athletes = await getHalteAthletes();
+  const listPreviousMonth = getPreviousMonthKey(selectedHalteListMonth);
+  const athletesPromise = getHalteAthletes();
+  const allMonthRecordsPromise = getAllHalteAthleteMonths();
+  const summaryMonthRecordsPromise = getHalteAthleteMonthsForMonth(selectedHalteMonth);
+  const listMonthRecordsPromise = selectedHalteListMonth === selectedHalteMonth
+    ? summaryMonthRecordsPromise
+    : getHalteAthleteMonthsForMonth(selectedHalteListMonth);
+  const listPreviousRecordsPromise = listPreviousMonth
+    ? getHalteAthleteMonthsForMonth(listPreviousMonth)
+    : Promise.resolve([]);
+  const [athletes, allMonthRecords, summaryMonthRecords, listMonthRecords, listPreviousRecords] = await Promise.all([
+    athletesPromise,
+    allMonthRecordsPromise,
+    summaryMonthRecordsPromise,
+    listMonthRecordsPromise,
+    listPreviousRecordsPromise,
+  ]);
   currentHalteAthletes = athletes; // Store globally for event listeners
 
   // Populate name datalists
@@ -2768,14 +2813,6 @@ async function refreshHalteMonthly() {
       ui.halteNameList.appendChild(option);
     });
   }
-
-  const allMonthRecords = await getAllHalteAthleteMonths();
-  const summaryMonthRecords = await getHalteAthleteMonthsForMonth(selectedHalteMonth);
-  const listMonthRecords = await getHalteAthleteMonthsForMonth(selectedHalteListMonth);
-  const listPreviousMonth = getPreviousMonthKey(selectedHalteListMonth);
-  const listPreviousRecords = listPreviousMonth
-    ? await getHalteAthleteMonthsForMonth(listPreviousMonth)
-    : [];
 
   const summaryMonthMap = new Map();
   summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
@@ -3178,10 +3215,12 @@ function filterAndRenderTelasList() {
 async function refreshTelasMonthly() {
   const monthKey = selectedTelasListMonth;
   if (!monthKey || !ui.telasList) return;
-  const allAthletes = await getTelasAthletes();
+  const [allAthletes, allMonthRecords, athleteMonths] = await Promise.all([
+    getTelasAthletes(),
+    getAllTelasAthleteMonths(),
+    getTelasAthleteMonthsForMonth(monthKey),
+  ]);
   currentTelasAthletes = allAthletes;
-  const allMonthRecords = await getAllTelasAthleteMonths();
-  const athleteMonths = await getTelasAthleteMonthsForMonth(monthKey);
   const athleteMonthsMap = new Map();
   for (const am of athleteMonths) {
     athleteMonthsMap.set(am.athleteId, am);
@@ -3405,10 +3444,12 @@ async function refreshSingleClassesMonthly() {
   const monthKey = selectedSingleClassesListMonth;
   if (!monthKey || !ui.singleClassesList) return;
   ui.singleClassesList.innerHTML = "";
-  const allAthletes = await getSingleClassesAthletes();
+  const [allAthletes, allMonthRecords, athleteMonths] = await Promise.all([
+    getSingleClassesAthletes(),
+    getAllSingleClassesAthleteMonths(),
+    getSingleClassesAthleteMonthsForMonth(monthKey),
+  ]);
   currentSingleClassesAthletes = allAthletes;
-  const allMonthRecords = await getAllSingleClassesAthleteMonths();
-  const athleteMonths = await getSingleClassesAthleteMonthsForMonth(monthKey);
   const athleteMonthsMap = new Map();
   for (const am of athleteMonths) {
     athleteMonthsMap.set(am.athleteId, am);
@@ -4250,10 +4291,14 @@ function initEmployeePaymentsListeners() {
 // Función para inicializar vista según sea necesario (lazy loading)
 async function initializeViewIfNeeded(viewId) {
   if (viewsInitialized[viewId]) return;
-  
+
+  const view = document.getElementById(viewId);
+  view?.classList.add("is-loading");
+  view?.setAttribute("aria-busy", "true");
   console.log(`Inicializando vista: ${viewId}`);
-  
-  switch(viewId) {
+
+  try {
+    switch(viewId) {
     case "summaryView":
       await refreshAll();
       viewsInitialized.summaryView = true;
@@ -4349,6 +4394,10 @@ async function initializeViewIfNeeded(viewId) {
       await initializeWodBuster();
       viewsInitialized.wodBusterView = true;
       break;
+    }
+  } finally {
+    view?.classList.remove("is-loading");
+    view?.removeAttribute("aria-busy");
   }
 }
 
@@ -7415,11 +7464,19 @@ on(ui.acroKidsCsvForm, "submit", async (event) => {
 
 on(ui.acroKidsMonthSelect, "change", (event) => {
   selectedAcroKidsMonth = event.target.value;
+  selectedAcroKidsListMonth = selectedAcroKidsMonth;
+  if (ui.acroKidsListMonthSelect) {
+    ui.acroKidsListMonthSelect.value = selectedAcroKidsMonth;
+  }
   refreshAcroKidsMonthly();
 });
 
 on(ui.acroKidsListMonthSelect, "change", (event) => {
   selectedAcroKidsListMonth = event.target.value;
+  selectedAcroKidsMonth = selectedAcroKidsListMonth;
+  if (ui.acroKidsMonthSelect) {
+    ui.acroKidsMonthSelect.value = selectedAcroKidsListMonth;
+  }
   refreshAcroKidsMonthly();
 });
 

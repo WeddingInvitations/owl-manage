@@ -549,7 +549,30 @@ export async function refreshPilatesMonthly(
   if (ui.pilatesMonthSelect) ui.pilatesMonthSelect.value = summaryMonth;
   if (ui.pilatesListMonthSelect) ui.pilatesListMonthSelect.value = listMonth;
 
-  const athletes = await getPilatesAthletes();
+  const summaryPreviousMonth = getPreviousMonthKey(summaryMonth);
+  const listPreviousMonth = getPreviousMonthKey(listMonth);
+  const athletesPromise = getPilatesAthletes();
+  const allMonthRecordsPromise = getAllPilatesAthleteMonths();
+  const summaryMonthRecordsPromise = getPilatesAthleteMonthsForMonth(summaryMonth);
+  const summaryPreviousRecordsPromise = summaryPreviousMonth
+    ? getPilatesAthleteMonthsForMonth(summaryPreviousMonth)
+    : Promise.resolve([]);
+  const listMonthRecordsPromise = listMonth === summaryMonth
+    ? summaryMonthRecordsPromise
+    : getPilatesAthleteMonthsForMonth(listMonth);
+  const listPreviousRecordsPromise = listPreviousMonth === summaryPreviousMonth
+    ? summaryPreviousRecordsPromise
+    : listPreviousMonth
+      ? getPilatesAthleteMonthsForMonth(listPreviousMonth)
+      : Promise.resolve([]);
+  const [athletes, allMonthRecords, summaryMonthRecords, summaryPreviousRecords, listMonthRecords, listPreviousRecords] = await Promise.all([
+    athletesPromise,
+    allMonthRecordsPromise,
+    summaryMonthRecordsPromise,
+    summaryPreviousRecordsPromise,
+    listMonthRecordsPromise,
+    listPreviousRecordsPromise,
+  ]);
   const familyConfig = getPilatesFamilyConfig();
   const familyTariffs = new Set(familyConfig.tariffs);
   if (ui.pilatesNameList) {
@@ -561,14 +584,6 @@ export async function refreshPilatesMonthly(
       ui.pilatesNameList.appendChild(option);
     });
   }
-
-  const allMonthRecords = await getAllPilatesAthleteMonths();
-  const summaryMonthRecords = await getPilatesAthleteMonthsForMonth(summaryMonth);
-  const summaryPreviousMonth = getPreviousMonthKey(summaryMonth);
-  const summaryPreviousRecords = summaryPreviousMonth ? await getPilatesAthleteMonthsForMonth(summaryPreviousMonth) : [];
-  const listMonthRecords = await getPilatesAthleteMonthsForMonth(listMonth);
-  const listPreviousMonth = getPreviousMonthKey(listMonth);
-  const listPreviousRecords = listPreviousMonth ? await getPilatesAthleteMonthsForMonth(listPreviousMonth) : [];
 
   const summaryMonthMap = new Map();
   summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));

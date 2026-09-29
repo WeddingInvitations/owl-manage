@@ -374,6 +374,29 @@ div, span, p, li, td, th, label, button, input, select, textarea {
 .view {
   display: grid;
   gap: 16px;
+  position: relative;
+}
+
+.view.is-loading {
+  min-height: 240px;
+  pointer-events: none;
+}
+
+.view.is-loading > * {
+  opacity: 0;
+}
+
+.view.is-loading::after {
+  content: "Cargando datos…";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--bg);
 }
 
 .view > .btn {
