@@ -520,6 +520,10 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
   }
 }
 
+export function renderFilteredPilatesList(searchTerm, paidFilter) {
+  filterAndRenderPilatesList(searchTerm, paidFilter);
+}
+
 export function getActivePilatesFamilyAthletes() {
   if (!pilatesListCacheData) return [];
   const { allAthletes, listMonthMap, listPreviousMap, athleteHistory } = pilatesListCacheData;

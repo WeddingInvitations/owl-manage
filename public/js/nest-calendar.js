@@ -1,7 +1,7 @@
 import { auth } from "./firebase.js";
 import { showToast } from "./toast.js";
 import { ui, setActiveView } from "./ui.js";
-import { getActivePilatesFamilyAthletes, getPilatesFamily } from "./pilates.js";
+import { getActivePilatesFamilyAthletes, getPilatesFamily } from "./pilates.js?v=20260930a";
 import {
   getNestCalendarEntry,
   updateNestCalendarEntry,

@@ -39,7 +39,7 @@ import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { initializeCaja, initializeInventory } from "./caja.js?v=20260622a";
 import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js";
-import { initializeNestCalendar } from "./nest-calendar.js?v=20260930d";
+import { initializeNestCalendar } from "./nest-calendar.js?v=20260930e";
 import {
   initializePilates,
   refreshPilatesMonthly,
@@ -49,7 +49,8 @@ import {
   renderPilatesPaymentMonthOptions,
   renderPilatesCsvMonthOptions,
   importPilatesAthletesFromCsv,
-} from "./pilates.js";
+  renderFilteredPilatesList,
+} from "./pilates.js?v=20260930a";
 import {
   addPayment,
   addExpense,
@@ -8020,12 +8021,12 @@ on(ui.pilatesListMonthSelect, "change", (event) => {
 
 on(ui.pilatesPaidFilter, "change", (event) => {
   pilatesPaidFilter = event.target.value;
-  refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
+  renderFilteredPilatesList(pilatesSearchTerm, pilatesPaidFilter);
 });
 
 on(ui.pilatesSearch, "input", (event) => {
   pilatesSearchTerm = event.target.value;
-  refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
+  renderFilteredPilatesList(pilatesSearchTerm, pilatesPaidFilter);
 });
 
 if (ui.pilatesView) {

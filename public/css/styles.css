@@ -1837,6 +1837,22 @@ span.athlete-status-unpaid,
   margin-left: 0;
 }
 
+#pilatesView .athlete-list-header {
+  align-items: stretch;
+}
+
+#pilatesView .athlete-filter-toolbar {
+  min-height: 44px;
+}
+
+#pilatesView .athlete-filter-toolbar > input,
+#pilatesView .athlete-filter-toolbar > select,
+#pilatesView .athlete-filter-toolbar > [data-more-filters-button],
+#pilatesView .athlete-list-actions .btn {
+  height: 44px;
+  min-height: 44px;
+}
+
 @media (min-width: 768px) and (max-width: 1180px) {
   .athlete-filter-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2299,7 +2315,7 @@ span.athlete-status-unpaid,
   .athlete-table-mobile {
     display: table !important;
     width: 100%;
-    table-layout: auto;
+    table-layout: fixed;
   }
 
   .athlete-table-mobile thead {
@@ -2330,54 +2346,53 @@ span.athlete-status-unpaid,
   /* Anchos específicos para cada columna */
   .athlete-table-mobile th:nth-child(1),
   .athlete-table-mobile td:nth-child(1) {
-    width: 16%; /* Nombre */
+    width: 18%; /* Nombre */
   }
 
   .athlete-table-mobile th:nth-child(2),
   .athlete-table-mobile td:nth-child(2) {
-    width: auto; /* Tarifa */
-    min-width: 200px;
+    width: 21%; /* Tarifa */
   }
 
   .athlete-table-mobile td:nth-child(2) select {
-    min-width: 160px;
+    min-width: 0;
     white-space: nowrap;
   }
 
   .athlete-table-mobile th:nth-child(3),
   .athlete-table-mobile td:nth-child(3) {
-    width: 8%; /* Precio */
+    width: 9%; /* Precio */
     text-align: right;
   }
 
   .athlete-table-mobile th:nth-child(4),
   .athlete-table-mobile td:nth-child(4) {
-    width: 8%; /* Descuento */
+    width: 9%; /* Descuento */
     text-align: center;
   }
 
   .athlete-table-mobile th:nth-child(5),
   .athlete-table-mobile td:nth-child(5) {
-    width: auto; /* Motivo */
-    min-width: 180px;
+    width: 14%; /* Motivo */
+    min-width: 0;
   }
 
   .athlete-table-mobile th:nth-child(6),
   .athlete-table-mobile td:nth-child(6) {
-    width: 10%; /* Precio Final */
+    width: 9%; /* Precio Final */
     text-align: right;
   }
 
   .athlete-table-mobile th:nth-child(7),
   .athlete-table-mobile td:nth-child(7) {
-    width: 10%; /* Pagado */
+    width: 9%; /* Pagado */
     display: table-cell;
     text-align: center;
   }
 
   .athlete-table-mobile th:nth-child(8),
   .athlete-table-mobile td:nth-child(8) {
-    width: 16%; /* Forma de pago */
+    width: 11%; /* Forma de pago */
     text-align: center;
   }
 
@@ -2386,6 +2401,11 @@ span.athlete-status-unpaid,
     max-width: 100%;
     width: 100%;
     min-width: 0;
+  }
+
+  .athlete-table-mobile td,
+  .athlete-table-mobile th {
+    overflow: hidden;
   }
 }
 
