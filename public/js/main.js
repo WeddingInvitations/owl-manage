@@ -8184,6 +8184,15 @@ on(ui.athletePaidFilter, "change", (event) => {
   filterAndRenderAthleteList();
 });
 
+document.querySelectorAll("[data-more-filters-button]").forEach((button) => {
+  on(button, "click", () => {
+    const isExpanded = button.getAttribute("aria-expanded") === "true";
+    const panel = document.getElementById(button.getAttribute("aria-controls"));
+    button.setAttribute("aria-expanded", String(!isExpanded));
+    panel?.classList.toggle("hidden", isExpanded);
+  });
+});
+
 // Acrobacias - Month filters  
 on(ui.acroMonthSelect, "change", async (event) => {
   selectedAcroMonth = event.target.value;

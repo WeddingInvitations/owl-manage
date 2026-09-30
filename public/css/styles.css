@@ -1776,102 +1776,108 @@ span.athlete-status-unpaid,
   gap: 12px;
 }
 
-#athletesView .athlete-filter-toolbar {
-  display: flex;
-  flex-wrap: wrap;
+.athlete-filter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(140px, 180px) max-content max-content;
   align-items: center;
   gap: 10px;
   width: 100%;
 }
 
-#athletesView .athlete-filter-toolbar > input,
-#athletesView .athlete-filter-toolbar > select {
+.athlete-filter-toolbar > input,
+.athlete-filter-toolbar > select {
   min-width: 180px;
 }
 
-#athletesView .athlete-more-filters {
-  position: relative;
+.athlete-filter-toolbar [data-more-filters-button][aria-expanded="true"] {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--hover-bg);
 }
 
-#athletesView .athlete-more-filters > summary {
-  list-style: none;
-  user-select: none;
-}
-
-#athletesView .athlete-more-filters > summary::-webkit-details-marker {
-  display: none;
-}
-
-#athletesView .athlete-more-filters > summary::after {
-  content: "▾";
-  font-size: 12px;
-}
-
-#athletesView .athlete-more-filters[open] > summary::after {
-  content: "▴";
-}
-
-#athletesView .athlete-more-filters-panel {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 8px);
-  right: 0;
+.athlete-filter-toolbar .athlete-more-filters-panel {
+  grid-column: 1 / -1;
+  grid-row: 2;
   display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 280px));
   gap: 10px;
-  width: min(280px, calc(100vw - 32px));
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--card);
-  box-shadow: 0 10px 24px var(--shadow);
+  padding-top: 2px;
 }
 
-#athletesView .athlete-more-filters:not([open]) > .athlete-more-filters-panel {
-  display: none;
+.athlete-filter-toolbar .athlete-more-filters-panel select {
+  min-width: 180px;
 }
 
-#athletesView .athlete-more-filters-panel select {
-  width: 100%;
-}
-
-#athletesView .athlete-list-actions {
+.athlete-filter-toolbar .athlete-list-actions {
   display: flex;
   gap: 10px;
-  margin-left: auto;
+  margin-left: 0;
+}
+
+@media (min-width: 768px) and (max-width: 1180px) {
+  .athlete-filter-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .athlete-filter-toolbar > input,
+  .athlete-filter-toolbar > select {
+    grid-row: 1;
+  }
+
+  .athlete-filter-toolbar > [data-more-filters-button],
+  .athlete-filter-toolbar .athlete-list-actions {
+    grid-row: 2;
+  }
+
+  .athlete-filter-toolbar .athlete-more-filters-panel {
+    grid-row: 3;
+  }
+
+  .athlete-filter-toolbar .athlete-list-actions {
+    justify-self: end;
+  }
 }
 
 @media (max-width: 767px) {
-  #athletesView .athlete-filter-toolbar {
+  .athlete-filter-toolbar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  #athletesView .athlete-filter-toolbar > input,
-  #athletesView .athlete-filter-toolbar > select,
-  #athletesView .athlete-more-filters,
-  #athletesView .athlete-list-actions {
+  .athlete-filter-toolbar > input,
+  .athlete-filter-toolbar > select,
+  .athlete-filter-toolbar > [data-more-filters-button],
+  .athlete-filter-toolbar .athlete-more-filters-panel,
+  .athlete-filter-toolbar .athlete-list-actions {
     width: 100%;
     min-width: 0;
   }
 
-  #athletesView .athlete-more-filters,
-  #athletesView .athlete-list-actions {
+  .athlete-filter-toolbar > [data-more-filters-button],
+  .athlete-filter-toolbar .athlete-more-filters-panel,
+  .athlete-filter-toolbar .athlete-list-actions {
     grid-column: 1 / -1;
   }
 
-  #athletesView .athlete-more-filters > summary {
+  .athlete-filter-toolbar > input,
+  .athlete-filter-toolbar > select {
+    grid-row: 1;
+  }
+
+  .athlete-filter-toolbar > [data-more-filters-button] {
+    grid-row: 2;
     width: 100%;
     justify-content: center;
   }
 
-  #athletesView .athlete-more-filters-panel {
-    position: static;
-    width: 100%;
-    margin-top: 8px;
-    box-shadow: none;
+  .athlete-filter-toolbar .athlete-more-filters-panel {
+    grid-row: 4;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  #athletesView .athlete-list-actions {
+  .athlete-filter-toolbar .athlete-list-actions {
+    grid-row: 3;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     margin-left: 0;

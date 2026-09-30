@@ -231,6 +231,8 @@ export const ui = {
   athleteSummaryNew: $("athleteSummaryNew"),
   athleteSummaryTotal: $("athleteSummaryTotal"),
   athleteSearch: $("athleteSearch"),
+  athleteMoreFiltersBtn: $("athleteMoreFiltersBtn"),
+  athleteMoreFiltersPanel: $("athleteMoreFiltersPanel"),
   athleteSearchList: $("athleteSearchList"),
   athleteTariffFilter: $("athleteTariffFilter"),
   athletePaidFilter: $("athletePaidFilter"),

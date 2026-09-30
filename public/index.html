@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" href="css/styles.css?v=20260930b" />
+    <link rel="stylesheet" href="css/styles.css?v=20260930f" />
     <link rel="stylesheet" href="css/fullcalendar-dark-override.css?v=20250225" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
 
@@ -1331,15 +1331,15 @@
                   <option value="SI">Pagado</option>
                   <option value="NO">No pagado</option>
                 </select>
-                <details class="athlete-more-filters">
-                  <summary class="btn ghost small">Más filtros</summary>
-                  <div class="athlete-more-filters-panel">
-                    <select id="athleteListMonthSelect" aria-label="Filtrar por mes"></select>
-                    <select id="athleteTariffFilter" aria-label="Filtrar por tarifa">
-                      <option value="ALL">Todas las tarifas</option>
-                    </select>
-                  </div>
-                </details>
+                  <button id="athleteMoreFiltersBtn" class="btn ghost small" type="button" data-more-filters-button aria-expanded="false" aria-controls="athleteMoreFiltersPanel">
+                  Más filtros
+                </button>
+                <div id="athleteMoreFiltersPanel" class="athlete-more-filters-panel hidden">
+                  <select id="athleteListMonthSelect" aria-label="Filtrar por mes"></select>
+                  <select id="athleteTariffFilter" aria-label="Filtrar por tarifa">
+                    <option value="ALL">Todas las tarifas</option>
+                  </select>
+                </div>
                 <div class="athlete-list-actions">
                   <button id="athleteSaveAllBtn" class="btn" type="button" disabled>
                     Guardar cambios (0)
@@ -1495,23 +1495,26 @@
           <div class="card">
             <div class="detail-header athlete-list-header">
               <h3>Listado mensual</h3>
-              <div class="filter-row">
-                <select id="acroListMonthSelect"></select>
+              <div class="athlete-filter-toolbar">
                 <input
                   id="acroSearch"
                   type="text"
                   inputmode="search"
                   autocomplete="off"
-                  placeholder="Buscar..."
+                  placeholder="Buscar por nombre..."
                 />
                 <select id="acroPaidFilter">
                   <option value="ALL">Todos</option>
                   <option value="SI">Pagado</option>
                   <option value="NO">No pagado</option>
                 </select>
-                <button id="acroSaveAllBtn" class="btn" type="button" disabled>
-                  Guardar cambios (0)
-                </button>
+                <button class="btn ghost small" type="button" data-more-filters-button aria-expanded="false" aria-controls="acroMoreFiltersPanel">Más filtros</button>
+                <div id="acroMoreFiltersPanel" class="athlete-more-filters-panel hidden">
+                  <select id="acroListMonthSelect" aria-label="Filtrar por mes"></select>
+                </div>
+                <div class="athlete-list-actions">
+                  <button id="acroSaveAllBtn" class="btn" type="button" disabled>Guardar cambios (0)</button>
+                </div>
               </div>
             </div>
             <datalist id="acroSearchList"></datalist>
@@ -1660,23 +1663,26 @@
           <div class="card">
             <div class="detail-header athlete-list-header">
               <h3>Listado mensual</h3>
-              <div class="filter-row">
-                <select id="acroKidsListMonthSelect"></select>
+              <div class="athlete-filter-toolbar">
                 <input
                   id="acroKidsSearch"
                   type="text"
                   inputmode="search"
                   autocomplete="off"
-                  placeholder="Buscar..."
+                  placeholder="Buscar por nombre..."
                 />
                 <select id="acroKidsPaidFilter">
                   <option value="ALL">Todos</option>
                   <option value="SI">Pagado</option>
                   <option value="NO">No pagado</option>
                 </select>
-                <button id="acroKidsSaveAllBtn" class="btn" type="button" disabled>
-                  Guardar cambios (0)
-                </button>
+                <button class="btn ghost small" type="button" data-more-filters-button aria-expanded="false" aria-controls="acroKidsMoreFiltersPanel">Más filtros</button>
+                <div id="acroKidsMoreFiltersPanel" class="athlete-more-filters-panel hidden">
+                  <select id="acroKidsListMonthSelect" aria-label="Filtrar por mes"></select>
+                </div>
+                <div class="athlete-list-actions">
+                  <button id="acroKidsSaveAllBtn" class="btn" type="button" disabled>Guardar cambios (0)</button>
+                </div>
               </div>
             </div>
             <datalist id="acroKidsSearchList"></datalist>
@@ -1917,23 +1923,26 @@
           <div class="card">
             <div class="detail-header athlete-list-header">
               <h3>Listado mensual</h3>
-              <div class="filter-row">
-                <select id="halteListMonthSelect"></select>
+              <div class="athlete-filter-toolbar">
                 <input
                   id="halteSearch"
                   type="text"
                   inputmode="search"
                   autocomplete="off"
-                  placeholder="Buscar..."
+                  placeholder="Buscar por nombre..."
                 />
                 <select id="haltePaidFilter">
                   <option value="ALL">Todos</option>
                   <option value="SI">Pagado</option>
                   <option value="NO">No pagado</option>
                 </select>
-                <button id="halteSaveAllBtn" class="btn" type="button" disabled>
-                  Guardar cambios (0)
-                </button>
+                <button class="btn ghost small" type="button" data-more-filters-button aria-expanded="false" aria-controls="halteMoreFiltersPanel">Más filtros</button>
+                <div id="halteMoreFiltersPanel" class="athlete-more-filters-panel hidden">
+                  <select id="halteListMonthSelect" aria-label="Filtrar por mes"></select>
+                </div>
+                <div class="athlete-list-actions">
+                  <button id="halteSaveAllBtn" class="btn" type="button" disabled>Guardar cambios (0)</button>
+                </div>
               </div>
             </div>
             <datalist id="halteSearchList"></datalist>
@@ -2081,23 +2090,26 @@
           <div class="card">
             <div class="detail-header athlete-list-header">
               <h3>Listado mensual</h3>
-              <div class="filter-row">
-                <select id="telasListMonthSelect"></select>
+              <div class="athlete-filter-toolbar">
                 <input
                   id="telasSearch"
                   type="text"
                   inputmode="search"
                   autocomplete="off"
-                  placeholder="Buscar..."
+                  placeholder="Buscar por nombre..."
                 />
                 <select id="telasPaidFilter">
                   <option value="ALL">Todos</option>
                   <option value="SI">Pagado</option>
                   <option value="NO">No pagado</option>
                 </select>
-                <button id="telasSaveAllBtn" class="btn" type="button" disabled>
-                  Guardar cambios (0)
-                </button>
+                <button class="btn ghost small" type="button" data-more-filters-button aria-expanded="false" aria-controls="telasMoreFiltersPanel">Más filtros</button>
+                <div id="telasMoreFiltersPanel" class="athlete-more-filters-panel hidden">
+                  <select id="telasListMonthSelect" aria-label="Filtrar por mes"></select>
+                </div>
+                <div class="athlete-list-actions">
+                  <button id="telasSaveAllBtn" class="btn" type="button" disabled>Guardar cambios (0)</button>
+                </div>
               </div>
             </div>
             <datalist id="telasSearchList"></datalist>
@@ -2250,23 +2262,26 @@
           <div class="card">
             <div class="detail-header athlete-list-header">
               <h3>Listado mensual</h3>
-              <div class="filter-row">
-                <select id="singleClassesListMonthSelect"></select>
+              <div class="athlete-filter-toolbar">
                 <input
                   id="singleClassesSearch"
                   type="text"
                   inputmode="search"
                   autocomplete="off"
-                  placeholder="Buscar..."
+                  placeholder="Buscar por nombre..."
                 />
                 <select id="singleClassesPaidFilter">
                   <option value="ALL">Todos</option>
                   <option value="PAID">Pagado</option>
                   <option value="UNPAID">No pagado</option>
                 </select>
-                <button id="singleClassesSaveAllBtn" class="btn" type="button" disabled>
-                  Guardar cambios (0)
-                </button>
+                <button class="btn ghost small" type="button" data-more-filters-button aria-expanded="false" aria-controls="singleClassesMoreFiltersPanel">Más filtros</button>
+                <div id="singleClassesMoreFiltersPanel" class="athlete-more-filters-panel hidden">
+                  <select id="singleClassesListMonthSelect" aria-label="Filtrar por mes"></select>
+                </div>
+                <div class="athlete-list-actions">
+                  <button id="singleClassesSaveAllBtn" class="btn" type="button" disabled>Guardar cambios (0)</button>
+                </div>
               </div>
             </div>
             <datalist id="singleClassesSearchList"></datalist>
@@ -2424,23 +2439,26 @@
           <div class="card">
             <div class="detail-header athlete-list-header">
               <h3>Listado mensual</h3>
-              <div class="filter-row">
-                <select id="pilatesListMonthSelect"></select>
+              <div class="athlete-filter-toolbar">
                 <input
                   id="pilatesSearch"
                   type="text"
                   inputmode="search"
                   autocomplete="off"
-                  placeholder="Buscar..."
+                  placeholder="Buscar por nombre..."
                 />
                 <select id="pilatesPaidFilter">
                   <option value="ALL">Todos</option>
                   <option value="SI">Pagado</option>
                   <option value="NO">No pagado</option>
                 </select>
-                <button id="pilatesSaveAllBtn" class="btn" type="button" disabled>
-                  Guardar cambios (0)
-                </button>
+                <button class="btn ghost small" type="button" data-more-filters-button aria-expanded="false" aria-controls="pilatesMoreFiltersPanel">Más filtros</button>
+                <div id="pilatesMoreFiltersPanel" class="athlete-more-filters-panel hidden">
+                  <select id="pilatesListMonthSelect" aria-label="Filtrar por mes"></select>
+                </div>
+                <div class="athlete-list-actions">
+                  <button id="pilatesSaveAllBtn" class="btn" type="button" disabled>Guardar cambios (0)</button>
+                </div>
               </div>
             </div>
             <datalist id="pilatesSearchList"></datalist>
