@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" href="css/styles.css?v=20260930f" />
+    <link rel="stylesheet" href="css/styles.css?v=20260930i" />
     <link rel="stylesheet" href="css/fullcalendar-dark-override.css?v=20250225" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
 
@@ -1541,9 +1541,14 @@
 
         <!-- ========== ACROKIDS ========== -->
         <section id="acroKidsView" class="view hidden">
-          <button id="acroKidsModalOpen" class="btn" type="button">
-            Alta de usuario
-          </button>
+          <div class="acro-kids-primary-actions">
+            <button id="acroKidsModalOpen" class="btn" type="button">
+              Alta de usuario
+            </button>
+            <button id="acroKidsCalendarOpen" class="btn ghost" type="button" title="Abrir calendario de AcroKids">
+              Calendario
+            </button>
+          </div>
           <div id="acroKidsModal" class="modal hidden">
             <div class="modal-content card">
               <div class="detail-header">
@@ -2316,9 +2321,14 @@
               The Nest Barre
             </button>
           </div>
-          <button id="pilatesModalOpen" class="btn" type="button">
-            Alta de usuario
-          </button>
+          <div class="nest-primary-actions">
+            <button id="pilatesModalOpen" class="btn" type="button">
+              Alta de usuario
+            </button>
+            <button id="nestCalendarOpen" class="btn ghost" type="button">
+              Calendario
+            </button>
+          </div>
           <div id="pilatesModal" class="modal hidden">
             <div class="modal-content card">
               <div class="detail-header">
@@ -2479,6 +2489,54 @@
                 </thead>
                 <tbody id="pilatesList"></tbody>
               </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="nestCalendarView" class="view hidden">
+          <div class="card nest-calendar-card">
+            <div class="detail-header">
+              <div>
+                <h2 id="nestCalendarTitle">Calendario · The Nest Pilates</h2>
+                <p class="muted">Selecciona una clase para gestionar usuarios y asistencia.</p>
+              </div>
+              <div class="header-actions">
+                <button id="nestCalendarBack" class="btn ghost small" type="button">Volver a The Nest</button>
+                <button id="nestCalendarToday" class="btn ghost small" type="button">Hoy</button>
+              </div>
+            </div>
+            <div class="calendar-legend">
+              <span><i class="calendar-dot has-attendees"></i> Con usuarios</span>
+              <span><i class="calendar-dot empty"></i> Sin usuarios</span>
+            </div>
+            <div id="nestCalendar"></div>
+          </div>
+
+          <div id="nestCalendarModal" class="modal hidden">
+            <div class="modal-content card nest-calendar-modal-content">
+              <div class="detail-header">
+                <div>
+                  <h3>Detalle de clase</h3>
+                  <p class="muted"><span id="nestCalendarSelectedDate"></span> · <span id="nestCalendarSelectedSlot"></span></p>
+                </div>
+                <button id="nestCalendarClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <div class="nest-calendar-detail-grid">
+                <div class="stack">
+                  <label>
+                    Añadir usuario
+                    <select id="nestCalendarAthlete">
+                      <option value="">Selecciona un usuario</option>
+                    </select>
+                  </label>
+                  <button id="nestCalendarAddAthlete" class="btn" type="button">Añadir usuario</button>
+                  <p id="nestCalendarHelp" class="muted"></p>
+                </div>
+                <div>
+                  <h3>Usuarios en la clase</h3>
+                  <div id="nestCalendarAttendees" class="stack"></div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -3388,7 +3446,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script type="module" src="js/main.js?v=20260805b" defer></script>
+    <script type="module" src="js/main.js?v=20260930e" defer></script>
     
     <!-- Script de debugging simplificado -->
     <script>

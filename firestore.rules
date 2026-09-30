@@ -121,6 +121,11 @@ service cloud.firestore {
       allow create, update, delete: if isOwner() || isReception() || isCoach() || isTeamLeader();
     }
 
+    match /nest_calendar/{docId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isOwner() || isReception() || isCoach() || isTeamLeader();
+    }
+
     match /athletes_singleclasses/{docId} {
       allow read: if request.auth != null;
       allow create, update, delete: if isOwner() || isReception() || isCoach() || isTeamLeader();

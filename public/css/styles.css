@@ -414,6 +414,29 @@ div, span, p, li, td, th, label, button, input, select, textarea {
   align-self: start;
 }
 
+#acroKidsView .acro-kids-primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+#acroKidsView .acro-kids-primary-actions .btn {
+  width: fit-content;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  #acroKidsView .acro-kids-primary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #acroKidsView .acro-kids-primary-actions .btn {
+    width: 100%;
+  }
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -1927,6 +1950,112 @@ span.athlete-status-unpaid,
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
+}
+
+#pilatesView .nest-primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#pilatesView .nest-primary-actions .btn {
+  width: fit-content;
+}
+
+.nest-calendar-card > .detail-header h2,
+.nest-calendar-modal-content h3 {
+  margin: 0;
+}
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.calendar-legend span,
+.nest-attendance-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendar-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.calendar-dot.has-attendees {
+  background: #4f46e5;
+}
+
+.calendar-dot.empty {
+  background: #9ca3af;
+}
+
+#nestCalendar {
+  min-width: 0;
+}
+
+#nestCalendar .fc-timegrid-slots tr[data-time^="13:"],
+#nestCalendar .fc-timegrid-slots tr[data-time^="14:"],
+#nestCalendar .fc-timegrid-slots tr[data-time^="15:"],
+#nestCalendar .fc-timegrid-slots tr[data-time^="16:"] {
+  display: none;
+}
+
+.nest-calendar-modal-content {
+  width: min(900px, calc(100vw - 32px));
+}
+
+.nest-calendar-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.nest-attendee-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--accent);
+}
+
+@media (max-width: 767px) {
+  #pilatesView .nest-primary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #pilatesView .nest-primary-actions .btn {
+    width: 100%;
+  }
+
+  #nestCalendarView .header-actions,
+  .nest-calendar-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .nest-attendee-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .nest-attendee-row .nest-attendance-toggle {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }
 
 #pilatesView .pilates-family-label {

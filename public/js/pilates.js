@@ -520,6 +520,23 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
   }
 }
 
+export function getActivePilatesFamilyAthletes() {
+  if (!pilatesListCacheData) return [];
+  const { allAthletes, listMonthMap, listPreviousMap, athleteHistory } = pilatesListCacheData;
+  const familyTariffs = new Set(getPilatesFamilyConfig().tariffs);
+
+  return allAthletes
+    .filter((athlete) => {
+      const current = listMonthMap.get(athlete.id);
+      const previous = listPreviousMap.get(athlete.id);
+      const history = athleteHistory.get(athlete.id) || [];
+      const lastPaid = history.find((record) => record.paid);
+      const tariff = getPilatesTariffFromRecords(current, previous, lastPaid);
+      return familyTariffs.has(tariff) && Boolean(current?.paid);
+    })
+    .sort((first, second) => String(first.name || "").localeCompare(String(second.name || ""), "es"));
+}
+
 export async function refreshPilatesMonthly(
   selectedPilatesMonth,
   selectedPilatesListMonth,

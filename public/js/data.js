@@ -1893,6 +1893,47 @@ export async function getAllPilatesAthleteMonths() {
   return records;
 }
 
+export async function getNestCalendarEntry(family, dateKey, slotId) {
+  const docId = `${family}__${dateKey}__${slotId}`;
+  const docSnap = await getDoc(doc(db, "nest_calendar", docId));
+  return docSnap.exists()
+    ? { id: docSnap.id, ...docSnap.data() }
+    : { id: docId, family, dateKey, slotId, attendees: [] };
+}
+
+export async function updateNestCalendarEntry(family, dateKey, slotId, attendees, userId) {
+  const docId = `${family}__${dateKey}__${slotId}`;
+  await setDoc(
+    doc(db, "nest_calendar", docId),
+    {
+      family,
+      dateKey,
+      slotId,
+      attendees,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    },
+    { merge: true }
+  );
+}
+
+export async function getNestCalendarDateRangeData(family, startDate, endDate) {
+  const snap = await getDocs(
+    query(
+      collection(db, "nest_calendar"),
+      where("dateKey", ">=", startDate),
+      where("dateKey", "<=", endDate)
+    )
+  );
+  const records = {};
+  snap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (data.family !== family) return;
+    records[`${data.dateKey}__${data.slotId}`] = data;
+  });
+  return records;
+}
+
 // ========== CLASES SUELTAS ==========
 
 export async function createSingleClassesAthlete(name, userId) {

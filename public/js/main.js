@@ -39,6 +39,7 @@ import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { initializeCaja, initializeInventory } from "./caja.js?v=20260622a";
 import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js";
+import { initializeNestCalendar } from "./nest-calendar.js?v=20260930d";
 import {
   initializePilates,
   refreshPilatesMonthly,
@@ -338,7 +339,6 @@ let acroKidsCalendarSelectedSlotId = "";
 let acroKidsCalendarStore = null;
 
 const acroKidsCalendarStorageKey = "acroKidsCalendarScheduleV1";
-const acroKidsCalendarEndDate = "2026-12-31";
 const acroKidsCalendarSlots = [
   { id: "mon-17-18", daysOfWeek: [1], startTime: "17:00", endTime: "18:00", label: "Lunes 17:00-18:00" },
   { id: "mon-18-19", daysOfWeek: [1], startTime: "18:00", endTime: "19:00", label: "Lunes 18:00-19:00" },
@@ -2110,21 +2110,23 @@ async function acroKidsCalendarGetEntry(dateKey, slotId) {
   return await getAcroKidsCalendarEntry(dateKey, slotId);
 }
 
-async function acroKidsCalendarBuildEvents() {
+async function acroKidsCalendarBuildEvents(rangeStart, rangeEnd) {
   const events = [];
-  const startDate = new Date();
+  const startDate = new Date(rangeStart);
   startDate.setHours(0, 0, 0, 0);
-  
-  // Format start and end dates for Firestore query
+  const endDate = new Date(rangeEnd);
+  endDate.setHours(0, 0, 0, 0);
+  endDate.setDate(endDate.getDate() - 1);
+
   const startDateKey = acroKidsCalendarFormatDateKey(startDate);
-  const endDateKey = acroKidsCalendarEndDate;
+  const endDateKey = acroKidsCalendarFormatDateKey(endDate);
   
   try {
     // Load all calendar data from Firestore for the date range
     const allData = await getAcroKidsCalendarDateRangeData(startDateKey, endDateKey);
     
     // Build events
-    for (const date = new Date(startDate); date <= new Date(`${endDateKey}T23:59:59`); date.setDate(date.getDate() + 1)) {
+    for (const date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
       const dayOfWeek = date.getDay();
       if (dayOfWeek === 0 || dayOfWeek === 6) continue;
       const dateKey = acroKidsCalendarFormatDateKey(date);
@@ -2174,6 +2176,12 @@ async function acroKidsCalendarBuildEvents() {
   }
 
   return events;
+}
+
+async function acroKidsCalendarRefreshRange(calendar, rangeStart, rangeEnd) {
+  const events = await acroKidsCalendarBuildEvents(rangeStart, rangeEnd);
+  calendar.removeAllEvents();
+  events.forEach((event) => calendar.addEvent(event));
 }
 
 async function acroKidsCalendarRenderSidebar() {
@@ -2256,10 +2264,8 @@ function acroKidsCalendarRender() {
   now.setHours(0, 0, 0, 0);
   const currentCalendarDate = ui._acroKidsCalendar ? ui._acroKidsCalendar.getDate() : now;
 
-  // Load events asynchronously
-  acroKidsCalendarBuildEvents().then((events) => {
-    if (!ui._acroKidsCalendar) {
-      const calendar = new window.FullCalendar.Calendar(ui.acroKidsCalendar, {
+  if (!ui._acroKidsCalendar) {
+    const calendar = new window.FullCalendar.Calendar(ui.acroKidsCalendar, {
         initialView: "timeGridWeek",
         initialDate: now,
         locale: "es",
@@ -2271,10 +2277,6 @@ function acroKidsCalendarRender() {
         weekends: false,
         slotMinTime: "16:30:00",
         slotMaxTime: "20:30:00",
-        validRange: {
-          start: acroKidsCalendarFormatDateKey(now),
-          end: "2027-01-01",
-        },
         headerToolbar: {
           left: "prev,next today",
           center: "title",
@@ -2292,27 +2294,32 @@ function acroKidsCalendarRender() {
             console.error("Error abriendo clase:", error);
           });
         },
-        datesSet: () => {
-          // Keep the first view focused on the current date range.
+        datesSet: (info) => {
+          acroKidsCalendarRefreshRange(calendar, info.start, info.end).catch((error) => {
+            console.error("Error loading calendar range:", error);
+            showToast("Error al cargar calendario", "error");
+          });
         },
       });
-      calendar.render();
-      ui._acroKidsCalendar = calendar;
-    }
-
-    ui._acroKidsCalendar.removeAllEvents();
-    events.forEach((event) => ui._acroKidsCalendar.addEvent(event));
+    calendar.render();
+    ui._acroKidsCalendar = calendar;
+  } else {
     ui._acroKidsCalendar.gotoDate(currentCalendarDate || now);
-    // Only render sidebar if a slot is selected
-    if (acroKidsCalendarSelectedSlotId) {
-      acroKidsCalendarRenderSidebar().catch((error) => {
-        console.error("Error rendering sidebar after load:", error);
-      });
-    }
-  }).catch((error) => {
-    console.error("Error rendering calendar:", error);
-    showToast("Error al cargar calendario", "error");
-  });
+    acroKidsCalendarRefreshRange(
+      ui._acroKidsCalendar,
+      ui._acroKidsCalendar.view.activeStart,
+      ui._acroKidsCalendar.view.activeEnd
+    ).catch((error) => {
+      console.error("Error refreshing calendar range:", error);
+      showToast("Error al cargar calendario", "error");
+    });
+  }
+
+  if (acroKidsCalendarSelectedSlotId) {
+    acroKidsCalendarRenderSidebar().catch((error) => {
+      console.error("Error rendering sidebar after load:", error);
+    });
+  }
 }
 
 async function acroKidsCalendarAddChild() {
@@ -5277,6 +5284,7 @@ if (ui.singleClassesSaveAllBtn) {
 }
 
 updatePendingSaveButtons();
+initializeNestCalendar();
 
 bindAuth(
   ui,
