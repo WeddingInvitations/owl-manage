@@ -1776,6 +1776,108 @@ span.athlete-status-unpaid,
   gap: 12px;
 }
 
+#athletesView .athlete-filter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+#athletesView .athlete-filter-toolbar > input,
+#athletesView .athlete-filter-toolbar > select {
+  min-width: 180px;
+}
+
+#athletesView .athlete-more-filters {
+  position: relative;
+}
+
+#athletesView .athlete-more-filters > summary {
+  list-style: none;
+  user-select: none;
+}
+
+#athletesView .athlete-more-filters > summary::-webkit-details-marker {
+  display: none;
+}
+
+#athletesView .athlete-more-filters > summary::after {
+  content: "▾";
+  font-size: 12px;
+}
+
+#athletesView .athlete-more-filters[open] > summary::after {
+  content: "▴";
+}
+
+#athletesView .athlete-more-filters-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  gap: 10px;
+  width: min(280px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: 0 10px 24px var(--shadow);
+}
+
+#athletesView .athlete-more-filters:not([open]) > .athlete-more-filters-panel {
+  display: none;
+}
+
+#athletesView .athlete-more-filters-panel select {
+  width: 100%;
+}
+
+#athletesView .athlete-list-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+@media (max-width: 767px) {
+  #athletesView .athlete-filter-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  #athletesView .athlete-filter-toolbar > input,
+  #athletesView .athlete-filter-toolbar > select,
+  #athletesView .athlete-more-filters,
+  #athletesView .athlete-list-actions {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #athletesView .athlete-more-filters,
+  #athletesView .athlete-list-actions {
+    grid-column: 1 / -1;
+  }
+
+  #athletesView .athlete-more-filters > summary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  #athletesView .athlete-more-filters-panel {
+    position: static;
+    width: 100%;
+    margin-top: 8px;
+    box-shadow: none;
+  }
+
+  #athletesView .athlete-list-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    margin-left: 0;
+  }
+}
+
 /* Compact layout para cabecera y resumen de Pilates */
 #pilatesView {
   gap: 12px;

@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" href="css/styles.css?v=20260929a" />
+    <link rel="stylesheet" href="css/styles.css?v=20260930b" />
     <link rel="stylesheet" href="css/fullcalendar-dark-override.css?v=20250225" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
 
@@ -1317,29 +1317,37 @@
           <div class="card">
             <div class="detail-header athlete-list-header">
               <h3>Listado mensual</h3>
-              <div class="filter-row">
-                <select id="athleteListMonthSelect"></select>
+              <div class="athlete-filter-toolbar">
                 <input
                   id="athleteSearch"
                   type="text"
                   inputmode="search"
                   autocomplete="off"
-                  placeholder="Buscar..."
+                  placeholder="Buscar por nombre..."
+                  aria-label="Buscar atleta por nombre"
                 />
-                <select id="athleteTariffFilter">
-                  <option value="ALL">Todas las tarifas</option>
-                </select>
-                <select id="athletePaidFilter">
+                <select id="athletePaidFilter" aria-label="Filtrar por estado de pago">
                   <option value="ALL">Todos</option>
                   <option value="SI">Pagado</option>
                   <option value="NO">No pagado</option>
                 </select>
-                <button id="athleteSaveAllBtn" class="btn" type="button" disabled>
-                  Guardar cambios (0)
-                </button>
-                <button id="athleteExcelBtn" class="btn ghost small" type="button" title="Descargar Excel">
-                  📊 Excel
-                </button>
+                <details class="athlete-more-filters">
+                  <summary class="btn ghost small">Más filtros</summary>
+                  <div class="athlete-more-filters-panel">
+                    <select id="athleteListMonthSelect" aria-label="Filtrar por mes"></select>
+                    <select id="athleteTariffFilter" aria-label="Filtrar por tarifa">
+                      <option value="ALL">Todas las tarifas</option>
+                    </select>
+                  </div>
+                </details>
+                <div class="athlete-list-actions">
+                  <button id="athleteSaveAllBtn" class="btn" type="button" disabled>
+                    Guardar cambios (0)
+                  </button>
+                  <button id="athleteExcelBtn" class="btn ghost small" type="button" title="Descargar Excel">
+                    📊 Excel
+                  </button>
+                </div>
               </div>
             </div>
             <datalist id="athleteSearchList"></datalist>
