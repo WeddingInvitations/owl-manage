@@ -96,41 +96,51 @@ export async function getPayment(paymentId) {
   return null;
 }
 
-// Función especial para pagos de caja: busca un pago existente de "Ventas Caja" 
-// para la fecha dada y lo actualiza sumando el monto, o crea uno nuevo si no existe
+// Acumula las ventas de caja en un único ingreso por mes.
 export async function addOrUpdateCajaPayment(amount, date, userId) {
   const concept = "Ventas Caja";
-  
-  // Buscar si ya existe un pago de "Ventas Caja" para esta fecha
-  const q = query(
-    collection(db, "payments"),
-    where("concept", "==", concept),
-    where("date", "==", date)
+  const month = String(date || "").slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    throw new Error("Fecha de venta inválida");
+  }
+
+  const monthlyDate = `${month}-01`;
+  const monthlyDocId = `ventas-caja-${month}`;
+  const monthlyDocRef = doc(db, "payments", monthlyDocId);
+  const snapshot = await getDocs(
+    query(collection(db, "payments"), where("concept", "==", concept))
   );
-  
-  const snapshot = await getDocs(q);
-  
-  if (!snapshot.empty) {
-    // Ya existe un pago de caja para esta fecha, actualizarlo
-    const existingDoc = snapshot.docs[0];
-    const existingData = existingDoc.data();
-    const newAmount = Number(existingData.amount || 0) + Number(amount);
-    
-    await updateDoc(doc(db, "payments", existingDoc.id), {
-      amount: newAmount,
+  const duplicateDocs = snapshot.docs.filter((docSnap) => {
+    if (docSnap.id === monthlyDocId) return false;
+    return String(docSnap.data().date || "").slice(0, 7) === month;
+  });
+
+  await runTransaction(db, async (transaction) => {
+    const monthlySnapshot = await transaction.get(monthlyDocRef);
+    const duplicateSnapshots = await Promise.all(
+      duplicateDocs.map((docSnap) => transaction.get(docSnap.ref))
+    );
+    const currentAmount = monthlySnapshot.exists()
+      ? Number(monthlySnapshot.data().amount || 0)
+      : 0;
+    const duplicateAmount = duplicateSnapshots.reduce(
+      (total, docSnap) => total + (docSnap.exists() ? Number(docSnap.data().amount || 0) : 0),
+      0
+    );
+    transaction.set(monthlyDocRef, {
+      concept,
+      amount: currentAmount + duplicateAmount + Number(amount),
+      date: monthlyDate,
       updatedAt: serverTimestamp(),
       updatedBy: userId || null,
+      ...(monthlySnapshot.exists()
+        ? {}
+        : { createdAt: serverTimestamp(), createdBy: userId || null }),
     });
-  } else {
-    // No existe, crear uno nuevo
-    await addDoc(collection(db, "payments"), {
-      concept,
-      amount: Number(amount),
-      date,
-      createdAt: serverTimestamp(),
-      createdBy: userId || null,
+    duplicateSnapshots.forEach((docSnap) => {
+      if (docSnap.exists()) transaction.delete(docSnap.ref);
     });
-  }
+  });
 }
 
 export async function addExpense(concept, amount, date, userId) {
@@ -809,12 +819,30 @@ export async function loadPaymentsWithAthleteTotals(
   const halteSnap = await getDocs(collection(db, "athlete_halterofilia_months"));
   const telasSnap = await getDocs(collection(db, "athlete_telas_months"));
   const items = [];
+  const cajaPaymentsByMonth = new Map();
 
   paymentSnap.forEach((docSnap) => {
     const data = docSnap.data();
     const date = parseRecordDate(data);
+    if (data.concept === "Ventas Caja") {
+      const key = getMonthKey(date);
+      const current = cajaPaymentsByMonth.get(key) || {
+        id: docSnap.id,
+        data: {
+          ...data,
+          amount: 0,
+          date: key === "sin-fecha" ? data.date : `${key}-01`,
+        },
+        date: key === "sin-fecha" ? date : new Date(`${key}-01T00:00:00`),
+        editable: true,
+      };
+      current.data.amount += Number(data.amount || 0);
+      cajaPaymentsByMonth.set(key, current);
+      return;
+    }
     items.push({ id: docSnap.id, data, date, editable: true });
   });
+  cajaPaymentsByMonth.forEach((item) => items.push(item));
 
   const athleteTotals = new Map();
   athleteSnap.forEach((docSnap) => {

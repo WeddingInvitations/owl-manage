@@ -1502,6 +1502,24 @@ select:focus {
   gap: 12px;
 }
 
+.accounting-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.accounting-heading h2 {
+  margin-bottom: 0;
+}
+
+.accounting-month-title {
+  color: var(--primary, #2a4a7b);
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

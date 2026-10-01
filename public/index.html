@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" href="css/styles.css?v=20261001a" />
+    <link rel="stylesheet" href="css/styles.css?v=20261001b" />
     <link rel="stylesheet" href="css/fullcalendar-dark-override.css?v=20250225" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
 
@@ -382,11 +382,12 @@
         <section id="paymentsView" class="view hidden">
           <div class="card">
             <div class="detail-header">
-              <h2>Contabilidad · Ingresos</h2>
+              <div class="accounting-heading">
+                <h2>Contabilidad · Ingresos</h2>
+                <span id="paymentMonthTitle" class="accounting-month-title"></span>
+              </div>
               <div class="filter-row">
                 <select id="paymentMonthSelect"></select>
-                <button id="paymentCsvOpen" class="btn ghost small" type="button" title="Importar CSV">📄 CSV</button>
-                <button id="paymentTemplateDownload" class="btn ghost small" type="button" title="Descargar plantilla">⬇ Plantilla</button>
               </div>
             </div>
             <form id="paymentForm" class="stack">
@@ -395,38 +396,12 @@
                 <input id="paymentConcept" type="text" required />
               </label>
               <label>
-                Mes
-                <input id="paymentDate" type="month" required />
-              </label>
-              <label>
                 Importe (€)
                 <input id="paymentAmount" type="number" min="0" step="0.01" required />
               </label>
               <button class="btn" type="submit">Registrar ingreso</button>
             </form>
             <ul id="paymentList" class="list"></ul>
-          </div>
-          <div id="paymentCsvModal" class="modal hidden">
-            <div class="modal-content card">
-              <div class="detail-header">
-                <h3>Importar ingresos desde CSV</h3>
-                <button id="paymentCsvClose" class="btn ghost small" type="button">Cerrar</button>
-              </div>
-              <form id="paymentCsvForm" class="stack">
-                <p class="muted">El CSV debe tener 3 columnas: Concepto, Mes (YYYY-MM), Importe. La primera fila (cabecera) se ignorará.</p>
-                <div class="flex gap-2 mb-3">
-                  <button id="downloadPaymentTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
-                    📥 Descargar plantilla
-                  </button>
-                </div>
-                <label>
-                  Archivo CSV
-                  <input id="paymentCsvFile" type="file" accept=".csv,text/csv" required />
-                </label>
-                <button class="btn" type="submit">Importar</button>
-                <p id="paymentCsvStatus" class="muted"></p>
-              </form>
-            </div>
           </div>
           <div id="paymentEditModal" class="modal hidden">
             <div class="modal-content card">
@@ -3446,7 +3421,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script type="module" src="js/main.js?v=20260930f" defer></script>
+    <script type="module" src="js/main.js?v=20261001a" defer></script>
     
     <!-- Script de debugging simplificado -->
     <script>

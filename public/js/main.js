@@ -704,9 +704,6 @@ function getCurrentMonthForInput() {
 
 function setDefaultMonthForPaymentExpense() {
   const currentMonth = getCurrentMonthForInput();
-  if (ui.paymentDate && !ui.paymentDate.value) {
-    ui.paymentDate.value = currentMonth;
-  }
   if (ui.expenseDate && !ui.expenseDate.value) {
     ui.expenseDate.value = currentMonth;
   }
@@ -758,6 +755,9 @@ async function refreshPaymentList() {
       : (availablePaymentMonths[0] || "");
   }
   renderPaymentMonthOptions();
+  if (ui.paymentMonthTitle) {
+    ui.paymentMonthTitle.textContent = getMonthLabel(selectedPaymentMonth);
+  }
   await loadPaymentsWithAthleteTotals(
     ui.paymentList,
     formatCurrency,
@@ -5612,31 +5612,6 @@ function parsePaymentExpenseCsvRows(content) {
   });
 }
 
-async function importPaymentsFromCsv(file) {
-  const text = await file.text();
-  const rows = parsePaymentExpenseCsvRows(text);
-  console.log("Rows parsed:", rows);
-  if (rows.length === 0) {
-    throw new Error("CSV vacío o sin datos (solo cabecera)");
-  }
-  let processed = 0;
-  for (const row of rows) {
-    console.log("Processing row:", row);
-    if (!row.concept || !row.date) {
-      console.log("Skipping - missing concept or date");
-      continue;
-    }
-    if (row.amount <= 0) {
-      console.log("Skipping - amount <= 0:", row.amount);
-      continue;
-    }
-    await addPayment(row.concept, row.amount, row.date, currentUser?.uid);
-    console.log("Added payment:", row);
-    processed += 1;
-  }
-  return processed;
-}
-
 async function importExpensesFromCsv(file) {
   const text = await file.text();
   const rows = parsePaymentExpenseCsvRows(text);
@@ -5665,14 +5640,14 @@ async function importExpensesFromCsv(file) {
 // ---------- Formularios ----------
 on(ui.paymentForm, "submit", async (event) => {
   event.preventDefault();
+  const month = ui.paymentMonthSelect?.value || selectedPaymentMonth || getCurrentMonthForInput();
   await addPayment(
     ui.paymentConcept.value,
     Number(ui.paymentAmount.value),
-    ui.paymentDate.value,
+    month,
     currentUser?.uid
   );
   ui.paymentForm.reset();
-  setDefaultMonthForPaymentExpense();
   await refreshAll();
 });
 
@@ -5790,34 +5765,6 @@ on(ui.expenseDeleteConfirm, "click", async () => {
 
 on(ui.expenseDeleteCancel, "click", () => {
   ui.expenseDeleteModal?.classList.add("hidden");
-});
-
-// Payment CSV handlers
-on(ui.paymentCsvOpen, "click", () => {
-  ui.paymentCsvModal?.classList.remove("hidden");
-});
-
-on(ui.paymentCsvClose, "click", () => {
-  ui.paymentCsvModal?.classList.add("hidden");
-});
-
-on(ui.paymentCsvForm, "submit", async (event) => {
-  event.preventDefault();
-  if (!ui.paymentCsvFile?.files?.length) return;
-  ui.paymentCsvStatus.textContent = "Importando...";
-  try {
-    const processed = await importPaymentsFromCsv(ui.paymentCsvFile.files[0]);
-    ui.paymentCsvStatus.textContent = `Importados ${processed} ingresos.`;
-    ui.paymentCsvForm.reset();
-    ui.paymentCsvModal?.classList.add("hidden");
-    await refreshAll();
-  } catch (error) {
-    ui.paymentCsvStatus.textContent = `Error: ${error.message || error}`;
-  }
-});
-
-on(ui.paymentTemplateDownload, "click", () => {
-  downloadCsvTemplate("plantilla-ingresos.csv", "payment");
 });
 
 on(ui.expenseForm, "submit", async (event) => {
@@ -8303,10 +8250,6 @@ on(ui.paymentMonthSelect, "change", async (event) => {
 on(ui.expenseMonthSelect, "change", async (event) => {
   selectedExpenseMonth = event.target.value;
   await refreshExpenseList();
-});
-
-on(ui.downloadPaymentTemplate, "click", () => {
-  downloadCsvTemplate('plantilla_ingresos.csv', 'payment');
 });
 
 on(ui.downloadExpenseTemplate, "click", () => {
