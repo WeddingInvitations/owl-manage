@@ -663,7 +663,7 @@ ui.cajaForm?.addEventListener("submit", async (e) => {
     // Guardar la venta
     await addSale({ item, amount, date, importe, paymentMethod, userId: auth.currentUser?.uid });
     
-    // Crear o actualizar el ingreso de "Ventas Caja" acumulando el monto por día
+    // Crear o actualizar el ingreso mensual acumulado de "Ventas Caja"
     await addOrUpdateCajaPayment(importe, date, auth.currentUser?.uid);
   } catch (error) {
     if (inventoryConsumed) {
