@@ -405,12 +405,24 @@ div, span, p, li, td, th, label, button, input, select, textarea {
   white-space: nowrap;
 }
 
-#acroKidsView {
+#athletesView,
+#acroView,
+#acroKidsView,
+#halteView,
+#telasView,
+#singleClassesView,
+#pilatesView {
   align-content: start;
   grid-auto-rows: max-content;
 }
 
-#acroKidsView > .card {
+#athletesView > .card,
+#acroView > .card,
+#acroKidsView > .card,
+#halteView > .card,
+#telasView > .card,
+#singleClassesView > .card,
+#pilatesView > .card {
   align-self: start;
 }
 
