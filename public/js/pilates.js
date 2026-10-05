@@ -4,6 +4,7 @@ import {
   getPilatesAthleteMonthsForMonth,
   createPilatesAthlete,
   updatePilatesAthlete,
+  deletePilatesAthlete,
   upsertPilatesAthleteMonth,
   getMonthLabel,
   getAllPilatesAthleteMonths,
@@ -399,6 +400,21 @@ function attachPilatesRowListeners() {
       }
     });
   });
+
+  ui.pilatesList.querySelectorAll('[data-role="delete-pilates-athlete"]').forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      const athleteId = event.currentTarget.dataset.id;
+      const athleteName = event.currentTarget.dataset.name || "este usuario";
+      if (!athleteId || !confirm(`¿Eliminar a ${athleteName}? Se borrarán sus mensualidades y asignaciones del calendario.`)) return;
+      try {
+        await deletePilatesAthlete(athleteId);
+        window.dispatchEvent(new CustomEvent("pilates-name-updated"));
+      } catch (error) {
+        console.error("Error al eliminar el usuario de The Nest:", error);
+        alert("Error al eliminar el usuario");
+      }
+    });
+  });
 }
 
 function filterAndRenderPilatesList(searchTerm, paidFilter) {
@@ -472,6 +488,7 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
         <div style="display: flex; align-items: flex-start; gap: 6px;">
           <span data-role="pilates-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
           <button class="edit-name-btn" data-role="edit-pilates-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+          <button class="edit-name-btn" data-role="delete-pilates-athlete" data-id="${athlete.id}" data-name="${athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
       </td>
       <td>
@@ -484,7 +501,7 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
       <td>
         <select data-role="pilates-discount-reason" data-id="${athlete.id}">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Promo apertura</option>
           <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
           <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
           <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
@@ -524,7 +541,7 @@ export function renderFilteredPilatesList(searchTerm, paidFilter) {
   filterAndRenderPilatesList(searchTerm, paidFilter);
 }
 
-export function getActivePilatesFamilyAthletes() {
+export function getPilatesFamilyAthletes() {
   if (!pilatesListCacheData) return [];
   const { allAthletes, listMonthMap, listPreviousMap, athleteHistory } = pilatesListCacheData;
   const familyTariffs = new Set(getPilatesFamilyConfig().tariffs);
@@ -536,7 +553,7 @@ export function getActivePilatesFamilyAthletes() {
       const history = athleteHistory.get(athlete.id) || [];
       const lastPaid = history.find((record) => record.paid);
       const tariff = getPilatesTariffFromRecords(current, previous, lastPaid);
-      return familyTariffs.has(tariff) && Boolean(current?.paid);
+      return familyTariffs.has(tariff);
     })
     .sort((first, second) => String(first.name || "").localeCompare(String(second.name || ""), "es"));
 }

@@ -1860,6 +1860,29 @@ export async function updatePilatesAthlete(athleteId, athleteData, userId) {
   });
 }
 
+export async function deletePilatesAthlete(athleteId) {
+  const monthSnap = await getDocs(
+    query(collection(db, "athlete_pilates_months"), where("athleteId", "==", athleteId))
+  );
+  await Promise.all(monthSnap.docs.map((docSnap) => deleteDoc(docSnap.ref)));
+
+  const calendarSnap = await getDocs(collection(db, "nest_calendar"));
+  await Promise.all(
+    calendarSnap.docs.map(async (docSnap) => {
+      const data = docSnap.data();
+      const attendees = Array.isArray(data.attendees) ? data.attendees : [];
+      const filteredAttendees = attendees.filter((attendee) => attendee?.athleteId !== athleteId);
+      if (filteredAttendees.length === attendees.length) return;
+      await updateDoc(docSnap.ref, {
+        attendees: filteredAttendees,
+        updatedAt: serverTimestamp(),
+      });
+    })
+  );
+
+  await deleteDoc(doc(db, "athletes_pilates", athleteId));
+}
+
 export async function getPilatesAthletes() {
   const snap = await getDocs(collection(db, "athletes_pilates"));
   const athletes = [];
@@ -1929,7 +1952,14 @@ export async function getNestCalendarEntry(family, dateKey, slotId) {
     : { id: docId, family, dateKey, slotId, attendees: [] };
 }
 
-export async function updateNestCalendarEntry(family, dateKey, slotId, attendees, userId) {
+export async function updateNestCalendarEntry(
+  family,
+  dateKey,
+  slotId,
+  attendees,
+  userId,
+  excludedAthleteIds = []
+) {
   const docId = `${family}__${dateKey}__${slotId}`;
   await setDoc(
     doc(db, "nest_calendar", docId),
@@ -1938,6 +1968,32 @@ export async function updateNestCalendarEntry(family, dateKey, slotId, attendees
       dateKey,
       slotId,
       attendees,
+      excludedAthleteIds,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    },
+    { merge: true }
+  );
+}
+
+export async function getNestCalendarRecurringEntry(family, dayOfWeek, slotId) {
+  const docId = `${family}__weekly-${dayOfWeek}__${slotId}`;
+  const docSnap = await getDoc(doc(db, "nest_calendar", docId));
+  return docSnap.exists()
+    ? { id: docSnap.id, ...docSnap.data() }
+    : { id: docId, family, dayOfWeek, slotId, attendees: [] };
+}
+
+export async function updateNestCalendarRecurringEntry(family, dayOfWeek, slotId, attendees, userId) {
+  const docId = `${family}__weekly-${dayOfWeek}__${slotId}`;
+  await setDoc(
+    doc(db, "nest_calendar", docId),
+    {
+      family,
+      dayOfWeek,
+      slotId,
+      attendees,
+      recurring: true,
       updatedAt: serverTimestamp(),
       updatedBy: userId || null,
     },

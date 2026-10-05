@@ -39,7 +39,7 @@ import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { initializeCaja, initializeInventory } from "./caja.js?v=20260622a";
 import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js";
-import { initializeNestCalendar } from "./nest-calendar.js?v=20260930e";
+import { initializeNestCalendar } from "./nest-calendar.js?v=20261005b";
 import {
   initializePilates,
   refreshPilatesMonthly,
@@ -50,7 +50,7 @@ import {
   renderPilatesCsvMonthOptions,
   importPilatesAthletesFromCsv,
   renderFilteredPilatesList,
-} from "./pilates.js?v=20260930a";
+} from "./pilates.js?v=20261005b";
 import {
   addPayment,
   addExpense,
@@ -1012,7 +1012,7 @@ function filterAndRenderAthleteList() {
       <td>
         <select data-role="discount-reason" data-id="${athlete.id}">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Promo apertura</option>
           <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
           <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
           <option value="Amigo" ${discountReason === "Amigo" ? "selected" : ""}>Amigo</option>
@@ -1585,7 +1585,7 @@ function filterAndRenderAcroList() {
       <td>
         <select data-role="acro-discount-reason" data-id="${athlete.id}">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Promo apertura</option>
           <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
           <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
           <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
@@ -1715,7 +1715,7 @@ function filterAndRenderAcroKidsList() {
       <td>
         <select data-role="acroKids-discount-reason" data-id="${athlete.id}">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Promo apertura</option>
           <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
           <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
           <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
@@ -2743,7 +2743,7 @@ function filterAndRenderHalteList() {
       <td>
         <select data-role="halte-discount-reason" data-id="${athlete.id}">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Promo apertura</option>
           <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
           <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
           <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
@@ -3183,7 +3183,7 @@ function filterAndRenderTelasList() {
       <td>
         <select data-role="telas-discount-reason" data-id="${e.athlete.id}">
           <option value="" ${!e.discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${e.discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Familiar" ${e.discountReason === "Familiar" ? "selected" : ""}>Promo apertura</option>
           <option value="Funcionario" ${e.discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
           <option value="Mañanas" ${e.discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
           <option value="Otro" ${e.discountReason === "Otro" ? "selected" : ""}>Otro</option>
@@ -3606,7 +3606,7 @@ async function refreshSingleClassesMonthly() {
       <td>
         <select data-role="singleclasses-discount-reason" data-id="${e.athlete.id}" style="width: 120px;">
           <option value="" ${!e.discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${e.discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
+          <option value="Familiar" ${e.discountReason === "Familiar" ? "selected" : ""}>Promo apertura</option>
           <option value="Funcionario" ${e.discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
           <option value="Mañanas" ${e.discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
           <option value="Otro" ${e.discountReason === "Otro" ? "selected" : ""}>Otro</option>

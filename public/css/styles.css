@@ -2048,10 +2048,15 @@ span.athlete-status-unpaid,
   min-width: 0;
 }
 
-#nestCalendar .fc-timegrid-slots tr[data-time^="13:"],
-#nestCalendar .fc-timegrid-slots tr[data-time^="14:"],
-#nestCalendar .fc-timegrid-slots tr[data-time^="15:"],
-#nestCalendar .fc-timegrid-slots tr[data-time^="16:"] {
+#nestCalendar .fc-timegrid-slot {
+  height: 88px;
+}
+
+#nestCalendar .fc-timegrid-slots tr:has(.fc-timegrid-slot[data-time^="12:"]),
+#nestCalendar .fc-timegrid-slots tr:has(.fc-timegrid-slot[data-time^="13:"]),
+#nestCalendar .fc-timegrid-slots tr:has(.fc-timegrid-slot[data-time^="14:"]),
+#nestCalendar .fc-timegrid-slots tr:has(.fc-timegrid-slot[data-time^="15:"]),
+#nestCalendar .fc-timegrid-slots tr:has(.fc-timegrid-slot[data-time^="16:"]) {
   display: none;
 }
 
@@ -2075,6 +2080,11 @@ span.athlete-status-unpaid,
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--accent);
+}
+
+.nest-attendee-actions {
+  display: flex;
+  gap: 6px;
 }
 
 @media (max-width: 767px) {
@@ -2134,75 +2144,6 @@ span.athlete-status-unpaid,
   margin: 2px 0 0;
   font-size: 20px;
   line-height: 1.1;
-}
-
-#pilatesView[data-pilates-family="barre"] {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px !important;
-}
-
-#pilatesView[data-pilates-family="barre"] > .card {
-  margin: 0;
-  min-height: 0;
-}
-
-#pilatesView[data-pilates-family="barre"] .card {
-  padding-top: 12px;
-  padding-bottom: 12px;
-}
-
-#pilatesView[data-pilates-family="barre"] .pilates-family-tabs {
-  margin-top: 8px;
-}
-
-#pilatesView[data-pilates-family="barre"] .pilates-family-label {
-  margin-top: 4px;
-}
-
-#pilatesView[data-pilates-family="barre"] .detail-header {
-  gap: 10px;
-  align-items: center;
-}
-
-#pilatesView[data-pilates-family="barre"] .pilates-summary-card .detail-header {
-  margin-bottom: 6px;
-}
-
-#pilatesView[data-pilates-family="barre"] .pilates-top-card .detail-header,
-#pilatesView[data-pilates-family="barre"] .athlete-list-header {
-  margin: 0;
-}
-
-#pilatesView[data-pilates-family="barre"] .summary {
-  gap: 6px;
-  margin-bottom: 0;
-}
-
-#pilatesView[data-pilates-family="barre"] .summary > div {
-  min-height: 0;
-  padding: 8px 10px;
-}
-
-#pilatesView[data-pilates-family="barre"] .filter-row {
-  margin: 0;
-}
-
-#pilatesView[data-pilates-family="barre"] #pilatesListCount {
-  margin: 4px 0;
-}
-
-#pilatesView[data-pilates-family="barre"] .table-container {
-  margin-top: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-#pilatesView[data-pilates-family="barre"] .table th,
-#pilatesView[data-pilates-family="barre"] .table td {
-  padding-top: 10px;
-  padding-bottom: 10px;
 }
 
 /* ========== MOBILE RESPONSIVE ========== */

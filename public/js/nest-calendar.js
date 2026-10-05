@@ -1,10 +1,12 @@
 import { auth } from "./firebase.js";
 import { showToast } from "./toast.js";
 import { ui, setActiveView } from "./ui.js";
-import { getActivePilatesFamilyAthletes, getPilatesFamily } from "./pilates.js?v=20260930a";
+import { getPilatesFamilyAthletes, getPilatesFamily } from "./pilates.js?v=20261005b";
 import {
   getNestCalendarEntry,
   updateNestCalendarEntry,
+  getNestCalendarRecurringEntry,
+  updateNestCalendarRecurringEntry,
   getNestCalendarDateRangeData,
 } from "./data.js";
 
@@ -52,8 +54,28 @@ function normalizeName(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function getDayOfWeek(dateKey) {
+  return new Date(`${dateKey}T12:00:00`).getDay();
+}
+
+function mergeAttendees(recurringAttendees, datedAttendees, excludedAthleteIds = []) {
+  const excludedIds = new Set(excludedAthleteIds);
+  const merged = new Map();
+  recurringAttendees.forEach((attendee) => {
+    if (!excludedIds.has(attendee.athleteId)) {
+      merged.set(attendee.athleteId || normalizeName(attendee.name), attendee);
+    }
+  });
+  datedAttendees.forEach((attendee) => {
+    if (excludedIds.has(attendee.athleteId)) return;
+    const key = attendee.athleteId || normalizeName(attendee.name);
+    merged.set(key, { ...merged.get(key), ...attendee });
+  });
+  return Array.from(merged.values());
+}
+
 async function loadEligibleAthletes() {
-  eligibleAthletes = getActivePilatesFamilyAthletes();
+  eligibleAthletes = getPilatesFamilyAthletes();
 }
 
 async function buildEvents(rangeStart, rangeEnd) {
@@ -67,6 +89,14 @@ async function buildEvents(rangeStart, rangeEnd) {
     formatDateKey(startDate),
     formatDateKey(endDate)
   );
+  const recurringEntries = await Promise.all(
+    schedules[activeFamily].flatMap((slot) =>
+      slot.daysOfWeek.map((dayOfWeek) => getNestCalendarRecurringEntry(activeFamily, dayOfWeek, slot.id))
+    )
+  );
+  const recurringMap = new Map(
+    recurringEntries.map((entry) => [`${entry.dayOfWeek}__${entry.slotId}`, entry.attendees || []])
+  );
   const events = [];
 
   for (const date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
@@ -75,7 +105,9 @@ async function buildEvents(rangeStart, rangeEnd) {
     schedules[activeFamily].forEach((slot) => {
       if (!slot.daysOfWeek.includes(dayOfWeek)) return;
       const entry = records[`${dateKey}__${slot.id}`] || { attendees: [] };
-      const attendees = Array.isArray(entry.attendees) ? entry.attendees : [];
+      const datedAttendees = Array.isArray(entry.attendees) ? entry.attendees : [];
+      const recurringAttendees = recurringMap.get(`${dayOfWeek}__${slot.id}`) || [];
+      const attendees = mergeAttendees(recurringAttendees, datedAttendees, entry.excludedAthleteIds);
       const attendedCount = attendees.filter((attendee) => attendee.attended).length;
       const count = attendees.length;
       events.push({
@@ -123,8 +155,15 @@ async function renderDetail() {
   if (!selectedSlotKey) return;
   const [dateKey, slotId] = selectedSlotKey.split("__");
   const slot = schedules[activeFamily].find((item) => item.id === slotId);
-  const entry = await getNestCalendarEntry(activeFamily, dateKey, slotId);
-  const attendees = Array.isArray(entry.attendees) ? entry.attendees : [];
+  const [entry, recurringEntry] = await Promise.all([
+    getNestCalendarEntry(activeFamily, dateKey, slotId),
+    getNestCalendarRecurringEntry(activeFamily, getDayOfWeek(dateKey), slotId),
+  ]);
+  const attendees = mergeAttendees(
+    Array.isArray(recurringEntry.attendees) ? recurringEntry.attendees : [],
+    Array.isArray(entry.attendees) ? entry.attendees : [],
+    entry.excludedAthleteIds
+  );
   const availableCount = populateAthleteSelect(attendees);
 
   ui.nestCalendarSelectedDate.textContent = formatDateLabel(dateKey);
@@ -151,26 +190,113 @@ async function renderDetail() {
       checkbox.dataset.action = "attendance";
       checkbox.dataset.index = String(index);
       attendanceLabel.append(checkbox, document.createTextNode(" Asistió"));
-      const removeButton = document.createElement("button");
-      removeButton.className = "btn ghost small";
-      removeButton.type = "button";
-      removeButton.dataset.action = "remove";
-      removeButton.dataset.index = String(index);
-      removeButton.textContent = "Quitar";
-      row.append(name, attendanceLabel, removeButton);
+      const removeActions = document.createElement("div");
+      removeActions.className = "nest-attendee-actions";
+      const removeOnceButton = document.createElement("button");
+      removeOnceButton.className = "btn ghost small";
+      removeOnceButton.type = "button";
+      removeOnceButton.dataset.action = "remove-once";
+      removeOnceButton.dataset.athleteId = attendee.athleteId || "";
+      removeOnceButton.textContent = "Quitar de esta";
+      const removeAllButton = document.createElement("button");
+      removeAllButton.className = "btn ghost small";
+      removeAllButton.type = "button";
+      removeAllButton.dataset.action = "remove-all";
+      removeAllButton.dataset.athleteId = attendee.athleteId || "";
+      removeAllButton.textContent = "Quitar de todas";
+      removeActions.append(removeOnceButton, removeAllButton);
+      row.append(name, attendanceLabel, removeActions);
       ui.nestCalendarAttendees.appendChild(row);
     });
   }
   ui.nestCalendarModal.classList.remove("hidden");
 }
 
-async function saveAttendees(transform) {
+async function saveDatedAttendees(transform) {
+  if (!selectedSlotKey) return;
+  const [dateKey, slotId] = selectedSlotKey.split("__");
+  const [entry, recurringEntry] = await Promise.all([
+    getNestCalendarEntry(activeFamily, dateKey, slotId),
+    getNestCalendarRecurringEntry(activeFamily, getDayOfWeek(dateKey), slotId),
+  ]);
+  const attendees = mergeAttendees(
+    Array.isArray(recurringEntry.attendees) ? recurringEntry.attendees : [],
+    Array.isArray(entry.attendees) ? entry.attendees : [],
+    entry.excludedAthleteIds
+  );
+  const nextAttendees = transform(attendees);
+  await updateNestCalendarEntry(
+    activeFamily,
+    dateKey,
+    slotId,
+    nextAttendees,
+    auth.currentUser?.uid || null,
+    entry.excludedAthleteIds || []
+  );
+  await Promise.all([refreshVisibleRange(), renderDetail()]);
+}
+
+async function saveRecurringAttendees(transform) {
+  if (!selectedSlotKey) return;
+  const [dateKey, slotId] = selectedSlotKey.split("__");
+  const dayOfWeek = getDayOfWeek(dateKey);
+  const entry = await getNestCalendarRecurringEntry(activeFamily, dayOfWeek, slotId);
+  const attendees = Array.isArray(entry.attendees) ? [...entry.attendees] : [];
+  const nextAttendees = transform(attendees);
+  await updateNestCalendarRecurringEntry(
+    activeFamily,
+    dayOfWeek,
+    slotId,
+    nextAttendees,
+    auth.currentUser?.uid || null
+  );
+  await Promise.all([refreshVisibleRange(), renderDetail()]);
+}
+
+async function removeAthleteFromSchedule(athleteId) {
+  if (!selectedSlotKey) return;
+  const [dateKey, slotId] = selectedSlotKey.split("__");
+  const dayOfWeek = getDayOfWeek(dateKey);
+  const [datedEntry, recurringEntry] = await Promise.all([
+    getNestCalendarEntry(activeFamily, dateKey, slotId),
+    getNestCalendarRecurringEntry(activeFamily, dayOfWeek, slotId),
+  ]);
+  const withoutAthlete = (attendees) =>
+    (Array.isArray(attendees) ? attendees : []).filter((attendee) => attendee.athleteId !== athleteId);
+  await Promise.all([
+    updateNestCalendarEntry(
+      activeFamily,
+      dateKey,
+      slotId,
+      withoutAthlete(datedEntry.attendees),
+      auth.currentUser?.uid || null
+    ),
+    updateNestCalendarRecurringEntry(
+      activeFamily,
+      dayOfWeek,
+      slotId,
+      withoutAthlete(recurringEntry.attendees),
+      auth.currentUser?.uid || null
+    ),
+  ]);
+  await Promise.all([refreshVisibleRange(), renderDetail()]);
+}
+
+async function removeAthleteFromSelectedClass(athleteId) {
   if (!selectedSlotKey) return;
   const [dateKey, slotId] = selectedSlotKey.split("__");
   const entry = await getNestCalendarEntry(activeFamily, dateKey, slotId);
-  const attendees = Array.isArray(entry.attendees) ? [...entry.attendees] : [];
-  const nextAttendees = transform(attendees);
-  await updateNestCalendarEntry(activeFamily, dateKey, slotId, nextAttendees, auth.currentUser?.uid || null);
+  const attendees = (Array.isArray(entry.attendees) ? entry.attendees : [])
+    .filter((attendee) => attendee.athleteId !== athleteId);
+  const excludedAthleteIds = Array.from(new Set([...(entry.excludedAthleteIds || []), athleteId]));
+  await updateNestCalendarEntry(
+    activeFamily,
+    dateKey,
+    slotId,
+    attendees,
+    auth.currentUser?.uid || null,
+    excludedAthleteIds
+  );
   await Promise.all([refreshVisibleRange(), renderDetail()]);
 }
 
@@ -180,7 +306,7 @@ async function addAthlete() {
     showToast("Selecciona un usuario", "error");
     return;
   }
-  await saveAttendees((attendees) => {
+  await saveRecurringAttendees((attendees) => {
     if (attendees.some((attendee) => attendee.athleteId === athlete.id)) return attendees;
     return [...attendees, { athleteId: athlete.id, name: athlete.name, attended: false }];
   });
@@ -191,12 +317,12 @@ function createCalendar() {
     initialView: "timeGridWeek",
     locale: "es",
     firstDay: 1,
-    height: 620,
-    contentHeight: 590,
+    height: "auto",
+    contentHeight: "auto",
     nowIndicator: true,
     allDaySlot: false,
     weekends: false,
-    slotMinTime: "08:00:00",
+    slotMinTime: "09:00:00",
     slotMaxTime: "20:00:00",
     slotDuration: "01:00:00",
     slotLabelInterval: "01:00:00",
@@ -256,7 +382,7 @@ export function initializeNestCalendar() {
     const checkbox = event.target.closest('[data-action="attendance"]');
     if (!checkbox) return;
     const index = Number(checkbox.dataset.index);
-    saveAttendees((attendees) => {
+    saveDatedAttendees((attendees) => {
       if (attendees[index]) attendees[index] = { ...attendees[index], attended: checkbox.checked };
       return attendees;
     }).catch((error) => {
@@ -265,10 +391,13 @@ export function initializeNestCalendar() {
     });
   });
   ui.nestCalendarAttendees.addEventListener("click", (event) => {
-    const button = event.target.closest('[data-action="remove"]');
+    const button = event.target.closest('[data-action^="remove-"]');
     if (!button) return;
-    const index = Number(button.dataset.index);
-    saveAttendees((attendees) => attendees.filter((_, attendeeIndex) => attendeeIndex !== index)).catch((error) => {
+    const athleteId = button.dataset.athleteId;
+    const removeAction = button.dataset.action === "remove-once"
+      ? removeAthleteFromSelectedClass
+      : removeAthleteFromSchedule;
+    removeAction(athleteId).catch((error) => {
       console.error("Error removing The Nest attendee:", error);
       showToast("Error al quitar usuario", "error");
     });
