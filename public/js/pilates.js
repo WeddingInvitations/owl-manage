@@ -130,7 +130,8 @@ function getPreviousMonthKey(monthKey) {
 }
 
 function getPilatesDiscountValue(reason) {
-  if (reason === "Familiar") return 15;
+  if (reason === "promoApertura") return 15;
+  if (reason === "Familiar") return 10;
   if (reason === "Funcionario") return 10;
   if (reason === "Mañanas") return 10;
   if (reason === "Amigo") return 10;
@@ -501,7 +502,8 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
       <td>
         <select data-role="pilates-discount-reason" data-id="${athlete.id}">
           <option value="Ninguno" ${discountReason === "Ninguno" || !discountReason ? "selected" : ""}>Ninguno</option>
-          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Promo apertura</option>
+          <option value="promoApertura" ${discountReason === "promoApertura" ? "selected" : ""}>Promo apertura</option>
+          <option value="Familiar" ${discountReason === "Familiar" ? "selected" : ""}>Familiar</option>
           <option value="Funcionario" ${discountReason === "Funcionario" ? "selected" : ""}>Funcionario</option>
           <option value="Mañanas" ${discountReason === "Mañanas" ? "selected" : ""}>Mañanas</option>
           <option value="Otro" ${discountReason === "Otro" ? "selected" : ""}>Otro</option>
