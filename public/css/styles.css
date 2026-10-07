@@ -1520,6 +1520,12 @@ select:focus {
   line-height: 1.2;
 }
 
+.summary-month-label {
+  color: var(--primary, #2a4a7b);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

@@ -844,13 +844,35 @@ function isMonthInRange(targetKey, startKey, durationMonths) {
   return targetKey >= startKey && targetKey <= endKey;
 }
 
-function renderAthleteMonthOptions() {
-  const now = new Date();
+// Muestra el mes actualmente visualizado junto al título "Resumen mensual"
+function updateSummaryMonthLabel(labelEl, monthKey) {
+  if (!labelEl) return;
+  labelEl.textContent = monthKey ? `· ${getMonthLabel(monthKey)}` : "";
+}
+
+// Pone "-" en los contadores del resumen mientras se cargan los datos del nuevo mes
+function clearSummaryValues(...elements) {
+  elements.forEach((el) => {
+    if (el) el.textContent = "-";
+  });
+}
+
+function buildExtendedMonthOptions(now) {
   const options = [];
-  for (let i = 0; i < 12; i += 1) {
+  for (let i = 8; i >= 0; i -= 1) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     options.push(getMonthKey(date));
   }
+  for (let i = 1; i <= 2; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    options.push(getMonthKey(date));
+  }
+  return options;
+}
+
+function renderAthleteMonthOptions() {
+  const now = new Date();
+  const options = buildExtendedMonthOptions(now);
   ui.athleteMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -858,22 +880,15 @@ function renderAthleteMonthOptions() {
     option.textContent = getMonthLabel(key);
     ui.athleteMonthSelect.appendChild(option);
   });
-  selectedAthleteMonth = options[0];
+  selectedAthleteMonth = getMonthKey(now);
   ui.athleteMonthSelect.value = selectedAthleteMonth;
+  updateSummaryMonthLabel(ui.athleteSummaryMonthLabel, selectedAthleteMonth);
 }
 
 function renderAthleteListMonthOptions() {
   if (!ui.athleteListMonthSelect) return;
   const now = new Date();
-  const options = [];
-  for (let i = 12; i >= 0; i -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
-  for (let i = 1; i <= 6; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    options.push(getMonthKey(date));
-  }
+  const options = buildExtendedMonthOptions(now);
   ui.athleteListMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -883,6 +898,7 @@ function renderAthleteListMonthOptions() {
   });
   selectedAthleteListMonth = getMonthKey(now);
   ui.athleteListMonthSelect.value = selectedAthleteListMonth;
+  updateSummaryMonthLabel(ui.athleteSummaryMonthLabel, selectedAthleteListMonth);
 }
 
 function renderAthletePaymentMonthOptions() {
@@ -1089,6 +1105,7 @@ async function refreshAthleteMonthly() {
   if (!selectedAthleteListMonth) {
     renderAthleteListMonthOptions();
   }
+  updateSummaryMonthLabel(ui.athleteSummaryMonthLabel, selectedAthleteListMonth || selectedAthleteMonth);
   const listPreviousMonth = getPreviousMonthKey(selectedAthleteListMonth);
   const athletesPromise = getAthletes();
   const allMonthRecordsPromise = getAllAthleteMonths();
@@ -1199,11 +1216,7 @@ async function refreshAthleteMonthly() {
 function renderAcroMonthOptions() {
   if (!ui.acroMonthSelect) return;
   const now = new Date();
-  const options = [];
-  for (let i = 0; i < 12; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
+  const options = buildExtendedMonthOptions(now);
   ui.acroMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -1211,22 +1224,15 @@ function renderAcroMonthOptions() {
     option.textContent = getMonthLabel(key);
     ui.acroMonthSelect.appendChild(option);
   });
-  selectedAcroMonth = options[0];
+  selectedAcroMonth = getMonthKey(now);
   ui.acroMonthSelect.value = selectedAcroMonth;
+  updateSummaryMonthLabel(ui.acroSummaryMonthLabel, selectedAcroMonth);
 }
 
 function renderAcroListMonthOptions() {
   if (!ui.acroListMonthSelect) return;
   const now = new Date();
-  const options = [];
-  for (let i = 12; i >= 0; i -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
-  for (let i = 1; i <= 6; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    options.push(getMonthKey(date));
-  }
+  const options = buildExtendedMonthOptions(now);
   ui.acroListMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -1236,6 +1242,7 @@ function renderAcroListMonthOptions() {
   });
   selectedAcroListMonth = getMonthKey(now);
   ui.acroListMonthSelect.value = selectedAcroListMonth;
+  updateSummaryMonthLabel(ui.acroSummaryMonthLabel, selectedAcroListMonth);
 }
 
 function renderAcroPaymentMonthOptions() {
@@ -1301,15 +1308,7 @@ function calculateAcroFinalPrice() {
 function renderAcroKidsMonthOptions() {
   if (!ui.acroKidsMonthSelect) return;
   const now = new Date();
-  const options = [];
-  for (let i = 12; i >= 0; i -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
-  for (let i = 1; i <= 6; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    options.push(getMonthKey(date));
-  }
+  const options = buildExtendedMonthOptions(now);
   ui.acroKidsMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -1319,20 +1318,13 @@ function renderAcroKidsMonthOptions() {
   });
   selectedAcroKidsMonth = options[0];
   ui.acroKidsMonthSelect.value = selectedAcroKidsMonth;
+  updateSummaryMonthLabel(ui.acroKidsSummaryMonthLabel, selectedAcroKidsMonth);
 }
 
 function renderAcroKidsListMonthOptions() {
   if (!ui.acroKidsListMonthSelect) return;
   const now = new Date();
-  const options = [];
-  for (let i = 12; i >= 0; i -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
-  for (let i = 1; i <= 6; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    options.push(getMonthKey(date));
-  }
+  const options = buildExtendedMonthOptions(now);
   ui.acroKidsListMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -1342,6 +1334,7 @@ function renderAcroKidsListMonthOptions() {
   });
   selectedAcroKidsListMonth = getMonthKey(now);
   ui.acroKidsListMonthSelect.value = selectedAcroKidsListMonth;
+  updateSummaryMonthLabel(ui.acroKidsSummaryMonthLabel, selectedAcroKidsListMonth);
 }
 
 function renderAcroKidsPaymentMonthOptions() {
@@ -1836,6 +1829,7 @@ async function refreshAcroMonthly() {
   if (!selectedAcroListMonth) {
     renderAcroListMonthOptions();
   }
+  updateSummaryMonthLabel(ui.acroSummaryMonthLabel, selectedAcroListMonth || selectedAcroMonth);
 
   const listPreviousMonth = getPreviousMonthKey(selectedAcroListMonth);
   const athletesPromise = getAcroAthletes();
@@ -1950,6 +1944,7 @@ async function refreshAcroKidsMonthly() {
   selectedAcroKidsListMonth = selectedMonth;
   if (ui.acroKidsMonthSelect) ui.acroKidsMonthSelect.value = selectedMonth;
   if (ui.acroKidsListMonthSelect) ui.acroKidsListMonthSelect.value = selectedMonth;
+  updateSummaryMonthLabel(ui.acroKidsSummaryMonthLabel, selectedMonth);
 
   const listPreviousMonth = getPreviousMonthKey(selectedAcroKidsListMonth);
   const athletesPromise = getAcroKidsAthletes();
@@ -2532,11 +2527,7 @@ async function acroKidsCalendarRenderSummary() {
 function renderHalteMonthOptions() {
   if (!ui.halteMonthSelect) return;
   const now = new Date();
-  const options = [];
-  for (let i = 0; i < 12; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
+  const options = buildExtendedMonthOptions(now);
   ui.halteMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -2544,22 +2535,15 @@ function renderHalteMonthOptions() {
     option.textContent = getMonthLabel(key);
     ui.halteMonthSelect.appendChild(option);
   });
-  selectedHalteMonth = options[0];
+  selectedHalteMonth = getMonthKey(now);
   ui.halteMonthSelect.value = selectedHalteMonth;
+  updateSummaryMonthLabel(ui.halteSummaryMonthLabel, selectedHalteMonth);
 }
 
 function renderHalteListMonthOptions() {
   if (!ui.halteListMonthSelect) return;
   const now = new Date();
-  const options = [];
-  for (let i = 12; i >= 0; i -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
-  for (let i = 1; i <= 6; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    options.push(getMonthKey(date));
-  }
+  const options = buildExtendedMonthOptions(now);
   ui.halteListMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -2569,6 +2553,7 @@ function renderHalteListMonthOptions() {
   });
   selectedHalteListMonth = getMonthKey(now);
   ui.halteListMonthSelect.value = selectedHalteListMonth;
+  updateSummaryMonthLabel(ui.halteSummaryMonthLabel, selectedHalteListMonth);
 }
 
 function renderHaltePaymentMonthOptions() {
@@ -2833,6 +2818,7 @@ async function refreshHalteMonthly() {
   if (!selectedHalteListMonth) {
     renderHalteListMonthOptions();
   }
+  updateSummaryMonthLabel(ui.halteSummaryMonthLabel, selectedHalteListMonth || selectedHalteMonth);
 
   const listPreviousMonth = getPreviousMonthKey(selectedHalteListMonth);
   const athletesPromise = getHalteAthletes();
@@ -2937,11 +2923,7 @@ async function refreshHalteMonthly() {
 function renderTelasMonthOptions() {
   if (!ui.telasMonthSelect) return;
   const now = new Date();
-  const options = [];
-  for (let i = 0; i < 12; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
+  const options = buildExtendedMonthOptions(now);
   ui.telasMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -2949,22 +2931,15 @@ function renderTelasMonthOptions() {
     option.textContent = getMonthLabel(key);
     ui.telasMonthSelect.appendChild(option);
   });
-  selectedTelasMonth = options[0];
+  selectedTelasMonth = getMonthKey(now);
   ui.telasMonthSelect.value = selectedTelasMonth;
+  updateSummaryMonthLabel(ui.telasSummaryMonthLabel, selectedTelasMonth);
 }
 
 function renderTelasListMonthOptions() {
   if (!ui.telasListMonthSelect) return;
   const now = new Date();
-  const options = [];
-  for (let i = 12; i >= 0; i -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
-  for (let i = 1; i <= 6; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    options.push(getMonthKey(date));
-  }
+  const options = buildExtendedMonthOptions(now);
   ui.telasListMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -2974,6 +2949,7 @@ function renderTelasListMonthOptions() {
   });
   selectedTelasListMonth = getMonthKey(now);
   ui.telasListMonthSelect.value = selectedTelasListMonth;
+  updateSummaryMonthLabel(ui.telasSummaryMonthLabel, selectedTelasListMonth);
 }
 
 function renderTelasPaymentMonthOptions() {
@@ -3017,11 +2993,7 @@ function renderTelasCsvMonthOptions() {
 function renderSingleClassesMonthOptions() {
   if (!ui.singleClassesMonthSelect) return;
   const now = new Date();
-  const options = [];
-  for (let i = 0; i < 12; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
+  const options = buildExtendedMonthOptions(now);
   ui.singleClassesMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -3029,22 +3001,15 @@ function renderSingleClassesMonthOptions() {
     option.textContent = getMonthLabel(key);
     ui.singleClassesMonthSelect.appendChild(option);
   });
-  selectedSingleClassesMonth = options[0];
+  selectedSingleClassesMonth = getMonthKey(now);
   ui.singleClassesMonthSelect.value = selectedSingleClassesMonth;
+  updateSummaryMonthLabel(ui.singleClassesSummaryMonthLabel, selectedSingleClassesMonth);
 }
 
 function renderSingleClassesListMonthOptions() {
   if (!ui.singleClassesListMonthSelect) return;
   const now = new Date();
-  const options = [];
-  for (let i = 12; i >= 0; i -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    options.push(getMonthKey(date));
-  }
-  for (let i = 1; i <= 6; i += 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    options.push(getMonthKey(date));
-  }
+  const options = buildExtendedMonthOptions(now);
   ui.singleClassesListMonthSelect.innerHTML = "";
   options.forEach((key) => {
     const option = document.createElement("option");
@@ -3054,6 +3019,7 @@ function renderSingleClassesListMonthOptions() {
   });
   selectedSingleClassesListMonth = getMonthKey(now);
   ui.singleClassesListMonthSelect.value = selectedSingleClassesListMonth;
+  updateSummaryMonthLabel(ui.singleClassesSummaryMonthLabel, selectedSingleClassesListMonth);
 }
 
 function setTelasPriceFromTariff() {
@@ -3270,6 +3236,7 @@ function filterAndRenderTelasList() {
 async function refreshTelasMonthly() {
   const monthKey = selectedTelasListMonth;
   if (!monthKey || !ui.telasList) return;
+  updateSummaryMonthLabel(ui.telasSummaryMonthLabel, monthKey);
   const [allAthletes, allMonthRecords, athleteMonths] = await Promise.all([
     getTelasAthletes(),
     getAllTelasAthleteMonths(),
@@ -3498,6 +3465,7 @@ async function importSingleClassesAthletesFromCsv(file, monthKey) {
 async function refreshSingleClassesMonthly() {
   const monthKey = selectedSingleClassesListMonth;
   if (!monthKey || !ui.singleClassesList) return;
+  updateSummaryMonthLabel(ui.singleClassesSummaryMonthLabel, monthKey);
   ui.singleClassesList.innerHTML = "";
   const [allAthletes, allMonthRecords, athleteMonths] = await Promise.all([
     getSingleClassesAthletes(),
@@ -7481,6 +7449,8 @@ on(ui.acroKidsMonthSelect, "change", (event) => {
   if (ui.acroKidsListMonthSelect) {
     ui.acroKidsListMonthSelect.value = selectedAcroKidsMonth;
   }
+  updateSummaryMonthLabel(ui.acroKidsSummaryMonthLabel, selectedAcroKidsMonth);
+  clearSummaryValues(ui.acroKidsSummaryActive, ui.acroKidsSummaryNew, ui.acroKidsSummaryTotal);
   refreshAcroKidsMonthly();
 });
 
@@ -7490,6 +7460,8 @@ on(ui.acroKidsListMonthSelect, "change", (event) => {
   if (ui.acroKidsMonthSelect) {
     ui.acroKidsMonthSelect.value = selectedAcroKidsListMonth;
   }
+  updateSummaryMonthLabel(ui.acroKidsSummaryMonthLabel, selectedAcroKidsListMonth);
+  clearSummaryValues(ui.acroKidsSummaryActive, ui.acroKidsSummaryNew, ui.acroKidsSummaryTotal);
   refreshAcroKidsMonthly();
 });
 
@@ -7995,11 +7967,17 @@ on(ui.pilatesCsvForm, "submit", async (event) => {
 
 on(ui.pilatesMonthSelect, "change", (event) => {
   selectedPilatesMonth = event.target.value;
+  selectedPilatesListMonth = selectedPilatesMonth;
+  if (ui.pilatesListMonthSelect) ui.pilatesListMonthSelect.value = selectedPilatesMonth;
+  clearSummaryValues(ui.pilatesSummaryActive, ui.pilatesSummaryNew, ui.pilatesSummaryTotal);
   refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
 });
 
 on(ui.pilatesListMonthSelect, "change", (event) => {
   selectedPilatesListMonth = event.target.value;
+  selectedPilatesMonth = selectedPilatesListMonth;
+  if (ui.pilatesMonthSelect) ui.pilatesMonthSelect.value = selectedPilatesListMonth;
+  clearSummaryValues(ui.pilatesSummaryActive, ui.pilatesSummaryNew, ui.pilatesSummaryTotal);
   refreshPilatesMonthly(selectedPilatesMonth, selectedPilatesListMonth, selectedPilatesPaymentMonth, pilatesPaidFilter, pilatesSearchTerm, selectedPilatesCsvMonth);
 });
 
@@ -8153,11 +8131,19 @@ on(ui.singleClassesCsvForm, "submit", async (event) => {
 // Athletes - Month filters
 on(ui.athleteMonthSelect, "change", async (event) => {
   selectedAthleteMonth = event.target.value;
+  selectedAthleteListMonth = selectedAthleteMonth;
+  if (ui.athleteListMonthSelect) ui.athleteListMonthSelect.value = selectedAthleteMonth;
+  updateSummaryMonthLabel(ui.athleteSummaryMonthLabel, selectedAthleteMonth);
+  clearSummaryValues(ui.athleteSummaryActive, ui.athleteSummaryNew, ui.athleteSummaryTotal);
   await refreshAthleteMonthly();
 });
 
 on(ui.athleteListMonthSelect, "change", async (event) => {
   selectedAthleteListMonth = event.target.value;
+  selectedAthleteMonth = selectedAthleteListMonth;
+  if (ui.athleteMonthSelect) ui.athleteMonthSelect.value = selectedAthleteListMonth;
+  updateSummaryMonthLabel(ui.athleteSummaryMonthLabel, selectedAthleteListMonth);
+  clearSummaryValues(ui.athleteSummaryActive, ui.athleteSummaryNew, ui.athleteSummaryTotal);
   await refreshAthleteMonthly();
 });
 
@@ -8190,11 +8176,19 @@ document.querySelectorAll("[data-more-filters-button]").forEach((button) => {
 // Acrobacias - Month filters  
 on(ui.acroMonthSelect, "change", async (event) => {
   selectedAcroMonth = event.target.value;
+  selectedAcroListMonth = selectedAcroMonth;
+  if (ui.acroListMonthSelect) ui.acroListMonthSelect.value = selectedAcroMonth;
+  updateSummaryMonthLabel(ui.acroSummaryMonthLabel, selectedAcroMonth);
+  clearSummaryValues(ui.acroSummaryActive, ui.acroSummaryNew, ui.acroSummaryTotal);
   await refreshAcroMonthly();
 });
 
 on(ui.acroListMonthSelect, "change", async (event) => {
   selectedAcroListMonth = event.target.value;
+  selectedAcroMonth = selectedAcroListMonth;
+  if (ui.acroMonthSelect) ui.acroMonthSelect.value = selectedAcroListMonth;
+  updateSummaryMonthLabel(ui.acroSummaryMonthLabel, selectedAcroListMonth);
+  clearSummaryValues(ui.acroSummaryActive, ui.acroSummaryNew, ui.acroSummaryTotal);
   await refreshAcroMonthly();
 });
 
@@ -8213,11 +8207,19 @@ on(ui.acroPaidFilter, "change", (event) => {
 // Halterofilia - Month filters  
 on(ui.halteMonthSelect, "change", async (event) => {
   selectedHalteMonth = event.target.value;
+  selectedHalteListMonth = selectedHalteMonth;
+  if (ui.halteListMonthSelect) ui.halteListMonthSelect.value = selectedHalteMonth;
+  updateSummaryMonthLabel(ui.halteSummaryMonthLabel, selectedHalteMonth);
+  clearSummaryValues(ui.halteSummaryActive, ui.halteSummaryNew, ui.halteSummaryTotal);
   await refreshHalteMonthly();
 });
 
 on(ui.halteListMonthSelect, "change", async (event) => {
   selectedHalteListMonth = event.target.value;
+  selectedHalteMonth = selectedHalteListMonth;
+  if (ui.halteMonthSelect) ui.halteMonthSelect.value = selectedHalteListMonth;
+  updateSummaryMonthLabel(ui.halteSummaryMonthLabel, selectedHalteListMonth);
+  clearSummaryValues(ui.halteSummaryActive, ui.halteSummaryNew, ui.halteSummaryTotal);
   await refreshHalteMonthly();
 });
 
@@ -8236,11 +8238,19 @@ on(ui.haltePaidFilter, "change", (event) => {
 // Telas - Month filters  
 on(ui.telasMonthSelect, "change", async (event) => {
   selectedTelasMonth = event.target.value;
+  selectedTelasListMonth = selectedTelasMonth;
+  if (ui.telasListMonthSelect) ui.telasListMonthSelect.value = selectedTelasMonth;
+  updateSummaryMonthLabel(ui.telasSummaryMonthLabel, selectedTelasMonth);
+  clearSummaryValues(ui.telasSummaryActive, ui.telasSummaryNew, ui.telasSummaryTotal);
   await refreshTelasMonthly();
 });
 
 on(ui.telasListMonthSelect, "change", async (event) => {
   selectedTelasListMonth = event.target.value;
+  selectedTelasMonth = selectedTelasListMonth;
+  if (ui.telasMonthSelect) ui.telasMonthSelect.value = selectedTelasListMonth;
+  updateSummaryMonthLabel(ui.telasSummaryMonthLabel, selectedTelasListMonth);
+  clearSummaryValues(ui.telasSummaryActive, ui.telasSummaryNew, ui.telasSummaryTotal);
   await refreshTelasMonthly();
 });
 
@@ -8259,11 +8269,19 @@ on(ui.telasPaidFilter, "change", (event) => {
 // Single Classes - Month filters  
 on(ui.singleClassesMonthSelect, "change", async (event) => {
   selectedSingleClassesMonth = event.target.value;
+  selectedSingleClassesListMonth = selectedSingleClassesMonth;
+  if (ui.singleClassesListMonthSelect) ui.singleClassesListMonthSelect.value = selectedSingleClassesMonth;
+  updateSummaryMonthLabel(ui.singleClassesSummaryMonthLabel, selectedSingleClassesMonth);
+  clearSummaryValues(ui.singleClassesSummaryActive, ui.singleClassesSummaryNew, ui.singleClassesSummaryTotal);
   await refreshSingleClassesMonthly();
 });
 
 on(ui.singleClassesListMonthSelect, "change", async (event) => {
   selectedSingleClassesListMonth = event.target.value;
+  selectedSingleClassesMonth = selectedSingleClassesListMonth;
+  if (ui.singleClassesMonthSelect) ui.singleClassesMonthSelect.value = selectedSingleClassesListMonth;
+  updateSummaryMonthLabel(ui.singleClassesSummaryMonthLabel, selectedSingleClassesListMonth);
+  clearSummaryValues(ui.singleClassesSummaryActive, ui.singleClassesSummaryNew, ui.singleClassesSummaryTotal);
   await refreshSingleClassesMonthly();
 });
 

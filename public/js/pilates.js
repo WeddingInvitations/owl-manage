@@ -198,8 +198,12 @@ function renderPilatesMonthOptions() {
   if (!ui.pilatesMonthSelect) return;
   const now = new Date();
   const options = [];
-  for (let i = 0; i < 12; i += 1) {
+  for (let i = 8; i >= 0; i -= 1) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    options.push(getMonthKey(date));
+  }
+  for (let i = 1; i <= 2; i += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
     options.push(getMonthKey(date));
   }
   ui.pilatesMonthSelect.innerHTML = "";
@@ -209,18 +213,18 @@ function renderPilatesMonthOptions() {
     option.textContent = getMonthLabel(key);
     ui.pilatesMonthSelect.appendChild(option);
   });
-  if (options.length > 0) ui.pilatesMonthSelect.value = options[0];
+  ui.pilatesMonthSelect.value = getMonthKey(now);
 }
 
 function renderPilatesListMonthOptions() {
   if (!ui.pilatesListMonthSelect) return;
   const now = new Date();
   const options = [];
-  for (let i = 12; i >= 0; i -= 1) {
+  for (let i = 8; i >= 0; i -= 1) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     options.push(getMonthKey(date));
   }
-  for (let i = 1; i <= 6; i += 1) {
+  for (let i = 1; i <= 2; i += 1) {
     const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
     options.push(getMonthKey(date));
   }
@@ -584,10 +588,13 @@ export async function refreshPilatesMonthly(
   void selectedPilatesPaymentMonth;
   void selectedPilatesCsvMonth;
 
-  const summaryMonth = selectedPilatesMonth || ui.pilatesMonthSelect?.value || getMonthKey(new Date());
-  const listMonth = selectedPilatesListMonth || ui.pilatesListMonthSelect?.value || getMonthKey(new Date());
+  const summaryMonth = selectedPilatesMonth || selectedPilatesListMonth || ui.pilatesMonthSelect?.value || getMonthKey(new Date());
+  const listMonth = summaryMonth;
   if (ui.pilatesMonthSelect) ui.pilatesMonthSelect.value = summaryMonth;
   if (ui.pilatesListMonthSelect) ui.pilatesListMonthSelect.value = listMonth;
+  if (ui.pilatesSummaryMonthLabel) {
+    ui.pilatesSummaryMonthLabel.textContent = summaryMonth ? `· ${getMonthLabel(summaryMonth)}` : "";
+  }
 
   const listPreviousMonth = getPreviousMonthKey(listMonth);
   const athletesPromise = getPilatesAthletes();
