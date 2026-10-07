@@ -669,6 +669,14 @@ export async function getAthletes() {
   return athletes;
 }
 
+export async function deleteAthlete(athleteId) {
+  const monthSnap = await getDocs(
+    query(collection(db, "athlete_months"), where("athleteId", "==", athleteId))
+  );
+  await Promise.all(monthSnap.docs.map((docSnap) => deleteDoc(docSnap.ref)));
+  await deleteDoc(doc(db, "athletes", athleteId));
+}
+
 export async function getAthleteMonth(athleteId, month) {
   const snap = await getDocs(
     query(
@@ -1459,6 +1467,14 @@ export async function getAcroAthletes() {
   return athletes;
 }
 
+export async function deleteAcroAthlete(athleteId) {
+  const monthSnap = await getDocs(
+    query(collection(db, "athlete_acrobacias_months"), where("athleteId", "==", athleteId))
+  );
+  await Promise.all(monthSnap.docs.map((docSnap) => deleteDoc(docSnap.ref)));
+  await deleteDoc(doc(db, "athletes_acrobacias", athleteId));
+}
+
 export async function upsertAcroAthleteMonth(athleteId, month, payload, userId) {
   const snap = await getDocs(
     query(
@@ -1711,6 +1727,14 @@ export async function getHalteAthletes() {
   return athletes;
 }
 
+export async function deleteHalteAthlete(athleteId) {
+  const monthSnap = await getDocs(
+    query(collection(db, "athlete_halterofilia_months"), where("athleteId", "==", athleteId))
+  );
+  await Promise.all(monthSnap.docs.map((docSnap) => deleteDoc(docSnap.ref)));
+  await deleteDoc(doc(db, "athletes_halterofilia", athleteId));
+}
+
 export async function upsertHalteAthleteMonth(athleteId, month, payload, userId) {
   const snap = await getDocs(
     query(
@@ -1787,6 +1811,14 @@ export async function getTelasAthletes() {
     athletes.push({ id: docSnap.id, ...docSnap.data() });
   });
   return athletes;
+}
+
+export async function deleteTelasAthlete(athleteId) {
+  const monthSnap = await getDocs(
+    query(collection(db, "athlete_telas_months"), where("athleteId", "==", athleteId))
+  );
+  await Promise.all(monthSnap.docs.map((docSnap) => deleteDoc(docSnap.ref)));
+  await deleteDoc(doc(db, "athletes_telas", athleteId));
 }
 
 export async function upsertTelasAthleteMonth(athleteId, month, payload, userId) {
@@ -2044,6 +2076,14 @@ export async function getSingleClassesAthletes() {
     athletes.push({ id: docSnap.id, ...docSnap.data() });
   });
   return athletes;
+}
+
+export async function deleteSingleClassesAthlete(athleteId) {
+  const monthSnap = await getDocs(
+    query(collection(db, "athlete_singleclasses_months"), where("athleteId", "==", athleteId))
+  );
+  await Promise.all(monthSnap.docs.map((docSnap) => deleteDoc(docSnap.ref)));
+  await deleteDoc(doc(db, "athletes_singleclasses", athleteId));
 }
 
 export async function upsertSingleClassesAthleteMonth(athleteId, month, payload, userId) {

@@ -68,6 +68,7 @@ import {
   createAthlete,
   getAthletes,
   updateAthlete,
+  deleteAthlete,
   getTeachers,
   createTeacher,
   updateTeacher,
@@ -107,6 +108,7 @@ import {
   createAcroAthlete,
   getAcroAthletes,
   updateAcroAthlete,
+  deleteAcroAthlete,
   getAllAcroAthleteMonths,
   getAcroAthleteMonthsForMonth,
   upsertAcroAthleteMonth,
@@ -123,12 +125,14 @@ import {
   createHalteAthlete,
   getHalteAthletes,
   updateHalteAthlete,
+  deleteHalteAthlete,
   getAllHalteAthleteMonths,
   getHalteAthleteMonthsForMonth,
   upsertHalteAthleteMonth,
   createTelasAthlete,
   getTelasAthletes,
   updateTelasAthlete,
+  deleteTelasAthlete,
   getAllTelasAthleteMonths,
   getTelasAthleteMonthsForMonth,
   upsertTelasAthleteMonth,
@@ -141,6 +145,7 @@ import {
   createSingleClassesAthlete,
   getSingleClassesAthletes,
   updateSingleClassesAthlete,
+  deleteSingleClassesAthlete,
   getAllSingleClassesAthleteMonths,
   getSingleClassesAthleteMonthsForMonth,
   upsertSingleClassesAthleteMonth,
@@ -156,7 +161,7 @@ import {
   loadOrdersForMonth,
   addEmployeePayment,
   loadEmployeePayments,
-} from "./data.js?v=20250409d";
+} from "./data.js?v=20261007c";
 
 import { createUserWithRole } from "./admin.js";
 
@@ -1021,6 +1026,7 @@ function filterAndRenderAthleteList() {
         <div style="display: flex; align-items: flex-start; gap: 6px;">
           <span data-role="athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name}</span>
           <button class="edit-name-btn" data-role="edit-athlete-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+          <button class="edit-name-btn" data-role="delete-athlete" data-id="${athlete.id}" data-name="${athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
       </td>
       <td>
@@ -1089,6 +1095,20 @@ function filterAndRenderAthleteList() {
           console.error('Error al actualizar el nombre del atleta:', error);
           alert('Error al actualizar el nombre del atleta');
         }
+      }
+    });
+  });
+  ui.athleteList.querySelectorAll('[data-role="delete-athlete"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.currentTarget.dataset.id;
+      const athleteName = e.currentTarget.dataset.name || 'este usuario';
+      if (!athleteId || !confirm(`¿Eliminar a ${athleteName}? Se borrarán sus mensualidades.`)) return;
+      try {
+        await deleteAthlete(athleteId);
+        await refreshAthleteMonthly();
+      } catch (error) {
+        console.error('Error al eliminar el atleta:', error);
+        alert('Error al eliminar el usuario');
       }
     });
   });
@@ -1575,6 +1595,7 @@ function filterAndRenderAcroList() {
         <div style="display: flex; align-items: flex-start; gap: 6px;">
           <span data-role="acro-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
           <button class="edit-name-btn" data-role="edit-acro-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+          <button class="edit-name-btn" data-role="delete-acro-athlete" data-id="${athlete.id}" data-name="${athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
       </td>
       <td>
@@ -1642,6 +1663,20 @@ function filterAndRenderAcroList() {
           console.error('Error al actualizar el nombre del atleta:', error);
           alert('Error al actualizar el nombre del atleta');
         }
+      }
+    });
+  });
+  ui.acroList.querySelectorAll('[data-role="delete-acro-athlete"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.currentTarget.dataset.id;
+      const athleteName = e.currentTarget.dataset.name || 'este usuario';
+      if (!athleteId || !confirm(`¿Eliminar a ${athleteName}? Se borrarán sus mensualidades.`)) return;
+      try {
+        await deleteAcroAthlete(athleteId);
+        await refreshAcroMonthly();
+      } catch (error) {
+        console.error('Error al eliminar el atleta:', error);
+        alert('Error al eliminar el usuario');
       }
     });
   });
@@ -2733,6 +2768,7 @@ function filterAndRenderHalteList() {
         <div style="display: flex; align-items: flex-start; gap: 6px;">
           <span data-role="halte-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
           <button class="edit-name-btn" data-role="edit-halte-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+          <button class="edit-name-btn" data-role="delete-halte-athlete" data-id="${athlete.id}" data-name="${athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
       </td>
       <td>
@@ -2800,6 +2836,20 @@ function filterAndRenderHalteList() {
           console.error('Error al actualizar el nombre del atleta:', error);
           alert('Error al actualizar el nombre del atleta');
         }
+      }
+    });
+  });
+  ui.halteList.querySelectorAll('[data-role="delete-halte-athlete"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.currentTarget.dataset.id;
+      const athleteName = e.currentTarget.dataset.name || 'este usuario';
+      if (!athleteId || !confirm(`¿Eliminar a ${athleteName}? Se borrarán sus mensualidades.`)) return;
+      try {
+        await deleteHalteAthlete(athleteId);
+        await refreshHalteMonthly();
+      } catch (error) {
+        console.error('Error al eliminar el atleta:', error);
+        alert('Error al eliminar el usuario');
       }
     });
   });
@@ -3157,6 +3207,7 @@ function filterAndRenderTelasList() {
         <div style="display: flex; align-items: flex-start; gap: 6px;">
           <span data-role="telas-athlete-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${e.athlete.name}</span>
           <button class="edit-name-btn" data-role="edit-telas-name" data-id="${e.athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+          <button class="edit-name-btn" data-role="delete-telas-athlete" data-id="${e.athlete.id}" data-name="${e.athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
       </td>
       <td>
@@ -3224,6 +3275,20 @@ function filterAndRenderTelasList() {
           console.error('Error al actualizar el nombre del atleta:', error);
           alert('Error al actualizar el nombre del atleta');
         }
+      }
+    });
+  });
+  ui.telasList.querySelectorAll('[data-role="delete-telas-athlete"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.currentTarget.dataset.id;
+      const athleteName = e.currentTarget.dataset.name || 'este usuario';
+      if (!athleteId || !confirm(`¿Eliminar a ${athleteName}? Se borrarán sus mensualidades.`)) return;
+      try {
+        await deleteTelasAthlete(athleteId);
+        await refreshTelasMonthly();
+      } catch (error) {
+        console.error('Error al eliminar el atleta:', error);
+        alert('Error al eliminar el usuario');
       }
     });
   });
@@ -3582,6 +3647,7 @@ async function refreshSingleClassesMonthly() {
         <div style="display: flex; align-items: flex-start; gap: 6px;">
           <span data-role="singleclasses-athlete-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${athleteName}</span>
           <button class="edit-name-btn" data-role="edit-singleclasses-name" data-id="${e.athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+          <button class="edit-name-btn" data-role="delete-singleclasses-athlete" data-id="${e.athlete.id}" data-name="${athleteName}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
       </td>
       <td>
@@ -3651,6 +3717,21 @@ async function refreshSingleClassesMonthly() {
           console.error('Error al actualizar el nombre del atleta:', error);
           alert('Error al actualizar el nombre del atleta');
         }
+      }
+    });
+  });
+
+  ui.singleClassesList.querySelectorAll('[data-role="delete-singleclasses-athlete"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const athleteId = e.currentTarget.dataset.id;
+      const athleteName = e.currentTarget.dataset.name || 'este usuario';
+      if (!athleteId || !confirm(`¿Eliminar a ${athleteName}? Se borrarán sus mensualidades.`)) return;
+      try {
+        await deleteSingleClassesAthlete(athleteId);
+        await refreshSingleClassesMonthly();
+      } catch (error) {
+        console.error('Error al eliminar el atleta:', error);
+        alert('Error al eliminar el usuario');
       }
     });
   });
