@@ -534,6 +534,25 @@
               </div>
             </div>
           </div>
+          <div id="processInvoicesModal" class="modal hidden">
+            <div class="modal-content card" style="max-width: 640px;">
+              <div class="detail-header">
+                <h3>Seleccionar facturas a procesar</h3>
+                <button id="processInvoicesModalClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <p id="processInvoicesFolderLabel" class="muted"></p>
+              <div class="btn-group" style="margin-bottom: 10px;">
+                <button id="processInvoicesSelectAll" class="btn ghost small" type="button">Seleccionar todas</button>
+                <button id="processInvoicesSelectNone" class="btn ghost small" type="button">Ninguna</button>
+              </div>
+              <div id="processInvoicesFileList" style="max-height: 360px; overflow-y: auto;"></div>
+              <p id="processInvoicesStatus" class="muted"></p>
+              <div class="btn-group">
+                <button id="processInvoicesConfirm" class="btn primary" type="button">Procesar seleccionadas</button>
+                <button id="processInvoicesCancel" class="btn ghost" type="button">Cancelar</button>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section id="ordersView" class="view hidden">

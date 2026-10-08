@@ -198,6 +198,28 @@ export async function processInvoicesFromDrive(folderId) {
   }
 }
 
+export async function listInvoiceFiles(folderId) {
+  const listFilesFunc = httpsCallable(functions, 'listInvoiceFiles');
+  try {
+    const result = await listFilesFunc({ folderId });
+    return result.data;
+  } catch (error) {
+    console.error('Error listando facturas:', error);
+    throw error;
+  }
+}
+
+export async function processSingleInvoice(driveFileId) {
+  const processInvoiceFunc = httpsCallable(functions, 'processInvoice');
+  try {
+    const result = await processInvoiceFunc({ driveFileId });
+    return result.data;
+  } catch (error) {
+    console.error('Error procesando factura individual:', error);
+    throw error;
+  }
+}
+
 export async function addOrder(supplier, price, date, document, userId) {
   await addDoc(collection(db, "orders"), {
     supplier,

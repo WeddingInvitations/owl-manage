@@ -153,8 +153,9 @@ import {
   deletePayment,
   updateExpense,
   deleteExpense,
-  processInvoicesFromDrive,
   listInvoiceFolders,
+  listInvoiceFiles,
+  processSingleInvoice,
   addOrder,
   updateOrder,
   deleteOrder,
@@ -5857,6 +5858,135 @@ on(ui.expenseForm, "submit", async (event) => {
 
 // Process invoices from Drive
 console.log('Registrando event listener para processInvoicesBtn:', ui.processInvoicesBtn);
+
+let invoiceFileSelectionState = { folder: null, files: [] };
+
+function renderInvoiceFileList(files) {
+  if (!ui.processInvoicesFileList) return;
+  if (!files.length) {
+    ui.processInvoicesFileList.innerHTML = '<p class="muted">No se encontraron facturas (PDF/JPG/PNG) en esta carpeta.</p>';
+    return;
+  }
+
+  const formatSize = (bytes) => {
+    const num = Number(bytes);
+    if (!num) return "";
+    if (num < 1024) return `${num} B`;
+    if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
+    return `${(num / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  ui.processInvoicesFileList.innerHTML = files
+    .map((file, index) => {
+      const disabled = file.alreadyProcessed ? "disabled" : "";
+      const checked = file.alreadyProcessed ? "" : "checked";
+      const badge = file.alreadyProcessed
+        ? '<span class="muted" style="margin-left: 8px;">⊙ Ya procesada</span>'
+        : "";
+      return `
+        <label style="display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--border, #333);">
+          <input type="checkbox" class="invoice-file-checkbox" data-index="${index}" ${checked} ${disabled} />
+          <span style="flex: 1;">${file.name}</span>
+          <span class="muted" style="font-size: 12px;">${formatSize(file.size)}</span>
+          ${badge}
+        </label>
+      `;
+    })
+    .join("");
+}
+
+async function openInvoiceFileSelectionModal(folder) {
+  invoiceFileSelectionState = { folder, files: [] };
+
+  if (ui.processInvoicesFolderLabel) {
+    ui.processInvoicesFolderLabel.textContent = `Carpeta: ${folder.name}`;
+  }
+  if (ui.processInvoicesStatus) {
+    ui.processInvoicesStatus.textContent = "Cargando facturas...";
+  }
+  renderInvoiceFileList([]);
+  ui.processInvoicesModal?.classList.remove("hidden");
+
+  try {
+    const result = await listInvoiceFiles(folder.id);
+    if (!result.success) {
+      throw new Error("No se pudo obtener la lista de facturas");
+    }
+    invoiceFileSelectionState.files = result.files || [];
+    renderInvoiceFileList(invoiceFileSelectionState.files);
+    ui.processInvoicesStatus.textContent = invoiceFileSelectionState.files.length
+      ? `${invoiceFileSelectionState.files.length} factura(s) encontradas. Selecciona las que quieras procesar.`
+      : "";
+  } catch (error) {
+    console.error("Error listando facturas:", error);
+    ui.processInvoicesStatus.textContent = `Error cargando facturas: ${error.message || error}`;
+  }
+}
+
+on(ui.processInvoicesModalClose, "click", () => {
+  ui.processInvoicesModal?.classList.add("hidden");
+});
+on(ui.processInvoicesCancel, "click", () => {
+  ui.processInvoicesModal?.classList.add("hidden");
+});
+on(ui.processInvoicesSelectAll, "click", () => {
+  ui.processInvoicesFileList
+    ?.querySelectorAll(".invoice-file-checkbox:not(:disabled)")
+    .forEach((checkbox) => (checkbox.checked = true));
+});
+on(ui.processInvoicesSelectNone, "click", () => {
+  ui.processInvoicesFileList
+    ?.querySelectorAll(".invoice-file-checkbox:not(:disabled)")
+    .forEach((checkbox) => (checkbox.checked = false));
+});
+
+on(ui.processInvoicesConfirm, "click", async () => {
+  const checkboxes = Array.from(
+    ui.processInvoicesFileList?.querySelectorAll(".invoice-file-checkbox:checked") || []
+  );
+  const selectedFiles = checkboxes.map(
+    (checkbox) => invoiceFileSelectionState.files[Number(checkbox.dataset.index)]
+  );
+
+  if (!selectedFiles.length) {
+    alert("Selecciona al menos una factura para procesar.");
+    return;
+  }
+
+  const confirmBtn = ui.processInvoicesConfirm;
+  confirmBtn.disabled = true;
+  const errors = [];
+  let processed = 0;
+
+  for (let i = 0; i < selectedFiles.length; i += 1) {
+    const file = selectedFiles[i];
+    ui.processInvoicesStatus.textContent = `Procesando ${i + 1}/${selectedFiles.length}: ${file.name}`;
+    try {
+      const result = await processSingleInvoice(file.id);
+      if (result.success) {
+        processed += 1;
+      }
+    } catch (error) {
+      console.error(`Error procesando ${file.name}:`, error);
+      errors.push({ filename: file.name, error: error.message || String(error) });
+    }
+  }
+
+  confirmBtn.disabled = false;
+
+  let message = `✓ Procesamiento completado\n\nFacturas procesadas: ${processed}/${selectedFiles.length}\n`;
+  if (errors.length) {
+    message += `\n━━━━━━━━━━━━━━━\nDETALLE DE ERRORES:\n\n`;
+    errors.forEach((err, idx) => {
+      message += `${idx + 1}. ${err.filename}\n   Error: ${err.error}\n\n`;
+    });
+  }
+  alert(message);
+
+  ui.processInvoicesModal?.classList.add("hidden");
+  await refreshAll();
+});
+
 if (ui.processInvoicesBtn) {
   ui.processInvoicesBtn.addEventListener("click", async () => {
     console.log('Click en botón de procesar facturas');
@@ -5900,77 +6030,17 @@ if (ui.processInvoicesBtn) {
       }
       
       const selectedFolder = folderResult.folders[selectedIndex];
-      
-      if (!confirm(`¿Procesar facturas de "${selectedFolder.name}"?\n\nEsto puede tardar unos minutos dependiendo de la cantidad de facturas.`)) {
-        return;
-      }
-      
-      btn.disabled = true;
-      btn.textContent = "⏳ Procesando...";
-      
-      // Procesar facturas de la carpeta seleccionada
-      try {
-        const result = await processInvoicesFromDrive(selectedFolder.id);
-      
-        if (result.success) {
-          const data = result.data;
-          let message = `✓ Procesamiento completado\n\nCarpeta: ${selectedFolder.name}\n\n`;
-          message += `Total archivos: ${data.total}\n`;
-          message += `✓ Correctas: ${data.processed}\n`;
-          
-          if (data.skipped > 0) {
-            message += `⊙ Ya subidas: ${data.skipped}\n`;
-          }
-          
-          if (data.failed > 0) {
-            message += `✗ Fallidas: ${data.failed}\n`;
-            
-            // Mostrar detalle de errores si existen
-            if (data.errors && data.errors.length > 0) {
-              message += `\n━━━━━━━━━━━━━━━\nDETALLE DE ERRORES:\n\n`;
-              data.errors.forEach((err, idx) => {
-                message += `${idx + 1}. ${err.filename}\n`;
-                message += `   Tipo: ${err.errorType}\n`;
-                message += `   Error: ${err.error}\n\n`;
-              });
-            }
-          }
-          
-          alert(message);
-          
-          // Recargar gastos para ver las nuevas facturas
-          await refreshAll();
-        }
-      } catch (innerError) {
-        // Si es un timeout pero el proceso está corriendo en el backend
-        if (innerError.code === 'functions/deadline-exceeded') {
-          alert(
-            `⚠️ La función está tardando más de lo esperado\n\n` +
-            `El procesamiento continúa en segundo plano.\n` +
-            `Las facturas procesadas aparecerán en unos minutos.\n\n` +
-            `Recarga la página en unos minutos para ver los resultados.`
-          );
-          // Intentar recargar después de un momento
-          setTimeout(() => {
-            if (confirm('¿Recargar gastos ahora?')) {
-              refreshAll();
-            }
-          }, 3000);
-        } else {
-          throw innerError; // Re-lanzar para que lo maneje el catch exterior
-        }
-      }
+
+      // Abrir modal para que el usuario elija qué facturas procesar
+      await openInvoiceFileSelectionModal(selectedFolder);
     } catch (error) {
       console.error('Error:', error);
-      let errorMsg = "Error procesando facturas";
+      let errorMsg = "Error cargando carpetas de facturas";
       
       if (error.code === 'functions/permission-denied') {
         errorMsg = "Solo usuarios OWNER pueden procesar facturas";
       } else if (error.code === 'functions/unauthenticated') {
         errorMsg = "Debes iniciar sesión para procesar facturas";
-      } else if (error.code === 'functions/deadline-exceeded') {
-        // Ya manejado arriba
-        return;
       } else if (error.message) {
         errorMsg += ": " + error.message;
       }
