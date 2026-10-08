@@ -491,7 +491,7 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
     row.innerHTML = `
       <td style="max-width: 200px;">
         <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="pilates-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
+          <span data-role="pilates-athlete-name" class="list-row-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
           <button class="edit-name-btn" data-role="edit-pilates-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
           <button class="edit-name-btn" data-role="delete-pilates-athlete" data-id="${athlete.id}" data-name="${athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>

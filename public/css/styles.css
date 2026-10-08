@@ -2159,6 +2159,19 @@ span.athlete-status-unpaid,
   display: none;
 }
 
+/* Trunca nombres largos para que los botones de editar/eliminar nunca queden ocultos */
+.list-row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* La celda de nombre nunca debe recortar los botones de acción */
+.athlete-table-mobile td:nth-child(1) {
+  overflow: visible !important;
+}
+
 /* Forzar layout tipo tarjeta para tablas mobile en todos los tamaños */
 .athlete-table-mobile {
   display: block !important;

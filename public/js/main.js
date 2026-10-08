@@ -1024,7 +1024,7 @@ function filterAndRenderAthleteList() {
     row.innerHTML = `
       <td style="max-width: 200px;">
         <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name}</span>
+          <span data-role="athlete-name" class="list-row-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name}</span>
           <button class="edit-name-btn" data-role="edit-athlete-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
           <button class="edit-name-btn" data-role="delete-athlete" data-id="${athlete.id}" data-name="${athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
@@ -1593,7 +1593,7 @@ function filterAndRenderAcroList() {
     row.innerHTML = `
       <td style="max-width: 200px;">
         <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="acro-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
+          <span data-role="acro-athlete-name" class="list-row-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
           <button class="edit-name-btn" data-role="edit-acro-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
           <button class="edit-name-btn" data-role="delete-acro-athlete" data-id="${athlete.id}" data-name="${athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
@@ -1740,7 +1740,7 @@ function filterAndRenderAcroKidsList() {
     row.innerHTML = `
       <td style="max-width: 200px;">
         <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="acroKids-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
+          <span data-role="acroKids-athlete-name" class="list-row-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
           <button class="edit-name-btn" data-role="edit-acroKids-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
           <button class="edit-name-btn" data-role="delete-acroKids-athlete" data-id="${athlete.id}" data-name="${athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
@@ -2766,7 +2766,7 @@ function filterAndRenderHalteList() {
     row.innerHTML = `
       <td style="max-width: 200px;">
         <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="halte-athlete-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
+          <span data-role="halte-athlete-name" class="list-row-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
           <button class="edit-name-btn" data-role="edit-halte-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
           <button class="edit-name-btn" data-role="delete-halte-athlete" data-id="${athlete.id}" data-name="${athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
@@ -3205,7 +3205,7 @@ function filterAndRenderTelasList() {
     row.innerHTML = `
       <td style="max-width: 200px;">
         <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="telas-athlete-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${e.athlete.name}</span>
+          <span data-role="telas-athlete-name" class="list-row-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${e.athlete.name}</span>
           <button class="edit-name-btn" data-role="edit-telas-name" data-id="${e.athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
           <button class="edit-name-btn" data-role="delete-telas-athlete" data-id="${e.athlete.id}" data-name="${e.athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
@@ -3645,7 +3645,7 @@ async function refreshSingleClassesMonthly() {
     row.innerHTML = `
       <td style="max-width: 200px;">
         <div style="display: flex; align-items: flex-start; gap: 6px;">
-          <span data-role="singleclasses-athlete-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${athleteName}</span>
+          <span data-role="singleclasses-athlete-name" class="list-row-name" data-id="${e.athlete.id}" style="flex: 1; line-height: 1.3;">${athleteName}</span>
           <button class="edit-name-btn" data-role="edit-singleclasses-name" data-id="${e.athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
           <button class="edit-name-btn" data-role="delete-singleclasses-athlete" data-id="${e.athlete.id}" data-name="${athleteName}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
