@@ -96,8 +96,14 @@ class Invoice {
    * Convierte la factura a formato para gastos (expenses)
    */
   toExpenseFormat() {
+    // Usa el nombre del archivo en Drive (sin extensión) como concepto,
+    // para que el gasto se llame igual que la factura original.
+    const conceptFromFilename = this.driveFileName
+      ? this.driveFileName.replace(/\.[^/.]+$/, '')
+      : null;
+
     return {
-      concept: `Factura ${this.number} - ${this.supplierName}`,
+      concept: conceptFromFilename || `Factura ${this.number} - ${this.supplierName}`,
       amount: this.total.amount,
       date: this.issueDate.toISOString().split('T')[0], // YYYY-MM-DD
       invoiceNumber: this.number,

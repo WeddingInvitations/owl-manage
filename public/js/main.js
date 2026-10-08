@@ -719,8 +719,7 @@ function setDefaultMonthForPaymentExpense() {
   }
 }
 
-function getCurrentYearMonths() {
-  const year = new Date().getFullYear();
+function getCurrentYearMonths(year = new Date().getFullYear()) {
   const months = [];
   for (let month = 1; month <= 12; month += 1) {
     months.push(`${year}-${String(month).padStart(2, "0")}`);
@@ -778,7 +777,10 @@ async function refreshPaymentList() {
 }
 
 async function refreshExpenseList() {
-  availableExpenseMonths = getCurrentYearMonths();
+  const yearForList = selectedExpenseMonth
+    ? Number(selectedExpenseMonth.slice(0, 4))
+    : new Date().getFullYear();
+  availableExpenseMonths = getCurrentYearMonths(yearForList);
   const currentKey = getMonthKey(new Date());
   if (!selectedExpenseMonth || !availableExpenseMonths.includes(selectedExpenseMonth)) {
     selectedExpenseMonth = availableExpenseMonths.includes(currentKey)
@@ -5878,14 +5880,19 @@ function renderInvoiceFileList(files) {
 
   ui.processInvoicesFileList.innerHTML = files
     .map((file, index) => {
-      const disabled = file.alreadyProcessed ? "disabled" : "";
       const checked = file.alreadyProcessed ? "" : "checked";
-      const badge = file.alreadyProcessed
-        ? '<span class="muted" style="margin-left: 8px;">⊙ Ya procesada</span>'
+      let badge = file.alreadyProcessed
+        ? '<span class="muted" style="margin-left: 8px;">⊙ Ya procesada (se puede reprocesar)</span>'
         : "";
+      if (file.processingStatus === "success") {
+        badge = '<span style="margin-left: 8px; color: #2e7d32;">✓ Procesada</span>';
+      } else if (file.processingStatus === "error") {
+        const title = file.processingError ? ` title="${file.processingError.replace(/"/g, '&quot;')}"` : "";
+        badge = `<span style="margin-left: 8px; color: #c62828; font-weight: 600;"${title}>✗ Error${file.processingError ? `: ${file.processingError}` : ""}</span>`;
+      }
       return `
         <label style="display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--border, #333);">
-          <input type="checkbox" class="invoice-file-checkbox" data-index="${index}" ${checked} ${disabled} />
+          <input type="checkbox" class="invoice-file-checkbox" data-index="${index}" ${checked} />
           <span style="flex: 1;">${file.name}</span>
           <span class="muted" style="font-size: 12px;">${formatSize(file.size)}</span>
           ${badge}
@@ -5931,12 +5938,12 @@ on(ui.processInvoicesCancel, "click", () => {
 });
 on(ui.processInvoicesSelectAll, "click", () => {
   ui.processInvoicesFileList
-    ?.querySelectorAll(".invoice-file-checkbox:not(:disabled)")
+    ?.querySelectorAll(".invoice-file-checkbox")
     .forEach((checkbox) => (checkbox.checked = true));
 });
 on(ui.processInvoicesSelectNone, "click", () => {
   ui.processInvoicesFileList
-    ?.querySelectorAll(".invoice-file-checkbox:not(:disabled)")
+    ?.querySelectorAll(".invoice-file-checkbox")
     .forEach((checkbox) => (checkbox.checked = false));
 });
 
@@ -5944,11 +5951,9 @@ on(ui.processInvoicesConfirm, "click", async () => {
   const checkboxes = Array.from(
     ui.processInvoicesFileList?.querySelectorAll(".invoice-file-checkbox:checked") || []
   );
-  const selectedFiles = checkboxes.map(
-    (checkbox) => invoiceFileSelectionState.files[Number(checkbox.dataset.index)]
-  );
+  const selectedIndexes = checkboxes.map((checkbox) => Number(checkbox.dataset.index));
 
-  if (!selectedFiles.length) {
+  if (!selectedIndexes.length) {
     alert("Selecciona al menos una factura para procesar.");
     return;
   }
@@ -5956,34 +5961,60 @@ on(ui.processInvoicesConfirm, "click", async () => {
   const confirmBtn = ui.processInvoicesConfirm;
   confirmBtn.disabled = true;
   const errors = [];
+  const processedMonths = new Set();
   let processed = 0;
 
-  for (let i = 0; i < selectedFiles.length; i += 1) {
-    const file = selectedFiles[i];
-    ui.processInvoicesStatus.textContent = `Procesando ${i + 1}/${selectedFiles.length}: ${file.name}`;
+  for (let i = 0; i < selectedIndexes.length; i += 1) {
+    const fileIndex = selectedIndexes[i];
+    const file = invoiceFileSelectionState.files[fileIndex];
+    ui.processInvoicesStatus.textContent = `Procesando ${i + 1}/${selectedIndexes.length}: ${file.name}`;
     try {
-      const result = await processSingleInvoice(file.id);
+      const result = await processSingleInvoice(file.id, { force: Boolean(file.alreadyProcessed) });
       if (result.success) {
         processed += 1;
+        file.processingStatus = "success";
+        file.processingError = null;
+        const issueDate = result.data?.invoice?.issueDate || result.invoice?.issueDate;
+        if (issueDate) {
+          processedMonths.add(issueDate.slice(0, 7));
+        }
       }
     } catch (error) {
       console.error(`Error procesando ${file.name}:`, error);
-      errors.push({ filename: file.name, error: error.message || String(error) });
+      let detail = error.message || String(error);
+      const validationDetails = error.details;
+      if (Array.isArray(validationDetails) && validationDetails.length) {
+        detail += ": " + validationDetails.map((d) => d.message || d.field).join(", ");
+      }
+      file.processingStatus = "error";
+      file.processingError = detail;
+      errors.push({ filename: file.name, error: detail });
     }
+    renderInvoiceFileList(invoiceFileSelectionState.files);
   }
 
   confirmBtn.disabled = false;
 
-  let message = `✓ Procesamiento completado\n\nFacturas procesadas: ${processed}/${selectedFiles.length}\n`;
-  if (errors.length) {
-    message += `\n━━━━━━━━━━━━━━━\nDETALLE DE ERRORES:\n\n`;
-    errors.forEach((err, idx) => {
-      message += `${idx + 1}. ${err.filename}\n   Error: ${err.error}\n\n`;
-    });
+  let monthNote = "";
+  if (processedMonths.size === 1) {
+    const [onlyMonth] = processedMonths;
+    if (onlyMonth !== selectedExpenseMonth) {
+      selectedExpenseMonth = onlyMonth;
+      monthNote = ` Las facturas se guardan con la fecha real del documento: cambiado el filtro de Gastos a ${getMonthLabel(onlyMonth)}.`;
+    }
+  } else if (processedMonths.size > 1) {
+    const monthsList = Array.from(processedMonths).map((m) => getMonthLabel(m)).join(", ");
+    monthNote = ` Las facturas procesadas pertenecen a distintos meses (${monthsList}); cambia el filtro de Gastos para verlas.`;
   }
-  alert(message);
 
-  ui.processInvoicesModal?.classList.add("hidden");
+  ui.processInvoicesStatus.textContent = `Procesamiento completado: ${processed}/${selectedIndexes.length} correctas${
+    errors.length ? `, ${errors.length} con error (ver detalle en la lista)` : ""
+  }.${monthNote}`;
+
+  if (!errors.length) {
+    ui.processInvoicesModal?.classList.add("hidden");
+  }
+
   await refreshAll();
 });
 

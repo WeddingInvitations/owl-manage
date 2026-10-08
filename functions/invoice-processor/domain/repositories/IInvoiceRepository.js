@@ -57,6 +57,15 @@ class IInvoiceRepository {
   async update(id, updates) {
     throw new Error('Method not implemented');
   }
+
+  /**
+   * Elimina una factura y su gasto asociado por driveFileId (para reprocesar)
+   * @param {string} driveFileId
+   * @returns {Promise<void>}
+   */
+  async deleteByDriveFileId(driveFileId) {
+    throw new Error('Method not implemented');
+  }
 }
 
 module.exports = { IInvoiceRepository };

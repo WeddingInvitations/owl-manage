@@ -97,6 +97,25 @@ class FirestoreInvoiceRepository extends IInvoiceRepository {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   }
+
+  /**
+   * Elimina la factura y el gasto asociados a un driveFileId (para permitir reprocesar)
+   */
+  async deleteByDriveFileId(driveFileId) {
+    if (!driveFileId) return;
+
+    const invoicesSnapshot = await this.db
+      .collection(this.invoicesCollection)
+      .where('driveFileId', '==', driveFileId)
+      .get();
+    await Promise.all(invoicesSnapshot.docs.map((doc) => doc.ref.delete()));
+
+    const expensesSnapshot = await this.db
+      .collection(this.expensesCollection)
+      .where('driveFileId', '==', driveFileId)
+      .get();
+    await Promise.all(expensesSnapshot.docs.map((doc) => doc.ref.delete()));
+  }
 }
 
 module.exports = { FirestoreInvoiceRepository };

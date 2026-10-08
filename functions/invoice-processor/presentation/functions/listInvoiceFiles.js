@@ -26,12 +26,11 @@ async function findProcessedFileIds(firestore, fileIds) {
     const snapshot = await firestore
       .collection('documents')
       .where('driveFileId', 'in', chunk)
-      .where('status', '==', 'PROCESSED')
       .get();
 
     snapshot.forEach((doc) => {
       const data = doc.data();
-      if (data.driveFileId) {
+      if (data.driveFileId && data.status === 'PROCESSED') {
         processed.add(data.driveFileId);
       }
     });

@@ -48,12 +48,11 @@ class InvoiceValidator {
       errors.push({ field: 'total', message: 'El total debe ser mayor a 0' });
     }
 
-    // Validar coherencia de totales
+    // Aviso (no bloqueante) si la suma de items no coincide con el total impreso:
+    // descuentos, gastos de envío o redondeos pueden provocar diferencias legítimas,
+    // y el total de la factura (extraído del documento) es la fuente de verdad.
     if (!invoice.validateTotals()) {
-      errors.push({ 
-        field: 'totals', 
-        message: 'Los totales no coinciden con la suma de los items' 
-      });
+      console.warn(`[InvoiceValidator] Los totales no coinciden exactamente con la suma de items (factura ${invoice.number})`);
     }
 
     if (errors.length > 0) {

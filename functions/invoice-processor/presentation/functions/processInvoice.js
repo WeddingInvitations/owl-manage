@@ -34,7 +34,7 @@ exports.processInvoice = functions
   }
 
   // Validar entrada
-  const { driveFileId } = data;
+  const { driveFileId, force } = data;
   if (!driveFileId) {
     throw new functions.https.HttpsError('invalid-argument', 'driveFileId es requerido');
   }
@@ -48,6 +48,7 @@ exports.processInvoice = functions
     const result = await useCase.execute({
       driveFileId,
       userId: context.auth.uid,
+      force: Boolean(force),
     });
 
     return {

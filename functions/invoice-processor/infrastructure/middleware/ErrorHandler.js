@@ -131,7 +131,7 @@ class ErrorHandler {
    * Convierte error en HttpsError de Firebase
    */
   toHttpsError(error) {
-    const { functions } = require('firebase-functions');
+    const functions = require('firebase-functions');
     const errorResponse = this._classifyError(error);
     
     const codeMap = {

@@ -27,12 +27,13 @@ class ProcessNewInvoice {
 
   /**
    * Ejecuta el caso de uso
-   * @param {Object} params - { driveFileId, userId }
+   * @param {Object} params - { driveFileId, userId, force }
+   * @param {boolean} params.force - Si es true, reprocesa aunque ya exista (borra factura/gasto previos)
    * @returns {Promise<Object>} Resultado del procesamiento
    */
-  async execute({ driveFileId, userId }) {
+  async execute({ driveFileId, userId, force = false }) {
     const startTime = Date.now();
-    const context = { driveFileId, userId, operation: 'process-new-invoice' };
+    const context = { driveFileId, userId, force, operation: 'process-new-invoice' };
 
     this.logger.info('Iniciando procesamiento de factura', context);
 
@@ -46,16 +47,22 @@ class ProcessNewInvoice {
       const documentId = DocumentId.fromFileContent(fileBuffer, fileMetadata.name);
       context.documentId = documentId.value;
 
-      // 3. Verificar idempotencia
-      this.logger.info('Verificando idempotencia', context);
-      const existingResult = await this.idempotencyService.check(documentId.value);
-      if (existingResult) {
-        this.logger.info('Documento ya procesado (idempotencia)', context);
-        return {
-          success: true,
-          alreadyProcessed: true,
-          result: existingResult,
-        };
+      // 3. Verificar idempotencia (se omite si se solicita reprocesar)
+      if (!force) {
+        this.logger.info('Verificando idempotencia', context);
+        const existingResult = await this.idempotencyService.check(documentId.value);
+        if (existingResult) {
+          this.logger.info('Documento ya procesado (idempotencia)', context);
+          return {
+            success: true,
+            alreadyProcessed: true,
+            result: existingResult,
+          };
+        }
+      } else {
+        // Elimina la factura y el gasto previos de este archivo para evitar duplicados
+        this.logger.info('Reprocesando: eliminando factura/gasto previos', context);
+        await this.invoiceRepository.deleteByDriveFileId(driveFileId);
       }
 
       // 4. Guardar documento en repositorio
@@ -105,7 +112,9 @@ class ProcessNewInvoice {
       // 8. Validar factura
       this.logger.info('Validando factura', context);
       InvoiceValidator.validate(invoice);
-      await InvoiceValidator.validateNotDuplicate(invoice, this.invoiceRepository);
+      if (!force) {
+        await InvoiceValidator.validateNotDuplicate(invoice, this.invoiceRepository);
+      }
 
       // 9. Marcar factura como procesada
       invoice.markAsProcessed();
@@ -164,6 +173,7 @@ class ProcessNewInvoice {
         error: error.message, 
         stack: error.stack,
         errorType: error.constructor.name,
+        validationErrors: error.validationErrors,
         duration 
       });
 

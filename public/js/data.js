@@ -209,10 +209,10 @@ export async function listInvoiceFiles(folderId) {
   }
 }
 
-export async function processSingleInvoice(driveFileId) {
+export async function processSingleInvoice(driveFileId, options = {}) {
   const processInvoiceFunc = httpsCallable(functions, 'processInvoice');
   try {
-    const result = await processInvoiceFunc({ driveFileId });
+    const result = await processInvoiceFunc({ driveFileId, force: Boolean(options.force) });
     return result.data;
   } catch (error) {
     console.error('Error procesando factura individual:', error);
