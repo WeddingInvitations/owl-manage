@@ -23,7 +23,11 @@ class ProcessInvoicesFromFolder {
 
     // Extraer archivos de la carpeta
     const files = await this.documentExtractor.extractFromFolder(folderId, {
-      mimeTypes: ['application/pdf', 'image/jpeg', 'image/png'],
+      mimeTypes: [
+        'application/pdf', 'image/jpeg', 'image/png',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/msword',
+      ],
     });
 
     this.logger.info('Archivos encontrados', { ...context, count: files.length });

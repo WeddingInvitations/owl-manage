@@ -34,9 +34,12 @@ exports.processInvoice = functions
   }
 
   // Validar entrada
-  const { driveFileId, force } = data;
+  const { driveFileId, force, expenseMonth } = data;
   if (!driveFileId) {
     throw new functions.https.HttpsError('invalid-argument', 'driveFileId es requerido');
+  }
+  if (expenseMonth != null && !/^\d{4}-(0[1-9]|1[0-2])$/.test(expenseMonth)) {
+    throw new functions.https.HttpsError('invalid-argument', 'expenseMonth debe tener formato YYYY-MM');
   }
 
   // Inicializar contenedor de dependencias
@@ -49,6 +52,7 @@ exports.processInvoice = functions
       driveFileId,
       userId: context.auth.uid,
       force: Boolean(force),
+      expenseMonth: expenseMonth || null,
     });
 
     return {

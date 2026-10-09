@@ -2,6 +2,17 @@ const { Invoice } = require('../../domain/entities');
 const { DocumentId } = require('../../domain/value-objects');
 const { InvoiceValidator } = require('../../domain/validators');
 
+function monthFromFolderName(name) {
+  const text = String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  const year = text.match(/\b(20\d{2})\b/)?.[1];
+  const months = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
+    'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+  const month = months.findIndex(month => new RegExp(`\\b${month}\\b`).test(text));
+  const septemberVariant = /\bSETIEMBRE\b/.test(text);
+  if (!year || (month < 0 && !septemberVariant)) return null;
+  return `${year}-${String(month >= 0 ? month + 1 : 9).padStart(2, '0')}`;
+}
+
 /**
  * Caso de uso: Procesar una nueva factura
  * Orquesta el flujo completo de procesamiento
@@ -27,11 +38,12 @@ class ProcessNewInvoice {
 
   /**
    * Ejecuta el caso de uso
-   * @param {Object} params - { driveFileId, userId, force }
+  * @param {Object} params - { driveFileId, userId, force, expenseMonth }
    * @param {boolean} params.force - Si es true, reprocesa aunque ya exista (borra factura/gasto previos)
+  * @param {string|null} params.expenseMonth - Mes contable (YYYY-MM), usado como fecha genérica si falta la de emisión
    * @returns {Promise<Object>} Resultado del procesamiento
    */
-  async execute({ driveFileId, userId, force = false }) {
+  async execute({ driveFileId, userId, force = false, expenseMonth = null }) {
     const startTime = Date.now();
     const context = { driveFileId, userId, force, operation: 'process-new-invoice' };
 
@@ -42,6 +54,11 @@ class ProcessNewInvoice {
       this.logger.info('Descargando archivo de Drive', context);
       const fileBuffer = await this.documentExtractor.downloadFile(driveFileId);
       const fileMetadata = await this.documentExtractor.getFileMetadata(driveFileId);
+      // La carpeta real de Drive tiene prioridad sobre el mes enviado por la web.
+      const folder = fileMetadata.path && this.documentExtractor.getFolderMetadata
+        ? await this.documentExtractor.getFolderMetadata(fileMetadata.path)
+        : null;
+      const accountingMonth = monthFromFolderName(folder?.name) || expenseMonth;
 
       // 2. Generar ID de documento (idempotency key)
       const documentId = DocumentId.fromFileContent(fileBuffer, fileMetadata.name);
@@ -85,6 +102,29 @@ class ProcessNewInvoice {
       this.logger.info('Parseando factura con IA', context);
       const extractedData = await this.documentParser.parseInvoice(fileBuffer, fileMetadata);
 
+      // Si el documento no contiene una fecha válida, usar el primer día del mes
+      // de la carpeta. Sin mes contable, la factura sigue requiriendo su propia fecha.
+      const extractedDate = typeof extractedData.issueDate === 'string'
+        ? extractedData.issueDate.trim()
+        : '';
+      const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(extractedDate)
+        ? new Date(`${extractedDate}T00:00:00Z`)
+        : new Date(NaN);
+      if (!extractedDate || Number.isNaN(parsedDate.getTime()) ||
+          parsedDate.toISOString().slice(0, 10) !== extractedDate) {
+        if (accountingMonth) {
+          extractedData.issueDate = `${accountingMonth}-01`;
+          this.logger.warn('Fecha de emisión no extraída; usando mes de la carpeta', {
+            ...context, issueDate: extractedData.issueDate,
+          });
+          // El vencimiento puede preceder a la fecha genérica, que no es la
+          // fecha real de emisión; no bloquear la factura por esa comparación.
+          if (extractedData.dueDate && new Date(extractedData.dueDate) < new Date(extractedData.issueDate)) {
+            extractedData.dueDate = null;
+          }
+        }
+      }
+
       // 6. Validar datos extraídos
       this.logger.info('Validando datos extraídos', context);
       InvoiceValidator.validateExtractedData(extractedData);
@@ -127,6 +167,9 @@ class ProcessNewInvoice {
       // 11. Guardar como gasto (expense)
       this.logger.info('Guardando como gasto', context);
       const expenseData = invoice.toExpenseFormat();
+      if (accountingMonth) {
+        expenseData.date = `${accountingMonth}-01`;
+      }
       const expenseId = await this.invoiceRepository.saveAsExpense(expenseData, userId);
       context.expenseId = expenseId;
 

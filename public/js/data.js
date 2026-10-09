@@ -212,7 +212,11 @@ export async function listInvoiceFiles(folderId) {
 export async function processSingleInvoice(driveFileId, options = {}) {
   const processInvoiceFunc = httpsCallable(functions, 'processInvoice');
   try {
-    const result = await processInvoiceFunc({ driveFileId, force: Boolean(options.force) });
+    const result = await processInvoiceFunc({
+      driveFileId,
+      force: Boolean(options.force),
+      expenseMonth: options.expenseMonth || null,
+    });
     return result.data;
   } catch (error) {
     console.error('Error procesando factura individual:', error);

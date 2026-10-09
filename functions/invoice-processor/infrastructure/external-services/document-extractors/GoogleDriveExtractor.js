@@ -81,6 +81,10 @@ class GoogleDriveExtractor extends IDocumentExtractor {
       );
     }
   }
+
+  async getFolderMetadata(folderId) {
+    return this.drive.getFileMetadata(folderId);
+  }
 }
 
 module.exports = { GoogleDriveExtractor };

@@ -7,6 +7,8 @@ class DocumentValidator {
     'image/jpeg',
     'image/jpg',
     'image/png',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/msword',
   ];
 
   static MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -21,7 +23,7 @@ class DocumentValidator {
     if (!this.ALLOWED_MIME_TYPES.includes(document.mimeType)) {
       errors.push({
         field: 'mimeType',
-        message: `Tipo de archivo no permitido: ${document.mimeType}. Permitidos: PDF, JPG, PNG`,
+        message: `Tipo de archivo no permitido: ${document.mimeType}. Permitidos: PDF, JPG, PNG, DOCX, DOC`,
       });
     }
 
@@ -51,7 +53,7 @@ class DocumentValidator {
    * Valida que el filename tenga extensión válida
    */
   static validateFilename(filename) {
-    const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.docx', '.doc'];
     const hasValidExtension = validExtensions.some(ext => 
       filename.toLowerCase().endsWith(ext)
     );

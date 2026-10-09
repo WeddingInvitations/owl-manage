@@ -5863,10 +5863,41 @@ console.log('Registrando event listener para processInvoicesBtn:', ui.processInv
 
 let invoiceFileSelectionState = { folder: null, files: [] };
 
+function getInvoiceFolderMonth(folderName) {
+  const normalizedName = String(folderName || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+  const yearMatch = normalizedName.match(/\b(20\d{2})\b/);
+  const year = yearMatch?.[1];
+  if (!year) return null;
+
+  const monthNumbers = {
+    ENERO: "01",
+    FEBRERO: "02",
+    MARZO: "03",
+    ABRIL: "04",
+    MAYO: "05",
+    JUNIO: "06",
+    JULIO: "07",
+    AGOSTO: "08",
+    SEPTIEMBRE: "09",
+    SETIEMBRE: "09",
+    OCTUBRE: "10",
+    NOVIEMBRE: "11",
+    DICIEMBRE: "12",
+  };
+  const monthEntry = Object.entries(monthNumbers).find(([name]) =>
+    new RegExp(`\\b${name}\\b`).test(normalizedName)
+  );
+
+  return monthEntry ? `${year}-${monthEntry[1]}` : null;
+}
+
 function renderInvoiceFileList(files) {
   if (!ui.processInvoicesFileList) return;
   if (!files.length) {
-    ui.processInvoicesFileList.innerHTML = '<p class="muted">No se encontraron facturas (PDF/JPG/PNG) en esta carpeta.</p>';
+    ui.processInvoicesFileList.innerHTML = '<p class="muted">No se encontraron facturas (PDF/JPG/PNG/DOCX/DOC) en esta carpeta.</p>';
     return;
   }
 
@@ -5952,16 +5983,20 @@ on(ui.processInvoicesConfirm, "click", async () => {
     ui.processInvoicesFileList?.querySelectorAll(".invoice-file-checkbox:checked") || []
   );
   const selectedIndexes = checkboxes.map((checkbox) => Number(checkbox.dataset.index));
+  const expenseMonth = getInvoiceFolderMonth(invoiceFileSelectionState.folder?.name);
 
   if (!selectedIndexes.length) {
     alert("Selecciona al menos una factura para procesar.");
+    return;
+  }
+  if (!expenseMonth) {
+    alert("No se pudo identificar el mes y año en el nombre de la carpeta de Drive. Usa un nombre como 'SEPTIEMBRE 2026'.");
     return;
   }
 
   const confirmBtn = ui.processInvoicesConfirm;
   confirmBtn.disabled = true;
   const errors = [];
-  const processedMonths = new Set();
   let processed = 0;
 
   for (let i = 0; i < selectedIndexes.length; i += 1) {
@@ -5969,15 +6004,14 @@ on(ui.processInvoicesConfirm, "click", async () => {
     const file = invoiceFileSelectionState.files[fileIndex];
     ui.processInvoicesStatus.textContent = `Procesando ${i + 1}/${selectedIndexes.length}: ${file.name}`;
     try {
-      const result = await processSingleInvoice(file.id, { force: Boolean(file.alreadyProcessed) });
+      const result = await processSingleInvoice(file.id, {
+        force: Boolean(file.alreadyProcessed),
+        expenseMonth,
+      });
       if (result.success) {
         processed += 1;
         file.processingStatus = "success";
         file.processingError = null;
-        const issueDate = result.data?.invoice?.issueDate || result.invoice?.issueDate;
-        if (issueDate) {
-          processedMonths.add(issueDate.slice(0, 7));
-        }
       }
     } catch (error) {
       console.error(`Error procesando ${file.name}:`, error);
@@ -5994,22 +6028,11 @@ on(ui.processInvoicesConfirm, "click", async () => {
   }
 
   confirmBtn.disabled = false;
-
-  let monthNote = "";
-  if (processedMonths.size === 1) {
-    const [onlyMonth] = processedMonths;
-    if (onlyMonth !== selectedExpenseMonth) {
-      selectedExpenseMonth = onlyMonth;
-      monthNote = ` Las facturas se guardan con la fecha real del documento: cambiado el filtro de Gastos a ${getMonthLabel(onlyMonth)}.`;
-    }
-  } else if (processedMonths.size > 1) {
-    const monthsList = Array.from(processedMonths).map((m) => getMonthLabel(m)).join(", ");
-    monthNote = ` Las facturas procesadas pertenecen a distintos meses (${monthsList}); cambia el filtro de Gastos para verlas.`;
-  }
+  selectedExpenseMonth = expenseMonth;
 
   ui.processInvoicesStatus.textContent = `Procesamiento completado: ${processed}/${selectedIndexes.length} correctas${
     errors.length ? `, ${errors.length} con error (ver detalle en la lista)` : ""
-  }.${monthNote}`;
+  }. Los gastos se han asignado al mes de la carpeta de Drive: ${getMonthLabel(expenseMonth)}.`;
 
   if (!errors.length) {
     ui.processInvoicesModal?.classList.add("hidden");

@@ -1,5 +1,8 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
+const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const DOC_MIME_TYPE = 'application/msword';
+
 /**
  * Adaptador para Gemini API
  * Encapsula la interacción con la API de Gemini
@@ -11,7 +14,7 @@ class GeminiAdapter {
   }
 
   /**
-   * Extrae texto e información estructurada de una imagen/PDF
+    * Extrae texto e información estructurada de una imagen/PDF
    */
   async extractFromDocument(fileBuffer, mimeType, prompt) {
     const imagePart = {
@@ -44,7 +47,28 @@ ${JSON.stringify(schema, null, 2)}
 
 Devuelve ÚNICAMENTE el objeto JSON, sin texto adicional ni markdown.`;
 
-    const responseText = await this.extractFromDocument(fileBuffer, mimeType, prompt);
+    let responseText;
+    if (mimeType === DOCX_MIME_TYPE) {
+      // DOCX is uncommon: defer loading its ZIP/XML dependencies so Cloud Functions
+      // can initialize without the extra cold-start cost during deployment.
+      const mammoth = require('mammoth');
+      const { value: text } = await mammoth.extractRawText({ buffer: fileBuffer });
+      if (!text.trim()) {
+        throw new Error('El DOCX no contiene texto legible. Si es una imagen escaneada, conviértelo a PDF.');
+      }
+      responseText = await this.processText(text, prompt);
+    } else if (mimeType === DOC_MIME_TYPE) {
+      // Los archivos .doc binarios no se pueden enviar como inlineData a Gemini.
+      const WordExtractor = require('word-extractor');
+      const document = await new WordExtractor().extract(fileBuffer);
+      const text = document.getBody();
+      if (!text || !text.trim()) {
+        throw new Error('El DOC no contiene texto legible. Si es una imagen escaneada, conviértelo a PDF.');
+      }
+      responseText = await this.processText(text, prompt);
+    } else {
+      responseText = await this.extractFromDocument(fileBuffer, mimeType, prompt);
+    }
     
     // Limpiar markdown si existe
     let jsonText = responseText.trim();

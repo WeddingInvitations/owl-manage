@@ -10,6 +10,8 @@ const INVOICE_MIME_TYPES = [
   'image/jpeg',
   'image/jpg',
   'image/png',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
 ];
 
 /**
@@ -40,7 +42,7 @@ async function findProcessedFileIds(firestore, fileIds) {
 }
 
 /**
- * Lista las facturas (PDF/JPG/PNG) de una subcarpeta de Drive,
+ * Lista las facturas (PDF/JPG/PNG/DOCX/DOC) de una subcarpeta de Drive,
  * marcando cuáles ya fueron procesadas previamente.
  */
 exports.listInvoiceFiles = functions.https.onCall(async (data, context) => {
