@@ -273,24 +273,6 @@
                 </section>
         <section id="summaryView" class="view hidden">
           <div class="card">
-            <h2>Resumen</h2>
-            <div class="summary">
-              <div>
-                <p class="label">Ingresos</p>
-                <p id="summaryIncome" class="value">0 €</p>
-              </div>
-              <div>
-                <p class="label">Gastos</p>
-                <p id="summaryExpenses" class="value">0 €</p>
-              </div>
-              <div>
-                <p class="label">Beneficio</p>
-                <p id="summaryProfit" class="value">0 €</p>
-              </div>
-            </div>
-            <button id="refreshSummary" class="btn ghost">Actualizar</button>
-          </div>
-          <div class="card">
             <div class="detail-header">
               <h3>Balance anual</h3>
               <select id="monthlyYearSelect"></select>
@@ -310,17 +292,25 @@
               </table>
             </div>
           </div>
-          <div id="monthlyDetailCard" class="card hidden">
+        </section>
+
+        <section id="monthlyDetailView" class="view hidden">
+          <div class="card">
             <div class="detail-header">
               <h3 id="monthlyDetailTitle">Detalle mensual</h3>
               <button id="monthlyDetailClose" class="btn ghost" type="button">
-                Cerrar
+                ← Volver al balance anual
               </button>
+            </div>
+            <div class="summary">
+              <div><p class="label">Total ingresos</p><p id="monthlyDetailIncomeTotal" class="value">0 €</p></div>
+              <div><p class="label">Total gastos</p><p id="monthlyDetailExpenseTotal" class="value">0 €</p></div>
+              <div><p class="label">Balance total</p><p id="monthlyDetailBalance" class="value">0 €</p></div>
             </div>
             <div class="detail-grid">
               <div>
                 <h4>Ingresos</h4>
-                <table class="table">
+                <div class="table-responsive"><table class="table">
                   <thead>
                     <tr>
                       <th>Fecha</th>
@@ -329,11 +319,12 @@
                     </tr>
                   </thead>
                   <tbody id="monthlyIncomeBody"></tbody>
-                </table>
+                  <tfoot><tr class="table-total"><td colspan="2">Total ingresos</td><td id="monthlyIncomeTableTotal">0 €</td></tr></tfoot>
+                </table></div>
               </div>
               <div>
                 <h4>Gastos</h4>
-                <table class="table">
+                <div class="table-responsive"><table class="table">
                   <thead>
                     <tr>
                       <th>Fecha</th>
@@ -342,10 +333,10 @@
                     </tr>
                   </thead>
                   <tbody id="monthlyExpenseBody"></tbody>
-                </table>
+                  <tfoot><tr class="table-total"><td colspan="2">Total gastos</td><td id="monthlyExpenseTableTotal">0 €</td></tr></tfoot>
+                </table></div>
               </div>
             </div>
-            <p id="monthlyDetailBalance" class="muted"></p>
           </div>
         </section>
 
@@ -388,20 +379,33 @@
               </div>
               <div class="filter-row">
                 <select id="paymentMonthSelect"></select>
+                <button id="paymentModalOpen" class="btn" type="button">Registrar ingreso</button>
               </div>
             </div>
-            <form id="paymentForm" class="stack">
-              <label>
-                Concepto
-                <input id="paymentConcept" type="text" required />
-              </label>
-              <label>
-                Importe (€)
-                <input id="paymentAmount" type="number" min="0" step="0.01" required />
-              </label>
-              <button class="btn" type="submit">Registrar ingreso</button>
-            </form>
             <ul id="paymentList" class="list"></ul>
+          </div>
+          <div id="paymentModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Registrar ingreso</h3>
+                <button id="paymentModalClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="paymentForm" class="stack">
+                <label>
+                  Concepto
+                  <input id="paymentConcept" type="text" required />
+                </label>
+                <label>
+                  Mes
+                  <input id="paymentDate" type="month" required />
+                </label>
+                <label>
+                  Importe (€)
+                  <input id="paymentAmount" type="number" min="0" step="0.01" required />
+                </label>
+                <button class="btn" type="submit">Guardar ingreso</button>
+              </form>
+            </div>
           </div>
           <div id="paymentEditModal" class="modal hidden">
             <div class="modal-content card">
@@ -446,33 +450,45 @@
         <section id="expensesView" class="view hidden">
           <div class="card">
             <div class="detail-header">
-              <div style="display: flex; align-items: center; gap: 18px; flex-wrap: wrap;">
-                <h2 style="margin-bottom: 0;">Contabilidad · Gastos</h2>
-                <span id="expenseMonthTitle" class="month-title" style="font-size: 1.6rem; font-weight: bold; color: var(--primary, #2a4a7b); margin-bottom: 0;"></span>
-              </div>
+              <h2>Contabilidad · Gastos</h2>
               <div class="filter-row">
                 <select id="expenseMonthSelect"></select>
+                <button id="expenseModalOpen" class="btn" type="button">Registrar gasto</button>
                 <button id="processInvoicesBtn" class="btn primary small" type="button" title="Procesar facturas de Drive">📄 Leer Facturas</button>
                 <button id="expenseCsvOpen" class="btn ghost small" type="button" title="Importar CSV">📄 CSV</button>
                 <button id="expenseTemplateDownload" class="btn ghost small" type="button" title="Descargar plantilla">⬇ Plantilla</button>
               </div>
             </div>
-            <form id="expenseForm" class="stack">
-              <label>
-                Concepto
-                <input id="expenseConcept" type="text" required />
-              </label>
-              <label>
-                Mes
-                <input id="expenseDate" type="month" required />
-              </label>
-              <label>
-                Importe (€)
-                <input id="expenseAmount" type="number" min="0" step="0.01" required />
-              </label>
-              <button class="btn" type="submit">Registrar gasto</button>
-            </form>
+            <div class="summary" aria-live="polite">
+              <div>
+                <p class="label">Total de gastos del mes</p>
+                <p id="expenseMonthTotal" class="value">0 €</p>
+              </div>
+            </div>
             <ul id="expenseList" class="list"></ul>
+          </div>
+          <div id="expenseModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Registrar gasto</h3>
+                <button id="expenseModalClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="expenseForm" class="stack">
+                <label>
+                  Concepto
+                  <input id="expenseConcept" type="text" required />
+                </label>
+                <label>
+                  Mes
+                  <input id="expenseDate" type="month" required />
+                </label>
+                <label>
+                  Importe (€)
+                  <input id="expenseAmount" type="number" min="0" step="0.01" required />
+                </label>
+                <button class="btn" type="submit">Guardar gasto</button>
+              </form>
+            </div>
           </div>
           <div id="expenseCsvModal" class="modal hidden">
             <div class="modal-content card">
@@ -3440,7 +3456,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script type="module" src="js/main.js?v=20261009c" defer></script>
+    <script type="module" src="js/main.js?v=20261009h" defer></script>
     
     <!-- Script de debugging simplificado -->
     <script>

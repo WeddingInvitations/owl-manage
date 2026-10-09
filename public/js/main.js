@@ -315,9 +315,9 @@ let currentUser = null;
 let currentProfile = null;
 let currentRole = "RECEPTION";
 let monthlyDetails = new Map();
-let monthlyTotals = { income: 0, expenses: 0 };
 let availableYears = [];
 let selectedYear = "";
+let selectedDetailMonth = "";
 let selectedAthleteMonth = "";
 let selectedAthleteListMonth = "";
 let availablePaymentMonths = [];
@@ -684,13 +684,17 @@ const pilatesTariffPlanMap = new Map(
 async function refreshAll() {
   const summaryData = await loadSummary(ui, formatCurrency);
   monthlyDetails = summaryData.details;
-  monthlyTotals = summaryData.totals;
-  availableYears = summaryData.years;
+  const currentYear = String(new Date().getFullYear());
+  availableYears = Array.from(new Set([currentYear, ...summaryData.years]))
+    .sort((a, b) => Number(b) - Number(a));
   if (!selectedYear || !availableYears.includes(selectedYear)) {
-    selectedYear = availableYears[0] || "";
+    selectedYear = currentYear;
   }
   renderYearOptions();
   renderMonthlySummary();
+  if (selectedDetailMonth && !ui.monthlyDetailView?.classList.contains("hidden")) {
+    renderMonthlyDetail(selectedDetailMonth);
+  }
   await refreshPaymentList();
   await refreshExpenseList();
   await refreshOrderList();
@@ -788,17 +792,16 @@ async function refreshExpenseList() {
       : (availableExpenseMonths[0] || "");
   }
   renderExpenseMonthOptions();
-  // Update the prominent month/year title
-  if (ui.expenseMonthTitle) {
-    ui.expenseMonthTitle.textContent = getMonthLabel(selectedExpenseMonth);
-  }
-  await loadExpensesForMonth(
+  const expenseTotal = await loadExpensesForMonth(
     ui.expenseList,
     formatCurrency,
     selectedExpenseMonth,
     handleEditExpense,
     handleDeleteExpense
   );
+  if (ui.expenseMonthTotal) {
+    ui.expenseMonthTotal.textContent = formatCurrency(expenseTotal);
+  }
 }
 
 function renderOrderMonthOptions() {
@@ -3775,10 +3778,7 @@ function renderYearOptions() {
 
 function renderMonthlySummary() {
   if (!ui.monthlySummaryBody) return;
-  const rows = [];
-  const monthKeys = Array.from(monthlyDetails.keys()).filter((key) => {
-    return selectedYear && key.startsWith(`${selectedYear}-`);
-  });
+  const monthKeys = selectedYear ? getCurrentYearMonths(Number(selectedYear)) : [];
 
   monthKeys.sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
   ui.monthlySummaryBody.innerHTML = "";
@@ -3787,7 +3787,7 @@ function renderMonthlySummary() {
   let yearExpenses = 0;
 
   monthKeys.forEach((key) => {
-    const details = monthlyDetails.get(key);
+    const details = monthlyDetails.get(key) || { payments: [], expenses: [] };
     const income = details.payments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
     const expenses = details.expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
     const balance = income - expenses;
@@ -3796,14 +3796,14 @@ function renderMonthlySummary() {
 
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td>${getMonthLabel(key)}</td>
+      <td><button class="btn ghost small" type="button" data-action="detail" data-key="${key}">${getMonthLabel(key)}</button></td>
       <td>${formatCurrency(income)}</td>
       <td>${formatCurrency(expenses)}</td>
       <td>${formatCurrency(balance)}</td>
       <td>
         <div class="table-actions">
-          <button class="btn small ghost" data-action="detail" data-key="${key}">Ver detalle</button>
-          <button class="btn small" data-action="csv" data-key="${key}">CSV</button>
+          <button class="btn small ghost" type="button" data-action="detail" data-key="${key}">Ver detalle</button>
+          <button class="btn small" type="button" data-action="csv" data-key="${key}">CSV</button>
         </div>
       </td>
     `;
@@ -3820,46 +3820,36 @@ function renderMonthlySummary() {
       <td>${formatCurrency(yearIncome - yearExpenses)}</td>
       <td></td>
     `;
-    ui.monthlySummaryBody.appendChild(totalRow);
+    ui.monthlySummaryBody.prepend(totalRow);
   }
 }
 
 function renderMonthlyDetail(key) {
-  const details = monthlyDetails.get(key);
-  if (!details) {
-    ui.monthlyDetailCard.classList.add("hidden");
-    return;
-  }
+  const details = monthlyDetails.get(key) || { payments: [], expenses: [] };
 
   ui.monthlyDetailTitle.textContent = `Detalle mensual · ${getMonthLabel(key)}`;
   ui.monthlyIncomeBody.innerHTML = "";
   ui.monthlyExpenseBody.innerHTML = "";
 
+  const addDetailRow = (body, item, className) => {
+    const row = document.createElement("tr");
+    row.classList.add(className);
+    [item.date || "", item.concept || "", formatCurrency(Number(item.amount || 0))]
+      .forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      });
+    body.appendChild(row);
+  };
+
   details.payments
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-    .forEach((item) => {
-      const row = document.createElement("tr");
-      row.classList.add("row-income");
-      row.innerHTML = `
-        <td>${item.date}</td>
-        <td>${item.concept}</td>
-        <td>${formatCurrency(item.amount)}</td>
-      `;
-      ui.monthlyIncomeBody.appendChild(row);
-    });
+    .forEach((item) => addDetailRow(ui.monthlyIncomeBody, item, "row-income"));
 
   details.expenses
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-    .forEach((item) => {
-      const row = document.createElement("tr");
-      row.classList.add("row-expense");
-      row.innerHTML = `
-        <td>${item.date}</td>
-        <td>${item.concept}</td>
-        <td>${formatCurrency(item.amount)}</td>
-      `;
-      ui.monthlyExpenseBody.appendChild(row);
-    });
+    .forEach((item) => addDetailRow(ui.monthlyExpenseBody, item, "row-expense"));
 
   const totalIncome = details.payments.reduce(
     (sum, item) => sum + Number(item.amount || 0),
@@ -3870,14 +3860,40 @@ function renderMonthlyDetail(key) {
     0
   );
   const balance = totalIncome - totalExpenses;
-  ui.monthlyDetailBalance.textContent = `Balance total: ${formatCurrency(balance)}`;
-
-  ui.monthlyDetailCard.classList.remove("hidden");
+  ui.monthlyDetailIncomeTotal.textContent = formatCurrency(totalIncome);
+  ui.monthlyDetailExpenseTotal.textContent = formatCurrency(totalExpenses);
+  ui.monthlyIncomeTableTotal.textContent = formatCurrency(totalIncome);
+  ui.monthlyExpenseTableTotal.textContent = formatCurrency(totalExpenses);
+  ui.monthlyDetailBalance.textContent = formatCurrency(balance);
 }
 
+on(ui.monthlyYearSelect, "change", (event) => {
+  selectedYear = event.target.value;
+  renderMonthlySummary();
+});
+
+on(ui.monthlySummaryBody, "click", (event) => {
+  const button = event.target.closest("button[data-action][data-key]");
+  if (!button || !ui.monthlySummaryBody.contains(button)) return;
+  const key = button.dataset.key;
+  if (button.dataset.action === "csv") {
+    downloadMonthlyCSV(key);
+  } else if (button.dataset.action === "detail") {
+    selectedDetailMonth = key;
+    renderMonthlyDetail(key);
+    setActiveView("monthlyDetailView", ui);
+    updateMobileNavActive("summaryView");
+  }
+});
+
+on(ui.monthlyDetailClose, "click", () => {
+  selectedDetailMonth = "";
+  setActiveView("summaryView", ui);
+  updateMobileNavActive("summaryView");
+});
+
 function downloadMonthlyCSV(key) {
-  const details = monthlyDetails.get(key);
-  if (!details) return;
+  const details = monthlyDetails.get(key) || { payments: [], expenses: [] };
 
   const totalIncome = details.payments.reduce(
     (sum, item) => sum + Number(item.amount || 0),
@@ -5716,17 +5732,33 @@ async function importExpensesFromCsv(file) {
 }
 
 // ---------- Formularios ----------
+on(ui.paymentModalOpen, "click", () => {
+  ui.paymentForm?.reset();
+  ui.paymentDate.value = ui.paymentMonthSelect?.value || selectedPaymentMonth || getCurrentMonthForInput();
+  ui.paymentModal?.classList.remove("hidden");
+  ui.paymentConcept?.focus();
+});
+
+on(ui.paymentModalClose, "click", () => {
+  ui.paymentModal?.classList.add("hidden");
+});
+
 on(ui.paymentForm, "submit", async (event) => {
   event.preventDefault();
-  const month = ui.paymentMonthSelect?.value || selectedPaymentMonth || getCurrentMonthForInput();
-  await addPayment(
-    ui.paymentConcept.value,
-    Number(ui.paymentAmount.value),
-    month,
-    currentUser?.uid
-  );
-  ui.paymentForm.reset();
-  await refreshAll();
+  try {
+    await addPayment(
+      ui.paymentConcept.value,
+      Number(ui.paymentAmount.value),
+      ui.paymentDate.value,
+      currentUser?.uid
+    );
+    ui.paymentModal?.classList.add("hidden");
+    ui.paymentForm.reset();
+    await refreshAll();
+  } catch (error) {
+    console.error("Error registrando ingreso:", error);
+    alert("Error al registrar el ingreso: " + (error.message || error));
+  }
 });
 
 // Payment Edit/Delete handlers
@@ -5845,17 +5877,33 @@ on(ui.expenseDeleteCancel, "click", () => {
   ui.expenseDeleteModal?.classList.add("hidden");
 });
 
+on(ui.expenseModalOpen, "click", () => {
+  ui.expenseForm?.reset();
+  ui.expenseDate.value = selectedExpenseMonth || getCurrentMonthForInput();
+  ui.expenseModal?.classList.remove("hidden");
+  ui.expenseConcept?.focus();
+});
+
+on(ui.expenseModalClose, "click", () => {
+  ui.expenseModal?.classList.add("hidden");
+});
+
 on(ui.expenseForm, "submit", async (event) => {
   event.preventDefault();
-  await addExpense(
-    ui.expenseConcept.value,
-    Number(ui.expenseAmount.value),
-    ui.expenseDate.value,
-    currentUser?.uid
-  );
-  ui.expenseForm.reset();
-  setDefaultMonthForPaymentExpense();
-  await refreshAll();
+  try {
+    await addExpense(
+      ui.expenseConcept.value,
+      Number(ui.expenseAmount.value),
+      ui.expenseDate.value,
+      currentUser?.uid
+    );
+    ui.expenseModal?.classList.add("hidden");
+    ui.expenseForm.reset();
+    await refreshAll();
+  } catch (error) {
+    console.error("Error registrando gasto:", error);
+    alert("Error al registrar el gasto: " + (error.message || error));
+  }
 });
 
 // Process invoices from Drive

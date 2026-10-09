@@ -1059,7 +1059,7 @@ export async function getExpenseMonths() {
 }
 
 export async function loadExpensesForMonth(target, formatCurrency, monthKey = "", onEdit = null, onDelete = null) {
-  if (!target) return;
+  if (!target) return 0;
   const expenseSnap = await getDocs(collection(db, "expenses"));
   const items = [];
 
@@ -1072,6 +1072,7 @@ export async function loadExpensesForMonth(target, formatCurrency, monthKey = ""
   const filtered = monthKey
     ? items.filter((item) => getMonthKey(item.date) === monthKey)
     : items;
+  const total = filtered.reduce((sum, item) => sum + Number(item.data.amount || 0), 0);
 
   filtered.sort((a, b) => {
     const aTime = a.date ? a.date.getTime() : 0;
@@ -1118,6 +1119,7 @@ export async function loadExpensesForMonth(target, formatCurrency, monthKey = ""
     
     target.appendChild(li);
   });
+  return total;
 }
 
 export async function loadOrdersForMonth(target, formatCurrency, monthKey = "", onEdit = null, onDelete = null) {
@@ -1417,10 +1419,6 @@ export async function loadSummary(ui, formatCurrency) {
     });
     details.set(key, bucket);
   });
-
-  ui.summaryIncome.textContent = formatCurrency(income);
-  ui.summaryExpenses.textContent = formatCurrency(expenses);
-  ui.summaryProfit.textContent = formatCurrency(income - expenses);
 
   const years = Array.from(monthly.keys())
     .filter((key) => key !== "sin-fecha")
