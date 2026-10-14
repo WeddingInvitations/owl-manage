@@ -2058,14 +2058,6 @@ span.athlete-status-unpaid,
   height: 88px;
 }
 
-#nestCalendar .fc-timegrid-slots tr:has(.fc-timegrid-slot[data-time^="12:"]),
-#nestCalendar .fc-timegrid-slots tr:has(.fc-timegrid-slot[data-time^="13:"]),
-#nestCalendar .fc-timegrid-slots tr:has(.fc-timegrid-slot[data-time^="14:"]),
-#nestCalendar .fc-timegrid-slots tr:has(.fc-timegrid-slot[data-time^="15:"]),
-#nestCalendar .fc-timegrid-slots tr:has(.fc-timegrid-slot[data-time^="16:"]) {
-  display: none;
-}
-
 .nest-calendar-modal-content {
   width: min(900px, calc(100vw - 32px));
 }

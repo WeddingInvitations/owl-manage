@@ -32,14 +32,14 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js?v=20250409d";
+} from "./ui.js?v=20261014c";
 import { showToast } from "./toast.js";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { initializeCaja, initializeInventory } from "./caja.js?v=20260622a";
 import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js";
-import { initializeNestCalendar } from "./nest-calendar.js?v=20261005b";
+import { initializeNestCalendar } from "./nest-calendar.js?v=20261014c";
 import {
   initializePilates,
   refreshPilatesMonthly,
@@ -122,6 +122,8 @@ import {
   getAcroKidsCalendarEntry,
   updateAcroKidsCalendarEntry,
   getAcroKidsCalendarDateRangeData,
+  getAcroKidsCalendarSlots,
+  createAcroKidsCalendarSlot,
   createHalteAthlete,
   getHalteAthletes,
   updateHalteAthlete,
@@ -162,7 +164,7 @@ import {
   loadOrdersForMonth,
   addEmployeePayment,
   loadEmployeePayments,
-} from "./data.js?v=20261007c";
+} from "./data.js?v=20261014c";
 
 import { createUserWithRole } from "./admin.js";
 
@@ -357,6 +359,20 @@ const acroKidsCalendarSlots = [
   { id: "tue-to-fri-17-18", daysOfWeek: [2, 3, 4, 5], startTime: "17:00", endTime: "18:00", label: "Martes a viernes 17:00-18:00" },
   { id: "tue-to-fri-18-19", daysOfWeek: [2, 3, 4, 5], startTime: "18:00", endTime: "19:00", label: "Martes a viernes 18:00-19:00" },
 ];
+const acroKidsCalendarDayLabels = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+let acroKidsVisibleSlots = acroKidsCalendarSlots;
+let acroKidsRefreshNumber = 0;
+
+function acroKidsCalendarSlotFromRecord(record) {
+  const endTime = `${String(Number(record.startTime.slice(0, 2)) + 1).padStart(2, "0")}:00`;
+  return {
+    id: record.id,
+    daysOfWeek: [record.dayOfWeek],
+    startTime: record.startTime,
+    endTime,
+    label: `${acroKidsCalendarDayLabels[record.dayOfWeek]} ${record.startTime}-${endTime}`,
+  };
+}
 
 // Halterofilia state
 let selectedHalteMonth = "";
@@ -2163,7 +2179,7 @@ async function acroKidsCalendarGetEntry(dateKey, slotId) {
   return await getAcroKidsCalendarEntry(dateKey, slotId);
 }
 
-async function acroKidsCalendarBuildEvents(rangeStart, rangeEnd) {
+async function acroKidsCalendarBuildEvents(rangeStart, rangeEnd, slots) {
   const events = [];
   const startDate = new Date(rangeStart);
   startDate.setHours(0, 0, 0, 0);
@@ -2181,10 +2197,9 @@ async function acroKidsCalendarBuildEvents(rangeStart, rangeEnd) {
     // Build events
     for (const date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
       const dayOfWeek = date.getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
       const dateKey = acroKidsCalendarFormatDateKey(date);
 
-      acroKidsCalendarSlots.forEach((slot) => {
+      slots.forEach((slot) => {
         if (!slot.daysOfWeek.includes(dayOfWeek)) return;
         const slotKey = acroKidsCalendarGetSlotKey(dateKey, slot.id);
         const entry = allData[slotKey] || { children: [] };
@@ -2232,7 +2247,17 @@ async function acroKidsCalendarBuildEvents(rangeStart, rangeEnd) {
 }
 
 async function acroKidsCalendarRefreshRange(calendar, rangeStart, rangeEnd) {
-  const events = await acroKidsCalendarBuildEvents(rangeStart, rangeEnd);
+  const requestNumber = ++acroKidsRefreshNumber;
+  const customSlots = await getAcroKidsCalendarSlots();
+  const slots = [...acroKidsCalendarSlots, ...customSlots.map(acroKidsCalendarSlotFromRecord)];
+  const events = await acroKidsCalendarBuildEvents(rangeStart, rangeEnd, slots);
+  if (requestNumber !== acroKidsRefreshNumber) return;
+  acroKidsVisibleSlots = slots;
+  const hours = slots.flatMap((slot) => [Number(slot.startTime.slice(0, 2)), Number(slot.endTime.slice(0, 2))]);
+  const minTime = `${String(Math.min(16, ...hours)).padStart(2, "0")}:00:00`;
+  const maxTime = `${String(Math.max(21, ...hours)).padStart(2, "0")}:00:00`;
+  if (calendar.getOption("slotMinTime") !== minTime) calendar.setOption("slotMinTime", minTime);
+  if (calendar.getOption("slotMaxTime") !== maxTime) calendar.setOption("slotMaxTime", maxTime);
   calendar.removeAllEvents();
   events.forEach((event) => calendar.addEvent(event));
 }
@@ -2261,7 +2286,7 @@ async function acroKidsCalendarRenderSidebar() {
     return;
   }
 
-  const slot = acroKidsCalendarSlots.find((item) => item.id === slotId);
+  const slot = acroKidsVisibleSlots.find((item) => item.id === slotId);
   await acroKidsCalendarEnsureAthletesLoaded();
   const entry = await acroKidsCalendarGetEntry(dateKey, slotId);
   const children = Array.isArray(entry.children) ? entry.children : [];
@@ -2309,6 +2334,34 @@ async function acroKidsCalendarRenderSidebar() {
   childrenList.appendChild(list);
 }
 
+async function acroKidsCalendarAddWeeklyClass(event) {
+  event.preventDefault();
+  const dayOfWeek = Number(ui.acroKidsCalendarClassDay.value);
+  const startTime = ui.acroKidsCalendarClassTime.value;
+  if (ui.acroKidsCalendarClassDay.value === "" || !/^(?:0[7-9]|1\d|2[0-2]):00$/.test(startTime)) {
+    showToast("Selecciona un día y una hora válidos", "error");
+    return;
+  }
+  ui.acroKidsCalendarAddClassSubmit.disabled = true;
+  try {
+    const customSlots = await getAcroKidsCalendarSlots();
+    if (acroKidsCalendarSlots.some((slot) => slot.daysOfWeek.includes(dayOfWeek) && slot.startTime === startTime) ||
+        customSlots.some((slot) => slot.dayOfWeek === dayOfWeek && slot.startTime === startTime)) {
+      throw new Error("Ya existe una clase a esa hora ese día");
+    }
+    await createAcroKidsCalendarSlot(dayOfWeek, startTime, currentUser?.uid || null);
+    await acroKidsCalendarRefreshRange(ui._acroKidsCalendar, ui._acroKidsCalendar.view.activeStart, ui._acroKidsCalendar.view.activeEnd);
+    ui.acroKidsCalendarAddClassModal.classList.add("hidden");
+    ui.acroKidsCalendarAddClassForm.reset();
+    showToast("Clase semanal añadida", "success");
+  } catch (error) {
+    console.error("Error adding AcroKids weekly class:", error);
+    showToast(error.message === "Ya existe una clase a esa hora ese día" ? error.message : "Error al guardar la clase", "error");
+  } finally {
+    ui.acroKidsCalendarAddClassSubmit.disabled = false;
+  }
+}
+
 function acroKidsCalendarRender() {
   if (!ui.acroKidsCalendar) return;
   acroKidsCalendarLoadStore();
@@ -2327,9 +2380,9 @@ function acroKidsCalendarRender() {
         contentHeight: 590,
         nowIndicator: true,
         allDaySlot: false,
-        weekends: false,
-        slotMinTime: "16:30:00",
-        slotMaxTime: "20:30:00",
+        weekends: true,
+        slotMinTime: "16:00:00",
+        slotMaxTime: "21:00:00",
         headerToolbar: {
           left: "prev,next today",
           center: "title",
@@ -2457,7 +2510,7 @@ async function acroKidsCalendarRemoveChild(childIndex) {
 }
 
 function acroKidsCalendarGetWeekDates() {
-  // Get current week (Monday-Friday, since we only have weekday classes)
+  // Get current week (Monday-Sunday)
   const today = new Date();
   const dayOfWeek = today.getDay();
   
@@ -2466,15 +2519,11 @@ function acroKidsCalendarGetWeekDates() {
   monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
   monday.setHours(0, 0, 0, 0);
   
-  // Friday will be Monday + 4 days
-  const friday = new Date(monday);
-  friday.setDate(monday.getDate() + 4);
-  
-  // Build array of Monday through Friday
+  // Build array of Monday through Sunday
   const dates = {};
-  const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+  const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
   
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 7; i++) {
     const date = new Date(monday);
     date.setDate(monday.getDate() + i);
     const dateKey = acroKidsCalendarFormatDateKey(date);
@@ -2499,8 +2548,10 @@ async function acroKidsCalendarRenderSummary() {
     
     // Load all calendar data for the week
     const startKey = weekDates[dayNames[0]];
-    const endKey = weekDates[dayNames[4]];
+    const endKey = weekDates[dayNames[6]];
     const allWeekData = await getAcroKidsCalendarDateRangeData(startKey, endKey);
+    const customSlots = await getAcroKidsCalendarSlots();
+    const slots = [...acroKidsCalendarSlots, ...customSlots.map(acroKidsCalendarSlotFromRecord)];
     
     // Collect all unique children and their attendance
     const childrenSummary = {};
@@ -2509,7 +2560,7 @@ async function acroKidsCalendarRenderSummary() {
     dayNames.forEach((dayName, dayIndex) => {
       const dateKey = weekDates[dayName];
       
-      acroKidsCalendarSlots.forEach((slot) => {
+      slots.filter((slot) => slot.daysOfWeek.includes(dayIndex < 6 ? dayIndex + 1 : 0)).forEach((slot) => {
         const slotKey = acroKidsCalendarGetSlotKey(dateKey, slot.id);
         const entry = allWeekData[slotKey] || { children: [] };
         const children = Array.isArray(entry.children) ? entry.children : [];
@@ -2520,7 +2571,7 @@ async function acroKidsCalendarRenderSummary() {
           if (!childrenSummary[childKey]) {
             childrenSummary[childKey] = {
               name: child.name,
-              attendance: { Lunes: false, Martes: false, Miércoles: false, Jueves: false, Viernes: false }
+              attendance: Object.fromEntries(dayNames.map((day) => [day, false]))
             };
           }
           if (child.attended) {
@@ -2532,7 +2583,7 @@ async function acroKidsCalendarRenderSummary() {
     
     // Generate table rows
     if (Object.keys(childrenSummary).length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="padding: 24px; text-align: center; color: var(--text-muted);">Sin datos de asistencia para esta semana.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" style="padding: 24px; text-align: center; color: var(--text-muted);">Sin datos de asistencia para esta semana.</td></tr>`;
       return;
     }
     
@@ -2553,13 +2604,13 @@ async function acroKidsCalendarRenderSummary() {
           </td>`;
         });
         
-        html += `<td style="padding: 12px; text-align: center; font-weight: 600; color: #4f46e5;">${total}/5</td></tr>`;
+        html += `<td style="padding: 12px; text-align: center; font-weight: 600; color: #4f46e5;">${total}/7</td></tr>`;
       });
     
     tbody.innerHTML = html;
   } catch (error) {
     console.error("Error rendering summary:", error);
-    tbody.innerHTML = `<tr><td colspan="7" style="padding: 24px; text-align: center; color: #ef4444;">Error al cargar datos de asistencia.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="padding: 24px; text-align: center; color: #ef4444;">Error al cargar datos de asistencia.</td></tr>`;
   }
 }
 
@@ -7646,6 +7697,7 @@ on(ui.acroKidsDiscount, "input", () => {
 on(ui.acroKidsCalendarOpen, "click", async () => {
   setActiveView("acroKidsCalendarView", ui);
   updateMobileNavActive("acroKidsCalendarView");
+  ui.acroKidsCalendarAddClassModal?.classList.add("hidden");
   await initializeViewIfNeeded("acroKidsCalendarView");
   await acroKidsCalendarEnsureAthletesLoaded(true);
   acroKidsCalendarRender();
@@ -7788,6 +7840,22 @@ on(ui.acroKidsCalendarTodayBtn, "click", () => {
   }
   acroKidsCalendarRender();
 });
+
+on(ui.acroKidsCalendarAddClassBtn, "click", () => {
+  if (ui.acroKidsCalendarClassTime.options.length === 1) {
+    for (let hour = 7; hour <= 22; hour++) {
+      const time = `${String(hour).padStart(2, "0")}:00`;
+      ui.acroKidsCalendarClassTime.add(new Option(time, time));
+    }
+  }
+  ui.acroKidsCalendarAddClassModal.classList.remove("hidden");
+});
+
+on(ui.acroKidsCalendarAddClassClose, "click", () => {
+  ui.acroKidsCalendarAddClassModal.classList.add("hidden");
+});
+
+on(ui.acroKidsCalendarAddClassForm, "submit", acroKidsCalendarAddWeeklyClass);
 
 on(ui.acroKidsCalendarAddChildBtn, "click", () => {
   void acroKidsCalendarAddChild();

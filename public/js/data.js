@@ -1725,6 +1725,33 @@ export async function getAcroKidsCalendarDateRangeData(startDate, endDate) {
   }
 }
 
+export async function getAcroKidsCalendarSlots() {
+  const snap = await getDoc(doc(db, "acrokids_calendar", "weekly-slots"));
+  return snap.exists() && Array.isArray(snap.data().slots) ? snap.data().slots : [];
+}
+
+export async function createAcroKidsCalendarSlot(dayOfWeek, startTime, userId) {
+  if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6 ||
+      !/^(?:0[7-9]|1\d|2[0-2]):00$/.test(startTime)) {
+    throw new Error("Horario no válido");
+  }
+  const slotId = `custom-${dayOfWeek}-${startTime.replace(":", "")}`;
+  const slotRef = doc(db, "acrokids_calendar", "weekly-slots");
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(slotRef);
+    const slots = snap.exists() && Array.isArray(snap.data().slots) ? snap.data().slots : [];
+    if (slots.some((slot) => slot.dayOfWeek === dayOfWeek && slot.startTime === startTime)) {
+      throw new Error("Ya existe una clase a esa hora ese día");
+    }
+    transaction.set(slotRef, {
+      slots: [...slots, { id: slotId, dayOfWeek, startTime }],
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+  });
+  return slotId;
+}
+
 export async function createHalteAthlete(name, userId) {
   const docRef = await addDoc(collection(db, "athletes_halterofilia"), {
     name,
@@ -2072,6 +2099,34 @@ export async function getNestCalendarDateRangeData(family, startDate, endDate) {
     records[`${data.dateKey}__${data.slotId}`] = data;
   });
   return records;
+}
+
+export async function getNestCalendarSlots(family) {
+  const snap = await getDoc(doc(db, "nest_calendar", `${family}__weekly-slots`));
+  return snap.exists() && Array.isArray(snap.data().slots) ? snap.data().slots : [];
+}
+
+export async function createNestCalendarSlot(family, dayOfWeek, startTime, userId) {
+  if (!["pilates", "barre"].includes(family) || !Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6 ||
+      !/^(?:0\d|1\d|2[0-3]):00$/.test(startTime)) {
+    throw new Error("Horario no válido");
+  }
+  const slotId = `custom-${dayOfWeek}-${startTime.replace(":", "")}`;
+  const slotRef = doc(db, "nest_calendar", `${family}__weekly-slots`);
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(slotRef);
+    const slots = snap.exists() && Array.isArray(snap.data().slots) ? snap.data().slots : [];
+    if (slots.some((slot) => slot.dayOfWeek === dayOfWeek && slot.startTime === startTime)) {
+      throw new Error("Ya existe una clase a esa hora ese día");
+    }
+    transaction.set(slotRef, {
+      family,
+      slots: [...slots, { id: slotId, dayOfWeek, startTime }],
+      updatedAt: serverTimestamp(),
+      updatedBy: userId || null,
+    });
+  });
+  return slotId;
 }
 
 // ========== CLASES SUELTAS ==========

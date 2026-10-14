@@ -1,6 +1,6 @@
 import { auth } from "./firebase.js";
 import { showToast } from "./toast.js";
-import { ui, setActiveView } from "./ui.js";
+import { ui, setActiveView } from "./ui.js?v=20261014c";
 import { getPilatesFamilyAthletes, getPilatesFamily } from "./pilates.js?v=20261005b";
 import {
   getNestCalendarEntry,
@@ -8,7 +8,9 @@ import {
   getNestCalendarRecurringEntry,
   updateNestCalendarRecurringEntry,
   getNestCalendarDateRangeData,
-} from "./data.js";
+  getNestCalendarSlots,
+  createNestCalendarSlot,
+} from "./data.js?v=20261014c";
 
 const schedules = {
   pilates: [
@@ -29,6 +31,22 @@ let activeFamily = "pilates";
 let selectedSlotKey = "";
 let eligibleAthletes = [];
 let calendar = null;
+let visibleSlots = schedules.pilates;
+let refreshNumber = 0;
+
+const dayLabels = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+function slotFromRecord(record) {
+  const hour = Number(record.startTime.slice(0, 2));
+  const endTime = `${String(hour + 1).padStart(2, "0")}:00`;
+  return {
+    id: record.id,
+    daysOfWeek: [record.dayOfWeek],
+    startTime: record.startTime,
+    endTime,
+    label: `${dayLabels[record.dayOfWeek]} ${record.startTime}-${endTime}`,
+  };
+}
 
 function formatDateKey(date) {
   const year = date.getFullYear();
@@ -78,20 +96,20 @@ async function loadEligibleAthletes() {
   eligibleAthletes = getPilatesFamilyAthletes();
 }
 
-async function buildEvents(rangeStart, rangeEnd) {
+async function buildEvents(rangeStart, rangeEnd, family, slots) {
   const startDate = new Date(rangeStart);
   startDate.setHours(0, 0, 0, 0);
   const endDate = new Date(rangeEnd);
   endDate.setHours(0, 0, 0, 0);
   endDate.setDate(endDate.getDate() - 1);
   const records = await getNestCalendarDateRangeData(
-    activeFamily,
+    family,
     formatDateKey(startDate),
     formatDateKey(endDate)
   );
   const recurringEntries = await Promise.all(
-    schedules[activeFamily].flatMap((slot) =>
-      slot.daysOfWeek.map((dayOfWeek) => getNestCalendarRecurringEntry(activeFamily, dayOfWeek, slot.id))
+    slots.flatMap((slot) =>
+      slot.daysOfWeek.map((dayOfWeek) => getNestCalendarRecurringEntry(family, dayOfWeek, slot.id))
     )
   );
   const recurringMap = new Map(
@@ -102,7 +120,7 @@ async function buildEvents(rangeStart, rangeEnd) {
   for (const date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
     const dateKey = formatDateKey(date);
     const dayOfWeek = date.getDay();
-    schedules[activeFamily].forEach((slot) => {
+    slots.forEach((slot) => {
       if (!slot.daysOfWeek.includes(dayOfWeek)) return;
       const entry = records[`${dateKey}__${slot.id}`] || { attendees: [] };
       const datedAttendees = Array.isArray(entry.attendees) ? entry.attendees : [];
@@ -128,8 +146,17 @@ async function buildEvents(rangeStart, rangeEnd) {
 async function refreshVisibleRange() {
   if (!calendar) return;
   const requestedFamily = activeFamily;
-  const events = await buildEvents(calendar.view.activeStart, calendar.view.activeEnd);
-  if (requestedFamily !== activeFamily) return;
+  const requestNumber = ++refreshNumber;
+  const customSlots = await getNestCalendarSlots(requestedFamily);
+  const slots = [...schedules[requestedFamily], ...customSlots.map(slotFromRecord)];
+  const events = await buildEvents(calendar.view.activeStart, calendar.view.activeEnd, requestedFamily, slots);
+  if (requestedFamily !== activeFamily || requestNumber !== refreshNumber) return;
+  visibleSlots = slots;
+  const hours = slots.flatMap((slot) => [Number(slot.startTime.slice(0, 2)), Number(slot.endTime.slice(0, 2))]);
+  const minTime = `${String(Math.min(9, ...hours)).padStart(2, "0")}:00:00`;
+  const maxTime = `${String(Math.max(20, ...hours)).padStart(2, "0")}:00:00`;
+  if (calendar.getOption("slotMinTime") !== minTime) calendar.setOption("slotMinTime", minTime);
+  if (calendar.getOption("slotMaxTime") !== maxTime) calendar.setOption("slotMaxTime", maxTime);
   calendar.removeAllEvents();
   events.forEach((event) => calendar.addEvent(event));
 }
@@ -154,7 +181,7 @@ function populateAthleteSelect(attendees) {
 async function renderDetail() {
   if (!selectedSlotKey) return;
   const [dateKey, slotId] = selectedSlotKey.split("__");
-  const slot = schedules[activeFamily].find((item) => item.id === slotId);
+  const slot = visibleSlots.find((item) => item.id === slotId);
   const [entry, recurringEntry] = await Promise.all([
     getNestCalendarEntry(activeFamily, dateKey, slotId),
     getNestCalendarRecurringEntry(activeFamily, getDayOfWeek(dateKey), slotId),
@@ -312,6 +339,35 @@ async function addAthlete() {
   });
 }
 
+async function addWeeklyClass(event) {
+  event.preventDefault();
+  const family = activeFamily;
+  const dayOfWeek = Number(ui.nestCalendarClassDay.value);
+  const startTime = ui.nestCalendarClassTime.value;
+  if (ui.nestCalendarClassDay.value === "" || !/^(?:0[7-9]|1\d|2[0-2]):00$/.test(startTime)) {
+    showToast("Selecciona un día y una hora válidos", "error");
+    return;
+  }
+  ui.nestCalendarAddClassSubmit.disabled = true;
+  try {
+    const customSlots = await getNestCalendarSlots(family);
+    if (schedules[family].some((slot) => slot.daysOfWeek.includes(dayOfWeek) && slot.startTime === startTime) ||
+        customSlots.some((slot) => slot.dayOfWeek === dayOfWeek && slot.startTime === startTime)) {
+      throw new Error("Ya existe una clase a esa hora ese día");
+    }
+    await createNestCalendarSlot(family, dayOfWeek, startTime, auth.currentUser?.uid || null);
+    await refreshVisibleRange();
+    ui.nestCalendarAddClassModal.classList.add("hidden");
+    ui.nestCalendarAddClassForm.reset();
+    showToast("Clase semanal añadida", "success");
+  } catch (error) {
+    console.error("Error adding The Nest weekly class:", error);
+    showToast(error.message === "Ya existe una clase a esa hora ese día" ? error.message : "Error al guardar la clase", "error");
+  } finally {
+    ui.nestCalendarAddClassSubmit.disabled = false;
+  }
+}
+
 function createCalendar() {
   calendar = new window.FullCalendar.Calendar(ui.nestCalendar, {
     initialView: "timeGridWeek",
@@ -321,7 +377,7 @@ function createCalendar() {
     contentHeight: "auto",
     nowIndicator: true,
     allDaySlot: false,
-    weekends: false,
+    weekends: true,
     slotMinTime: "09:00:00",
     slotMaxTime: "20:00:00",
     slotDuration: "01:00:00",
@@ -354,6 +410,7 @@ async function openCalendar() {
   selectedSlotKey = "";
   ui.nestCalendarTitle.textContent = `Calendario · ${familyLabel()}`;
   ui.nestCalendarModal.classList.add("hidden");
+  ui.nestCalendarAddClassModal.classList.add("hidden");
   setActiveView("nestCalendarView", ui);
   await loadEligibleAthletes();
   if (!calendar) createCalendar();
@@ -363,6 +420,10 @@ async function openCalendar() {
 export function initializeNestCalendar() {
   if (initialized || !ui.nestCalendarOpen) return;
   initialized = true;
+  for (let hour = 7; hour <= 22; hour++) {
+    const time = `${String(hour).padStart(2, "0")}:00`;
+    ui.nestCalendarClassTime.add(new Option(time, time));
+  }
   ui.nestCalendarOpen.addEventListener("click", () => {
     openCalendar().catch((error) => {
       console.error("Error opening The Nest calendar:", error);
@@ -371,6 +432,12 @@ export function initializeNestCalendar() {
   });
   ui.nestCalendarBack.addEventListener("click", () => setActiveView("pilatesView", ui));
   ui.nestCalendarToday.addEventListener("click", () => calendar?.today());
+  ui.nestCalendarAddClass.addEventListener("click", () => {
+    ui.nestCalendarAddClassTitle.textContent = `Añadir clase semanal · ${familyLabel()}`;
+    ui.nestCalendarAddClassModal.classList.remove("hidden");
+  });
+  ui.nestCalendarAddClassClose.addEventListener("click", () => ui.nestCalendarAddClassModal.classList.add("hidden"));
+  ui.nestCalendarAddClassForm.addEventListener("submit", addWeeklyClass);
   ui.nestCalendarClose.addEventListener("click", () => ui.nestCalendarModal.classList.add("hidden"));
   ui.nestCalendarAddAthlete.addEventListener("click", () => {
     addAthlete().catch((error) => {

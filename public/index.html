@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" href="css/styles.css?v=20261007c" />
+    <link rel="stylesheet" href="css/styles.css?v=20261014a" />
     <link rel="stylesheet" href="css/fullcalendar-dark-override.css?v=20250225" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
 
@@ -1734,6 +1734,7 @@
                 <button id="acroKidsCalendarBackBtn" class="btn ghost small" type="button" data-view="acroKidsView">← Volver a AcroKids</button>
                 <button id="acroKidsCalendarTodayBtn" class="btn ghost small" type="button">Hoy</button>
                 <button id="acroKidsCalendarSummaryBtn" class="btn ghost small" type="button">📊 Resumen</button>
+                <button id="acroKidsCalendarAddClassBtn" class="btn small" type="button">+ Añadir nueva clase</button>
               </div>
             </div>
             <div class="detail-header" style="margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
@@ -1744,6 +1745,37 @@
             </div>
             <div style="min-height: 620px;">
               <div id="acroKidsCalendar"></div>
+            </div>
+          </div>
+          <div id="acroKidsCalendarAddClassModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Añadir clase semanal · AcroKids</h3>
+                <button id="acroKidsCalendarAddClassClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="acroKidsCalendarAddClassForm" class="stack">
+                <label>
+                  Día de la semana
+                  <select id="acroKidsCalendarClassDay" required>
+                    <option value="">Selecciona un día</option>
+                    <option value="1">Lunes</option>
+                    <option value="2">Martes</option>
+                    <option value="3">Miércoles</option>
+                    <option value="4">Jueves</option>
+                    <option value="5">Viernes</option>
+                    <option value="6">Sábado</option>
+                    <option value="0">Domingo</option>
+                  </select>
+                </label>
+                <label>
+                  Hora de inicio (duración: 1 hora)
+                  <select id="acroKidsCalendarClassTime" required>
+                    <option value="">Selecciona una hora</option>
+                  </select>
+                </label>
+                <p class="muted">La clase se repetirá el día y hora elegidos todas las semanas.</p>
+                <button id="acroKidsCalendarAddClassSubmit" class="btn" type="submit">Guardar clase semanal</button>
+              </form>
             </div>
           </div>
           <div id="acroKidsCalendarModal" class="modal hidden">
@@ -1788,7 +1820,7 @@
               <div class="detail-header" style="margin-bottom: 12px;">
                 <div>
                   <h3 style="margin: 0;">Resumen de asistencia semanal</h3>
-                  <p class="muted" style="margin: 6px 0 0 0; font-size: 13px;">Asistencias del domingo pasado al próximo sábado</p>
+                  <p class="muted" style="margin: 6px 0 0 0; font-size: 13px;">Asistencias de lunes a domingo de esta semana</p>
                 </div>
                 <div class="header-actions">
                   <button id="acroKidsCalendarSummaryCloseBtn" class="btn ghost small" type="button">Cerrar</button>
@@ -1804,12 +1836,14 @@
                       <th style="padding: 12px; text-align: center; font-weight: 600;">Miércoles</th>
                       <th style="padding: 12px; text-align: center; font-weight: 600;">Jueves</th>
                       <th style="padding: 12px; text-align: center; font-weight: 600;">Viernes</th>
+                      <th style="padding: 12px; text-align: center; font-weight: 600;">Sábado</th>
+                      <th style="padding: 12px; text-align: center; font-weight: 600;">Domingo</th>
                       <th style="padding: 12px; text-align: center; font-weight: 600;">Total</th>
                     </tr>
                   </thead>
                   <tbody id="acroKidsCalendarSummaryTableBody">
                     <tr>
-                      <td colspan="7" style="padding: 24px; text-align: center; color: var(--text-muted);">Cargando datos de asistencia...</td>
+                      <td colspan="9" style="padding: 24px; text-align: center; color: var(--text-muted);">Cargando datos de asistencia...</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2513,6 +2547,7 @@
               <div class="header-actions">
                 <button id="nestCalendarBack" class="btn ghost small" type="button">Volver a The Nest</button>
                 <button id="nestCalendarToday" class="btn ghost small" type="button">Hoy</button>
+                <button id="nestCalendarAddClass" class="btn small" type="button">+ Añadir nueva clase</button>
               </div>
             </div>
             <div class="calendar-legend">
@@ -2520,6 +2555,38 @@
               <span><i class="calendar-dot empty"></i> Sin usuarios</span>
             </div>
             <div id="nestCalendar"></div>
+          </div>
+
+          <div id="nestCalendarAddClassModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3 id="nestCalendarAddClassTitle">Añadir clase semanal</h3>
+                <button id="nestCalendarAddClassClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="nestCalendarAddClassForm" class="stack">
+                <label>
+                  Día de la semana
+                  <select id="nestCalendarClassDay" required>
+                    <option value="">Selecciona un día</option>
+                    <option value="1">Lunes</option>
+                    <option value="2">Martes</option>
+                    <option value="3">Miércoles</option>
+                    <option value="4">Jueves</option>
+                    <option value="5">Viernes</option>
+                    <option value="6">Sábado</option>
+                    <option value="0">Domingo</option>
+                  </select>
+                </label>
+                <label>
+                  Hora de inicio (duración: 1 hora)
+                  <select id="nestCalendarClassTime" required>
+                    <option value="">Selecciona una hora</option>
+                  </select>
+                </label>
+                <p class="muted">La clase se repetirá el día y hora elegidos todas las semanas.</p>
+                <button id="nestCalendarAddClassSubmit" class="btn" type="submit">Guardar clase semanal</button>
+              </form>
+            </div>
           </div>
 
           <div id="nestCalendarModal" class="modal hidden">
@@ -3456,7 +3523,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script type="module" src="js/main.js?v=20261009h" defer></script>
+    <script type="module" src="js/main.js?v=20261014c" defer></script>
     
     <!-- Script de debugging simplificado -->
     <script>
