@@ -1,4 +1,5 @@
 import { ui, formatCurrency } from "./ui.js";
+import { normalizeSearchText } from "./search.js";
 import {
   getPilatesAthletes,
   getPilatesAthleteMonthsForMonth,
@@ -431,9 +432,9 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
   const familyTariffOptions = familyConfig.tariffs
     .map((tariffKey) => `<option value="${tariffKey}">${tariffKey}</option>`)
     .join("");
-  const searchValue = (searchTerm || "").trim().toLowerCase();
+  const searchValue = normalizeSearchText(searchTerm);
   const filteredAthletes = searchValue
-    ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    ? allAthletes.filter((athlete) => normalizeSearchText(athlete.name).includes(searchValue))
     : allAthletes;
 
   let listAthletes = !searchValue && filteredAthletes.length === 0 ? athletesFallback : filteredAthletes;

@@ -1,4 +1,5 @@
 import { ui, formatCurrency } from "./ui.js";
+import { normalizeSearchText } from "./search.js";
 import * as XLSX from 'https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs';
 import { 
   getWodBusterUsers, 
@@ -766,7 +767,7 @@ function applyWodBusterFilters() {
   console.log(`🔍 Aplicando filtros a ${allWodBusterUsers?.length || 0} usuarios en total...`);
   
   // Obtener valores de los filtros
-  const nameFilter = (document.getElementById('filterWodBusterName')?.value || '').toLowerCase().trim();
+  const nameFilter = normalizeSearchText(document.getElementById('filterWodBusterName')?.value);
   const emailFilter = (document.getElementById('filterWodBusterEmail')?.value || '').toLowerCase().trim();
   const tariffFilterRaw = (document.getElementById('filterWodBusterTariff')?.value || '').trim();
   const tariffFilter = tariffFilterRaw.toLowerCase();
@@ -799,7 +800,7 @@ function applyWodBusterFilters() {
   let filteredUsers = allWodBusterUsers.filter(user => {
     // Filtro por nombre
     if (nameFilter) {
-      const userName = (user.nombreCompleto || user.nombre || '').toLowerCase();
+      const userName = normalizeSearchText(user.nombreCompleto || user.nombre || user.name);
       if (!userName.includes(nameFilter)) {
         return false;
       }

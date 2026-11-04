@@ -34,11 +34,12 @@ import {
   updateMenuVisibility,
 } from "./ui.js?v=20261014c";
 import { showToast } from "./toast.js";
+import { normalizeSearchText } from "./search.js";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { initializeCaja, initializeInventory } from "./caja.js?v=20260622a";
-import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js";
+import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js?v=20261104a";
 import { initializeNestCalendar } from "./nest-calendar.js?v=20261014c";
 import {
   initializePilates,
@@ -50,7 +51,7 @@ import {
   renderPilatesCsvMonthOptions,
   importPilatesAthletesFromCsv,
   renderFilteredPilatesList,
-} from "./pilates.js?v=20261005b";
+} from "./pilates.js?v=20261104a";
 import {
   addPayment,
   addExpense,
@@ -993,9 +994,9 @@ function calculateAthleteFinalPrice() {
 function filterAndRenderAthleteList() {
   if (!athleteListCacheData || !ui.athleteList) return;
   const { allAthletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory } = athleteListCacheData;
-  const searchValue = athleteSearchTerm.trim().toLowerCase();
+  const searchValue = normalizeSearchText(athleteSearchTerm);
   const filteredAthletes = searchValue
-    ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    ? allAthletes.filter((athlete) => normalizeSearchText(athlete.name).includes(searchValue))
     : allAthletes;
   let listAthletes = (!searchValue && filteredAthletes.length === 0) ? athletesFallback : filteredAthletes;
   listAthletes = listAthletes.map(athlete => {
@@ -1089,20 +1090,6 @@ function filterAndRenderAthleteList() {
     emptyRow.innerHTML = `<td colspan="8" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
     ui.athleteList.appendChild(emptyRow);
   }
-  ui.athleteList.querySelectorAll('[data-role="discount-reason"]').forEach(select => {
-    select.addEventListener('change', (e) => {
-      const row = e.target.closest('tr');
-      const discountDisplay = row.querySelector('[data-role="discount-display"]');
-      const reason = e.target.value;
-      let discountValue = 0;
-      if (reason === 'promoApertura') discountValue = 15;
-      else if (reason === 'Familiar') discountValue = 10;
-      else if (reason === 'Funcionario') discountValue = 10;
-      else if (reason === 'Mañanas') discountValue = 10;
-      else if (reason === 'Amigo') discountValue = 10;
-      discountDisplay.textContent = `${discountValue}%`;
-    });
-  });
   ui.athleteList.querySelectorAll('[data-role="edit-athlete-name"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const athleteId = e.target.dataset.id;
@@ -1565,9 +1552,9 @@ async function importAcroKidsAthletesFromCsv(file, monthKey) {
 function filterAndRenderAcroList() {
   if (!acroListCacheData || !ui.acroList) return;
   const { allAthletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory } = acroListCacheData;
-  const searchValue = acroSearchTerm.trim().toLowerCase();
+  const searchValue = normalizeSearchText(acroSearchTerm);
   const filteredAthletes = searchValue
-    ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    ? allAthletes.filter((athlete) => normalizeSearchText(athlete.name).includes(searchValue))
     : allAthletes;
   let listAthletes = (!searchValue && filteredAthletes.length === 0) ? athletesFallback : filteredAthletes;
   listAthletes = listAthletes.map(athlete => {
@@ -1658,19 +1645,6 @@ function filterAndRenderAcroList() {
     emptyRow.innerHTML = `<td colspan="8" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
     ui.acroList.appendChild(emptyRow);
   }
-  ui.acroList.querySelectorAll('[data-role="acro-discount-reason"]').forEach(select => {
-    select.addEventListener('change', (e) => {
-      const row = e.target.closest('tr');
-      const discountDisplay = row.querySelector('[data-role="acro-discount-display"]');
-      const reason = e.target.value;
-      let discountValue = 0;
-      if (reason === 'promoApertura') discountValue = 15;
-      else if (reason === 'Familiar') discountValue = 10;
-      else if (reason === 'Funcionario') discountValue = 10;
-      else if (reason === 'Mañanas') discountValue = 10;
-      discountDisplay.textContent = `${discountValue}%`;
-    });
-  });
   ui.acroList.querySelectorAll('[data-role="edit-acro-name"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const athleteId = e.target.dataset.id;
@@ -1712,9 +1686,9 @@ function filterAndRenderAcroList() {
 function filterAndRenderAcroKidsList() {
   if (!acroKidsListCacheData || !ui.acroKidsList) return;
   const { allAthletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory } = acroKidsListCacheData;
-  const searchValue = acroKidsSearchTerm.trim().toLowerCase();
+  const searchValue = normalizeSearchText(acroKidsSearchTerm);
   const filteredAthletes = searchValue
-    ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    ? allAthletes.filter((athlete) => normalizeSearchText(athlete.name).includes(searchValue))
     : allAthletes;
   let listAthletes = (!searchValue && filteredAthletes.length === 0) ? athletesFallback : filteredAthletes;
   listAthletes = listAthletes.map(athlete => {
@@ -1805,19 +1779,6 @@ function filterAndRenderAcroKidsList() {
     emptyRow.innerHTML = `<td colspan="8" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
     ui.acroKidsList.appendChild(emptyRow);
   }
-  ui.acroKidsList.querySelectorAll('[data-role="acroKids-discount-reason"]').forEach(select => {
-    select.addEventListener('change', (e) => {
-      const row = e.target.closest('tr');
-      const discountDisplay = row.querySelector('[data-role="acroKids-discount-display"]');
-      const reason = e.target.value;
-      let discountValue = 0;
-      if (reason === 'promoApertura') discountValue = 15;
-      else if (reason === 'Familiar') discountValue = 10;
-      else if (reason === 'Funcionario') discountValue = 10;
-      else if (reason === 'Mañanas') discountValue = 10;
-      discountDisplay.textContent = `${discountValue}%`;
-    });
-  });
   ui.acroKidsList.querySelectorAll('[data-role="edit-acroKids-name"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const athleteId = e.target.dataset.id;
@@ -2773,9 +2734,9 @@ async function importHalteAthletesFromCsv(file, monthKey) {
 function filterAndRenderHalteList() {
   if (!halteListCacheData || !ui.halteList) return;
   const { allAthletes, athletesFallback, listMonthMap, listPreviousMap, athleteHistory } = halteListCacheData;
-  const searchValue = halteSearchTerm.trim().toLowerCase();
+  const searchValue = normalizeSearchText(halteSearchTerm);
   const filteredAthletes = searchValue
-    ? allAthletes.filter((athlete) => athlete.name?.toLowerCase().includes(searchValue))
+    ? allAthletes.filter((athlete) => normalizeSearchText(athlete.name).includes(searchValue))
     : allAthletes;
   let listAthletes = (!searchValue && filteredAthletes.length === 0) ? athletesFallback : filteredAthletes;
   listAthletes = listAthletes.map(athlete => {
@@ -2866,19 +2827,6 @@ function filterAndRenderHalteList() {
     emptyRow.innerHTML = `<td colspan="8" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
     ui.halteList.appendChild(emptyRow);
   }
-  ui.halteList.querySelectorAll('[data-role="halte-discount-reason"]').forEach(select => {
-    select.addEventListener('change', (e) => {
-      const row = e.target.closest('tr');
-      const discountDisplay = row.querySelector('[data-role="halte-discount-display"]');
-      const reason = e.target.value;
-      let discountValue = 0;
-      if (reason === 'promoApertura') discountValue = 15;
-      else if (reason === 'Familiar') discountValue = 10;
-      else if (reason === 'Funcionario') discountValue = 10;
-      else if (reason === 'Mañanas') discountValue = 10;
-      discountDisplay.textContent = `${discountValue}%`;
-    });
-  });
   ui.halteList.querySelectorAll('[data-role="edit-halte-name"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const athleteId = e.target.dataset.id;
@@ -3236,8 +3184,8 @@ function filterAndRenderTelasList() {
     filtered = filtered.filter((e) => !e.paid);
   }
   if (telasSearchTerm.trim() !== "") {
-    const term = telasSearchTerm.trim().toLowerCase();
-    filtered = filtered.filter((e) => e.athlete.name.toLowerCase().includes(term));
+    const term = normalizeSearchText(telasSearchTerm);
+    filtered = filtered.filter((e) => normalizeSearchText(e.athlete.name).includes(term));
   }
   const visibleCount = filtered.length;
   ui.telasList.innerHTML = "";
@@ -3305,19 +3253,6 @@ function filterAndRenderTelasList() {
     emptyRow.innerHTML = `<td colspan="8" style="text-align: center; padding: 16px; color: #888;">No se encontraron coincidencias</td>`;
     ui.telasList.appendChild(emptyRow);
   }
-  ui.telasList.querySelectorAll('[data-role="telas-discount-reason"]').forEach(select => {
-    select.addEventListener('change', (e) => {
-      const row = e.target.closest('tr');
-      const discountDisplay = row.querySelector('[data-role="telas-discount-display"]');
-      const reason = e.target.value;
-      let discountValue = 0;
-      if (reason === 'promoApertura') discountValue = 15;
-      else if (reason === 'Familiar') discountValue = 10;
-      else if (reason === 'Funcionario') discountValue = 10;
-      else if (reason === 'Mañanas') discountValue = 10;
-      discountDisplay.textContent = `${discountValue}%`;
-    });
-  });
   ui.telasList.querySelectorAll('[data-role="edit-telas-name"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const athleteId = e.target.dataset.id;
@@ -3655,9 +3590,9 @@ async function refreshSingleClassesMonthly() {
     filtered = filtered.filter((e) => !e.paid);
   }
   if (singleClassesSearchTerm.trim() !== "") {
-    const term = singleClassesSearchTerm.trim().toLowerCase();
+    const term = normalizeSearchText(singleClassesSearchTerm);
     filtered = filtered.filter((e) =>
-      (e.athlete.name || "").toLowerCase().includes(term)
+      normalizeSearchText(e.athlete.name).includes(term)
     );
   }
   const visibleCount = filtered.length;
@@ -3741,21 +3676,6 @@ async function refreshSingleClassesMonthly() {
       </td>
     `;
     ui.singleClassesList.appendChild(row);
-  });
-
-  // Add event listeners for single classes discount reason selects
-  ui.singleClassesList.querySelectorAll('[data-role="singleclasses-discount-reason"]').forEach(select => {
-    select.addEventListener('change', (e) => {
-      const row = e.target.closest('tr');
-      const discountDisplay = row.querySelector('[data-role="singleclasses-discount-display"]');
-      const reason = e.target.value;
-      let discountValue = 0;
-      if (reason === 'promoApertura') discountValue = 15;
-      else if (reason === 'Familiar') discountValue = 10;
-      else if (reason === 'Funcionario') discountValue = 10;
-      else if (reason === 'Mañanas') discountValue = 10;
-      discountDisplay.textContent = `${discountValue}%`;
-    });
   });
 
   // Add event listeners for edit single classes name buttons
@@ -4409,11 +4329,11 @@ async function renderEmployeePayments() {
   employeePayments = await loadEmployeePayments();
   const year = ui.employeePaymentYearSelect.value;
   const month = ui.employeePaymentMonthSelect.value;
-  const nameFilter = ui.employeePaymentNameFilter.value.toLowerCase();
+  const nameFilter = normalizeSearchText(ui.employeePaymentNameFilter.value);
   let filtered = employeePayments;
   if (year) filtered = filtered.filter(p => p.date && p.date.startsWith(year));
   if (month) filtered = filtered.filter(p => p.date && p.date.slice(5,7) === month.padStart(2,'0'));
-  if (nameFilter) filtered = filtered.filter(p => (p.name||"").toLowerCase().includes(nameFilter));
+  if (nameFilter) filtered = filtered.filter(p => normalizeSearchText(p.name).includes(nameFilter));
   ui.employeePaymentsList.innerHTML = filtered.map(p => `
     <tr>
       <td>${p.name}</td>
@@ -4684,6 +4604,26 @@ function calculateDiscountFromReason(reason) {
   if (reason === "Mañanas") return 10;
   if (reason === "Amigo") return 10;
   return 0;
+}
+
+// Vista previa con las mismas tarifas y descuentos usados al guardar la fila.
+function updateRowPricePreview(row, prefix, plans, defaultTariff) {
+  if (!row) return;
+  const tariffSelect = row.querySelector(`[data-role="${prefix}tariff"]`);
+  const reasonSelect = row.querySelector(`[data-role="${prefix}discount-reason"]`);
+  const plan = plans.get(tariffSelect?.value) || plans.get(defaultTariff);
+  if (!plan) return;
+
+  const discount = calculateDiscountFromReason(reasonSelect?.value || "Ninguno");
+  const basePrice = Number(plan.priceTotal);
+  const finalPrice = basePrice * (1 - discount / 100);
+  const priceElement = row.querySelector(`[data-role="${prefix}price"]`);
+  const discountElement = row.querySelector(`[data-role="${prefix}discount-display"]`);
+  const finalPriceElement = row.querySelector(`[data-role="${prefix}final-price"]`);
+
+  if (priceElement) priceElement.textContent = basePrice.toFixed(2);
+  if (discountElement) discountElement.textContent = `${discount}%`;
+  if (finalPriceElement) finalPriceElement.textContent = finalPrice.toFixed(2);
 }
 
 function setStatusBadge(statusElement, paid) {
@@ -5083,6 +5023,9 @@ if (ui.athleteList) {
       return;
     }
     const row = target.closest("tr");
+    if (target.matches("[data-role='tariff'], [data-role='discount-reason']")) {
+      updateRowPricePreview(row, "", tariffPlanMap, "8/mes");
+    }
     markDirtyRow(row);
     if (target.matches("[data-role='paid']")) {
       const statusElement = row?.querySelector("[data-role='status']");
@@ -5185,6 +5128,9 @@ if (ui.acroList) {
       return;
     }
     const row = target.closest("tr");
+    if (target.matches("[data-role='acro-tariff'], [data-role='acro-discount-reason']")) {
+      updateRowPricePreview(row, "acro-", acroTariffPlanMap, "4/mes");
+    }
     markDirtyRow(row);
     if (target.matches("[data-role='acro-paid']")) {
       const statusElement = row?.querySelector("[data-role='acro-status']");
@@ -5235,6 +5181,9 @@ if (ui.halteList) {
       return;
     }
     const row = target.closest("tr");
+    if (target.matches("[data-role='halte-tariff'], [data-role='halte-discount-reason']")) {
+      updateRowPricePreview(row, "halte-", halteTariffPlanMap, "Pequeña");
+    }
     markDirtyRow(row);
     if (target.matches("[data-role='halte-paid']")) {
       const statusElement = row?.querySelector("[data-role='halte-status']");
@@ -5285,6 +5234,9 @@ if (ui.telasList) {
       return;
     }
     const row = target.closest("tr");
+    if (target.matches("[data-role='telas-tariff'], [data-role='telas-discount-reason']")) {
+      updateRowPricePreview(row, "telas-", telasTariffPlanMap, "4/mes");
+    }
     markDirtyRow(row);
     if (target.matches("[data-role='telas-paid']")) {
       const statusElement = row?.querySelector("[data-role='telas-status']");
@@ -5385,6 +5337,9 @@ if (ui.singleClassesList) {
       return;
     }
     const row = target.closest("tr");
+    if (target.matches("[data-role='singleclasses-tariff'], [data-role='singleclasses-discount-reason']")) {
+      updateRowPricePreview(row, "singleclasses-", singleClassesTariffPlanMap, "Clase Crossfit");
+    }
     markDirtyRow(row);
     if (target.matches("[data-role='singleclasses-paid']")) {
       const statusElement = row?.querySelector("[data-role='singleclasses-status']");
@@ -5587,9 +5542,9 @@ function downloadAthleteExcel() {
   if (!XLSX) { alert("La librería Excel no está disponible"); return; }
 
   const { allAthletes, listMonthMap, listPreviousMap, athleteHistory } = athleteListCacheData;
-  const searchValue = athleteSearchTerm.trim().toLowerCase();
+  const searchValue = normalizeSearchText(athleteSearchTerm);
   let listAthletes = searchValue
-    ? allAthletes.filter(a => a.name?.toLowerCase().includes(searchValue))
+    ? allAthletes.filter(a => normalizeSearchText(a.name).includes(searchValue))
     : allAthletes;
 
   const rows = [[
@@ -7785,7 +7740,7 @@ on(ui.acroKidsPaidFilter, "change", (event) => {
   filterAndRenderAcroKidsList();
 });
 
-on(ui.acroKidsList, "change", async (event) => {
+on(ui.acroKidsList, "change", (event) => {
   const { target } = event;
   if (!target.matches('[data-role="acroKids-tariff"], [data-role="acroKids-discount-reason"], [data-role="acroKids-paid"], [data-role="acroKids-payment-method"]')) {
     return;
@@ -7794,35 +7749,8 @@ on(ui.acroKidsList, "change", async (event) => {
   const row = target.closest("tr");
   if (!row) return;
 
-  const tariffSelect = row.querySelector('[data-role="acroKids-tariff"]');
-  const discountReasonSelect = row.querySelector('[data-role="acroKids-discount-reason"]');
-  const paymentMethodSelect = row.querySelector('[data-role="acroKids-payment-method"]');
-  const priceSpan = row.querySelector('[data-role="acroKids-price"]');
-  const finalPriceSpan = row.querySelector('[data-role="acroKids-final-price"]');
-  const discountDisplaySpan = row.querySelector('[data-role="acroKids-discount-display"]');
-
-  if (target.matches('[data-role="acroKids-tariff"]')) {
-    const selectedTariff = tariffSelect.value;
-    const plan = acroKidsTariffPlanMap.get(selectedTariff) || acroKidsTariffPlanMap.get("4/mes");
-    const basePrice = plan.priceTotal;
-    const currentDiscount = parseFloat(discountDisplaySpan?.textContent) || 0;
-    const finalPrice = basePrice * (1 - currentDiscount / 100);
-    if (priceSpan) priceSpan.textContent = basePrice.toFixed(2);
-    if (finalPriceSpan) finalPriceSpan.textContent = finalPrice.toFixed(2);
-  }
-
-  if (target.matches('[data-role="acroKids-discount-reason"]')) {
-    const reason = discountReasonSelect.value;
-    let discountValue = 0;
-    if (reason === 'promoApertura') discountValue = 15;
-    else if (reason === 'Familiar') discountValue = 10;
-    else if (reason === 'Funcionario') discountValue = 10;
-    else if (reason === 'Mañanas') discountValue = 10;
-    if (discountDisplaySpan) discountDisplaySpan.textContent = `${discountValue}%`;
-    
-    const basePrice = parseFloat(priceSpan?.textContent) || 0;
-    const finalPrice = basePrice * (1 - discountValue / 100);
-    if (finalPriceSpan) finalPriceSpan.textContent = finalPrice.toFixed(2);
+  if (target.matches('[data-role="acroKids-tariff"], [data-role="acroKids-discount-reason"]')) {
+    updateRowPricePreview(row, "acroKids-", acroKidsTariffPlanMap, "4/mes");
   }
 
   // Mark row as dirty for save
@@ -9168,7 +9096,7 @@ function renderTeachersList() {
   
   const filteredTeachers = teachersData.filter(teacher => {
     const matchesSearch = !teacherSearchTerm || 
-      teacher.name?.toLowerCase().includes(teacherSearchTerm.toLowerCase()) ||
+      normalizeSearchText(teacher.name).includes(normalizeSearchText(teacherSearchTerm)) ||
       teacher.email?.toLowerCase().includes(teacherSearchTerm.toLowerCase());
     
     const matchesStatus = teacherStatusFilter === "ALL" || teacher.status === teacherStatusFilter;
@@ -10197,7 +10125,7 @@ function initializeMobileMenuAndSearch() {
 
   // Global search
   const performSearch = () => {
-    const query = (ui.globalSearch?.value || "").toLowerCase().trim();
+    const query = normalizeSearchText(ui.globalSearch?.value);
     // For now, filter the current view's table if it exists
     const currentView = document.querySelector('.view:not(.hidden)');
     if (currentView) {
@@ -10205,7 +10133,7 @@ function initializeMobileMenuAndSearch() {
       if (table) {
         const rows = table.querySelectorAll('tbody tr');
         rows.forEach(row => {
-          const text = row.textContent.toLowerCase();
+          const text = normalizeSearchText(row.textContent);
           row.style.display = text.includes(query) ? '' : 'none';
         });
       }
@@ -10230,36 +10158,4 @@ if (document.readyState === 'loading') {
   setDefaultMonthForPaymentExpense();
 }
 
-// Global event listeners for discount changes
-document.addEventListener('change', (e) => {
-  if (e.target.matches('[data-role="discount-reason"]')) {
-    const id = e.target.getAttribute('data-id');
-    const reason = e.target.value;
-    const athlete = currentAthletes.find(a => a.id === id);
-    if (athlete) {
-      athlete.discountReason = reason;
-      const price = calculatePrice(athlete);
-      const priceSpan = document.querySelector(`[data-role="final-price"][data-id="${id}"]`);
-      if (priceSpan) {
-        priceSpan.textContent = price.toFixed(2);
-      }
-    }
-  }
-});
-
-document.addEventListener('change', (e) => {
-  if (e.target.matches('[data-role="acro-discount-reason"]')) {
-    const id = e.target.getAttribute('data-id');
-    const reason = e.target.value;
-    const athlete = currentAcroAthletes.find(a => a.id === id);
-    if (athlete) {
-      athlete.discountReason = reason;
-      const price = calculateAcroPrice(athlete);
-      const priceSpan = document.querySelector(`[data-role="acro-final-price"][data-id="${id}"]`);
-      if (priceSpan) {
-        priceSpan.textContent = price.toFixed(2);
-      }
-    }
-  }
-});
 

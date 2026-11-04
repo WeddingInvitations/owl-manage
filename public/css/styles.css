@@ -2151,12 +2151,12 @@ span.athlete-status-unpaid,
   display: none;
 }
 
-/* Trunca nombres largos para que los botones de editar/eliminar nunca queden ocultos */
+/* Mostrar nombres completos en todos los listados, sin ocultar las acciones */
 .list-row-name {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* La celda de nombre nunca debe recortar los botones de acción */
@@ -2193,6 +2193,8 @@ span.athlete-status-unpaid,
 }
 .athlete-table-mobile td:nth-child(1) {
   flex: 0 0 100%;
+  min-width: 0;
+  max-width: none !important;
   font-weight: 600;
   font-size: 14px;
   margin-bottom: 4px;
