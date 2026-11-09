@@ -17,7 +17,7 @@ exports.listInvoiceFolders = functions.https.onCall(async (data, context) => {
   // Verificar rol del usuario
   const userDoc = await admin.firestore().collection('users').doc(context.auth.uid).get();
   const userData = userDoc.exists ? userDoc.data() : {};
-  const userRole = userData.role || 'OWNER';
+  const userRole = userData.role || 'PENDING';
 
   if (userRole !== 'OWNER') {
     throw new functions.https.HttpsError('permission-denied', 'Solo OWNER puede listar carpetas');

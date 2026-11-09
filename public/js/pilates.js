@@ -284,6 +284,10 @@ export async function importPilatesAthletesFromCsv(file, monthKey) {
 
   const headers = lines[0].split(",").map((header) => header.trim().toLowerCase());
   const nameIndex = headers.findIndex((value) => value.includes("nombre") || value.includes("name"));
+  const emailIndex = headers.findIndex((value) => value.includes("correo") || value.includes("email") || value.includes("e-mail"));
+  if (emailIndex < 0) {
+    throw new Error("El CSV debe incluir una columna correo o email para habilitar las reservas.");
+  }
   const tariffIndex = headers.findIndex((value) => value.includes("tarifa") || value.includes("plan") || value.includes("tariff"));
   const paidIndex = headers.findIndex((value) => value.includes("pagado") || value.includes("paid"));
   const priceIndex = headers.findIndex((value) => value.includes("precio") || value.includes("price"));
@@ -299,7 +303,11 @@ export async function importPilatesAthletesFromCsv(file, monthKey) {
     try {
       const cols = lines[i].split(",").map((value) => value.trim().replace(/^"|"$/g, ""));
       const name = nameIndex >= 0 ? cols[nameIndex] : "";
+      const email = emailIndex >= 0 ? String(cols[emailIndex] || "").trim().toLowerCase() : "";
       if (!name) continue;
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error(`Correo no válido en la fila ${i + 1}`);
+      }
 
       const tariff = tariffIndex >= 0 && cols[tariffIndex] ? cols[tariffIndex] : "Reformer 4";
       const paidValue = paidIndex >= 0 ? cols[paidIndex] : "NO";
@@ -312,9 +320,12 @@ export async function importPilatesAthletesFromCsv(file, monthKey) {
 
       let athlete = athleteMap.get(name.toLowerCase());
       if (!athlete) {
-        const id = await createPilatesAthlete(name, null);
-        athlete = { id, name };
+        const id = await createPilatesAthlete(name, null, email);
+        athlete = { id, name, email };
         athleteMap.set(name.toLowerCase(), athlete);
+      } else if (email && email !== String(athlete.email || "").trim().toLowerCase()) {
+        await updatePilatesAthlete(athlete.id, { email, authUid: null }, null);
+        athlete.email = email;
       }
 
       await upsertPilatesAthleteMonth(
@@ -390,20 +401,14 @@ function attachPilatesRowListeners() {
   });
 
   ui.pilatesList.querySelectorAll('[data-role="edit-pilates-name"]').forEach((button) => {
-    button.addEventListener("click", async (event) => {
-      const athleteId = event.target.dataset.id;
-      const nameSpan = ui.pilatesList.querySelector(`[data-role="pilates-athlete-name"][data-id="${athleteId}"]`);
-      const currentName = nameSpan?.textContent || "";
-      const newName = prompt("Introduce el nuevo nombre del atleta:", currentName);
-      if (newName && newName.trim() !== "" && newName !== currentName) {
-        try {
-          await updatePilatesAthlete(athleteId, { name: newName.trim() }, null);
-          window.dispatchEvent(new CustomEvent("pilates-name-updated"));
-        } catch (error) {
-          console.error("Error al actualizar el nombre del atleta:", error);
-          alert("Error al actualizar el nombre del atleta");
-        }
-      }
+    button.addEventListener("click", (event) => {
+      const athleteId = event.currentTarget.dataset.id;
+      const athlete = pilatesListCacheData?.allAthletes.find((item) => item.id === athleteId);
+      if (!athlete) return;
+      ui.pilatesEditAthleteId.value = athlete.id;
+      ui.pilatesEditName.value = athlete.name || "";
+      ui.pilatesEditEmail.value = athlete.email || "";
+      ui.pilatesEditModal.classList.remove("hidden");
     });
   });
 
@@ -420,6 +425,54 @@ function attachPilatesRowListeners() {
         alert("Error al eliminar el usuario");
       }
     });
+  });
+}
+
+if (ui.pilatesEditModalClose) {
+  ui.pilatesEditModalClose.addEventListener("click", () => ui.pilatesEditModal.classList.add("hidden"));
+}
+if (ui.pilatesEditCancel) {
+  ui.pilatesEditCancel.addEventListener("click", () => ui.pilatesEditModal.classList.add("hidden"));
+}
+if (ui.pilatesEditForm) {
+  ui.pilatesEditForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const athleteId = ui.pilatesEditAthleteId.value;
+    const athlete = pilatesListCacheData?.allAthletes.find((item) => item.id === athleteId);
+    if (!athlete) return;
+
+    const name = ui.pilatesEditName.value.trim();
+    const email = ui.pilatesEditEmail.value.trim().toLowerCase();
+    if (!name) {
+      alert("Introduce el nombre de la alumna.");
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      alert("Introduce un correo válido.");
+      return;
+    }
+    const emailAlreadyUsed = email && pilatesListCacheData.allAthletes.some((item) =>
+      item.id !== athleteId && String(item.email || "").trim().toLowerCase() === email
+    );
+    if (emailAlreadyUsed) {
+      alert("Ese correo ya está asignado a otra ficha de The Nest.");
+      return;
+    }
+
+    const updates = { name, email };
+    if (String(athlete.email || "").trim().toLowerCase() !== email) updates.authUid = null;
+    const saveButton = ui.pilatesEditForm.querySelector('button[type="submit"]');
+    saveButton.disabled = true;
+    try {
+      await updatePilatesAthlete(athleteId, updates, null);
+      ui.pilatesEditModal.classList.add("hidden");
+      window.dispatchEvent(new CustomEvent("pilates-name-updated"));
+    } catch (error) {
+      console.error("Error al actualizar la ficha de The Nest:", error);
+      alert("No se pudo guardar la ficha. Comprueba los datos e inténtalo de nuevo.");
+    } finally {
+      saveButton.disabled = false;
+    }
   });
 }
 
@@ -493,7 +546,7 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
       <td style="max-width: 200px;">
         <div style="display: flex; align-items: flex-start; gap: 6px;">
           <span data-role="pilates-athlete-name" class="list-row-name" data-id="${athlete.id}" style="flex: 1; line-height: 1.3;">${athlete.name || "(Sin nombre)"}</span>
-          <button class="edit-name-btn" data-role="edit-pilates-name" data-id="${athlete.id}" title="Editar nombre" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.6;">✏️</button>
+          <button class="edit-name-btn" data-role="edit-pilates-name" data-id="${athlete.id}" title="Editar nombre y correo" aria-label="Editar nombre y correo de ${athlete.name || "alumna"}" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.7;">✏️</button>
           <button class="edit-name-btn" data-role="delete-pilates-athlete" data-id="${athlete.id}" data-name="${athlete.name || ""}" title="Eliminar usuario" style="flex-shrink: 0; padding: 2px 4px; cursor: pointer; border: none; background: transparent; font-size: 13px; opacity: 0.8; color: #b42318;">🗑</button>
         </div>
       </td>
@@ -528,6 +581,10 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
         </select>
       </td>
     `;
+    const emailLabel = document.createElement("small");
+    emailLabel.className = "pilates-athlete-email";
+    emailLabel.textContent = athlete.email || "Sin correo para reservas";
+    row.querySelector("td")?.appendChild(emailLabel);
     ui.pilatesList.appendChild(row);
   });
 

@@ -41,6 +41,7 @@ import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/fireb
 import { initializeCaja, initializeInventory } from "./caja.js?v=20260622a";
 import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js?v=20261104a";
 import { initializeNestCalendar } from "./nest-calendar.js?v=20261014c";
+import { initializeNestBookings, refreshNestBookings } from "./nest-booking.js?v=20261109b";
 import {
   initializePilates,
   refreshPilatesMonthly,
@@ -51,7 +52,7 @@ import {
   renderPilatesCsvMonthOptions,
   importPilatesAthletesFromCsv,
   renderFilteredPilatesList,
-} from "./pilates.js?v=20261104a";
+} from "./pilates.js?v=20261109c";
 import {
   addPayment,
   addExpense,
@@ -97,7 +98,6 @@ import {
   getMonthLabel,
   loadUsers,
   getUsersList,
-  // Vacaciones
   addVacation,
   getVacationsForUser,
   getVacationsForAll,
@@ -550,7 +550,19 @@ on(ui.passwordChangeForm, "submit", async (event) => {
 
     // Ocultar vista de cambio de contraseña y mostrar la app
     setAuthUI(ui, auth.currentUser, currentRole, false);
-    updateMenuVisibility(ui, currentRole);
+    updateMenuVisibility(ui, currentRole, currentProfile);
+    if (currentRole === "NEST_STUDENT" || currentRole === "NEST_INSTRUCTOR") {
+      const initialView = currentRole === "NEST_INSTRUCTOR" &&
+        !currentProfile?.nestFamilies?.includes("pilates")
+        ? "nestBarreBookingView"
+        : currentProfile?.nestFamilies?.includes("barre") && !currentProfile?.nestFamilies?.includes("pilates")
+          ? "nestBarreBookingView"
+          : "nestPilatesBookingView";
+      setActiveView(initialView, ui);
+      if (ui.mobileNav) ui.mobileNav.classList.remove("hidden");
+      await initializeViewIfNeeded(initialView);
+      return;
+    }
     if (ui.mobileNav) {
       ui.mobileNav.classList.toggle("hidden", !auth.currentUser);
     }
@@ -4386,6 +4398,11 @@ function initEmployeePaymentsListeners() {
 
 // Función para inicializar vista según sea necesario (lazy loading)
 async function initializeViewIfNeeded(viewId) {
+  if (viewId === "nestPilatesBookingView" || viewId === "nestBarreBookingView") {
+    initializeNestBookings();
+    await refreshNestBookings(viewId);
+    return;
+  }
   if (viewsInitialized[viewId]) return;
 
   const view = document.getElementById(viewId);
@@ -5393,50 +5410,45 @@ bindAuth(
     currentProfile = profile;
     currentRole = profile.role;
 
-    if (user) {
-      // Si el usuario debe cambiar la contraseña, no cargamos todavía los datos pesados
+    if (user && currentRole === "PENDING") {
+      if (profile.accessMessage && ui.pendingAccessMessage) {
+        ui.pendingAccessMessage.textContent = profile.accessMessage;
+      }
+      stopCheckinTimer();
+      if (ui.mobileNav) ui.mobileNav.classList.add("hidden");
+    } else if (user) {
+      updateMenuVisibility(ui, currentRole, currentProfile);
       if (profile.mustChangePassword) {
         if (ui.passwordChangeStatus) ui.passwordChangeStatus.textContent = "";
         if (ui.passwordChangeNew) ui.passwordChangeNew.value = "";
         if (ui.passwordChangeConfirm) ui.passwordChangeConfirm.value = "";
-        // Ocultar navegación móvil mientras está obligado a cambiar contraseña
-        if (ui.mobileNav) {
-          ui.mobileNav.classList.add("hidden");
-        }
+        if (ui.mobileNav) ui.mobileNav.classList.add("hidden");
       } else {
-        // Flujo normal: cargar datos de la app
-        if (ui.checkinProfileFirstName) {
-          ui.checkinProfileFirstName.value = profile.firstName || "";
-        }
-        if (ui.checkinProfileLastName) {
-          ui.checkinProfileLastName.value = profile.lastName || "";
-        }
-        // Rellenar vista de perfil
+        if (ui.checkinProfileFirstName) ui.checkinProfileFirstName.value = profile.firstName || "";
+        if (ui.checkinProfileLastName) ui.checkinProfileLastName.value = profile.lastName || "";
         renderProfileView();
+        if (ui.mobileNav) ui.mobileNav.classList.toggle("hidden", !user);
 
-        // Actualizar visibilidad del menú según rol
-        updateMenuVisibility(ui, currentRole);
-        if (ui.mobileNav) {
-          ui.mobileNav.classList.toggle("hidden", !user);
-        }
-        
-        // Establecer vista inicial según rol y cargar solo sus datos
-        let initialView = "summaryView"; // Default para OWNER
-        if (currentRole !== "OWNER") {
+        let initialView = "summaryView";
+        if (currentRole === "NEST_INSTRUCTOR") {
+          initialView = currentProfile.nestFamilies?.includes("pilates")
+            ? "nestPilatesBookingView"
+            : "nestBarreBookingView";
+        } else if (currentRole === "NEST_STUDENT") {
+          initialView = currentProfile.nestFamilies?.includes("barre") && !currentProfile.nestFamilies?.includes("pilates")
+            ? "nestBarreBookingView"
+            : "nestPilatesBookingView";
+        } else if (currentRole !== "OWNER") {
           initialView = "checkinsView";
         }
-        
+
         setActiveView(initialView, ui);
         updateMobileNavActive(initialView);
-        
-        // Cargar datos solo de la vista inicial (lazy loading)
         await initializeViewIfNeeded(initialView);
       }
     } else {
       stopCheckinTimer();
-      if (ui.mobileNav) {
-        ui.mobileNav.classList.add("hidden");
-      }
+      if (ui.mobileNav) ui.mobileNav.classList.add("hidden");
     }
     updateUserBadge();
   },
@@ -5649,8 +5661,8 @@ function downloadTelasTemplate() {
 }
 
 function downloadPilatesTemplate() {
-  const headers = ["nombre", "tarifa", "pagado", "precio", "descuento", "motivo_descuento"];
-  const exampleRow = ["Lucía Pérez", "Reformer 4", "NO", "65", "10", "Funcionario"];
+  const headers = ["nombre", "correo", "tarifa", "pagado", "precio", "descuento", "motivo_descuento"];
+  const exampleRow = ["Lucía Pérez", "lucia@example.com", "Reformer 4", "NO", "65", "10", "Funcionario"];
 
   const csv = [headers, exampleRow]
     .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
@@ -8091,6 +8103,7 @@ on(ui.telasCsvForm, "submit", async (event) => {
 on(ui.pilatesForm, "submit", async (event) => {
   event.preventDefault();
   const rawName = ui.pilatesName.value.trim();
+  const email = ui.pilatesEmail.value.trim().toLowerCase();
   if (!rawName) return;
   
   const athletes = await getPilatesAthletes();
@@ -8099,7 +8112,12 @@ on(ui.pilatesForm, "submit", async (event) => {
   );
   const athleteId = existing
     ? existing.id
-    : await createPilatesAthlete(rawName, currentUser?.uid);
+    : await createPilatesAthlete(rawName, currentUser?.uid, email);
+  if (existing) {
+    const athleteUpdates = { email };
+    if (String(existing.email || "").trim().toLowerCase() !== email) athleteUpdates.authUid = null;
+    await updatePilatesAthlete(athleteId, athleteUpdates, currentUser?.uid);
+  }
   const athleteName = existing?.name || rawName;
   const tariff = ui.pilatesTariff.value;
   const plan = pilatesTariffPlanMap.get(tariff) || pilatesTariffPlanMap.get("Reformer 4");
@@ -9372,6 +9390,8 @@ window.editTeacher = async function(teacherId) {
   ui.teacherId.value = teacher.id;
   ui.teacherName.value = teacher.name || "";
   ui.teacherEmail.value = teacher.email || "";
+  ui.teacherNestPilates.checked = (teacher.nestFamilies || []).includes("pilates");
+  ui.teacherNestBarre.checked = (teacher.nestFamilies || []).includes("barre");
   ui.teacherPhone.value = teacher.phone || "";
   ui.teacherStatus.value = teacher.status || "ACTIVE";
   
@@ -9615,7 +9635,11 @@ on(ui.teacherForm, "submit", async (event) => {
   
   const teacherData = {
     name: ui.teacherName.value.trim(),
-    email: ui.teacherEmail.value.trim(),
+    email: ui.teacherEmail.value.trim().toLowerCase(),
+    nestFamilies: [
+      ...(ui.teacherNestPilates.checked ? ["pilates"] : []),
+      ...(ui.teacherNestBarre.checked ? ["barre"] : []),
+    ],
     phone: ui.teacherPhone.value.trim(),
     specialties: Array.from(ui.teacherSpecialties.selectedOptions).map(opt => opt.value),
     status: ui.teacherStatus.value,
@@ -9624,6 +9648,10 @@ on(ui.teacherForm, "submit", async (event) => {
   try {
     const teacherId = ui.teacherId.value;
     if (teacherId) {
+      const previousTeacher = teachersData.find((teacher) => teacher.id === teacherId);
+      if (String(previousTeacher?.email || "").trim().toLowerCase() !== teacherData.email) {
+        teacherData.authUid = null;
+      }
       await updateTeacher(teacherId, teacherData, currentUser?.uid);
     } else {
       await createTeacher(teacherData, currentUser?.uid);

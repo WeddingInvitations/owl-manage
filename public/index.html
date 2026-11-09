@@ -10,7 +10,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" href="css/styles.css?v=20261104a" />
+    <link rel="stylesheet" href="css/styles.css?v=20261109c" />
+    <link rel="stylesheet" href="css/nest-booking.css?v=20261109b" />
     <link rel="stylesheet" href="css/fullcalendar-dark-override.css?v=20250225" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
 
@@ -156,6 +157,8 @@
               </svg>
               The Nest
             </button>
+            <button class="menu-btn" data-view="nestPilatesBookingView">Reservas · Pilates</button>
+            <button class="menu-btn" data-view="nestBarreBookingView">Reservas · Barre</button>
             <button class="menu-btn" data-view="wodBusterView">
               <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
@@ -2387,6 +2390,10 @@
                   <input id="pilatesName" type="text" autocomplete="off" required />
                 </label>
                 <label>
+                  Correo electrónico (para acceder a las reservas)
+                  <input id="pilatesEmail" type="email" autocomplete="email" required />
+                </label>
+                <label>
                   Mes de pago
                   <select id="pilatesPaymentMonth"></select>
                 </label>
@@ -2442,6 +2449,30 @@
               </form>
             </div>
           </div>
+          <div id="pilatesEditModal" class="modal hidden">
+            <div class="modal-content card">
+              <div class="detail-header">
+                <h3>Editar ficha de The Nest</h3>
+                <button id="pilatesEditModalClose" class="btn ghost small" type="button">Cerrar</button>
+              </div>
+              <form id="pilatesEditForm" class="stack">
+                <input id="pilatesEditAthleteId" type="hidden" />
+                <label>
+                  Nombre
+                  <input id="pilatesEditName" type="text" autocomplete="off" required />
+                </label>
+                <label>
+                  Correo electrónico para acceder a las reservas
+                  <input id="pilatesEditEmail" type="email" autocomplete="email" />
+                </label>
+                <p class="muted">El correo debe coincidir con el que usará la alumna para crear su cuenta. Si lo cambias, tendrá que vincular de nuevo la cuenta al correo nuevo.</p>
+                <div class="form-actions">
+                  <button class="btn primary" type="submit">Guardar ficha</button>
+                  <button id="pilatesEditCancel" class="btn ghost" type="button">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
           <div id="pilatesCsvModal" class="modal hidden">
             <div class="modal-content card">
               <div class="detail-header">
@@ -2451,7 +2482,7 @@
                 </button>
               </div>
               <form id="pilatesCsvForm" class="stack">
-                <p class="muted">El CSV debe tener las columnas: nombre, tarifa, pagado, precio (opcional), descuento (opcional), motivo_descuento (opcional). Formatos aceptados: nombre/name, tarifa/plan, pagado/paid, precio/price, descuento/discount, motivo_descuento/discount_reason.</p>
+                <p class="muted">El CSV debe tener las columnas: nombre, correo, tarifa, pagado, precio (opcional), descuento (opcional), motivo_descuento (opcional). El correo permite vincular la ficha al acceso de reservas.</p>
                 <div class="flex gap-2 mb-3">
                   <button id="downloadPilatesTemplate" class="btn ghost small" type="button" title="Descargar plantilla CSV">
                     📥 Descargar plantilla
@@ -2615,6 +2646,40 @@
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section id="nestPilatesBookingView" class="view hidden">
+          <div class="card">
+            <div class="detail-header">
+              <div><h2>Reservas · The Nest Pilates</h2><p class="muted">Horario semanal · 6 plazas por clase</p></div>
+              <div class="nest-booking-toolbar">
+                <button class="btn ghost small" type="button" data-nest-week-shift="-1" data-nest-week-family="pilates" aria-label="Semana anterior">‹</button>
+                <button class="btn ghost small" type="button" data-nest-week-today="pilates">Esta semana</button>
+                <button class="btn ghost small" type="button" data-nest-week-shift="1" data-nest-week-family="pilates" aria-label="Semana siguiente">›</button>
+                <button class="btn ghost small" type="button" data-nest-booking-refresh="pilates">↻</button>
+              </div>
+            </div>
+            <p class="nest-booking-week-label" data-nest-booking-week="pilates"></p>
+            <p class="muted" data-nest-booking-status="pilates" aria-live="polite"></p>
+            <div class="nest-booking-sessions" data-nest-booking-sessions="pilates"></div>
+          </div>
+        </section>
+
+        <section id="nestBarreBookingView" class="view hidden">
+          <div class="card">
+            <div class="detail-header">
+              <div><h2>Reservas · The Nest Barre</h2><p class="muted">Horario semanal · 6 plazas por clase</p></div>
+              <div class="nest-booking-toolbar">
+                <button class="btn ghost small" type="button" data-nest-week-shift="-1" data-nest-week-family="barre" aria-label="Semana anterior">‹</button>
+                <button class="btn ghost small" type="button" data-nest-week-today="barre">Esta semana</button>
+                <button class="btn ghost small" type="button" data-nest-week-shift="1" data-nest-week-family="barre" aria-label="Semana siguiente">›</button>
+                <button class="btn ghost small" type="button" data-nest-booking-refresh="barre">↻</button>
+              </div>
+            </div>
+            <p class="nest-booking-week-label" data-nest-booking-week="barre"></p>
+            <p class="muted" data-nest-booking-status="barre" aria-live="polite"></p>
+            <div class="nest-booking-sessions" data-nest-booking-sessions="barre"></div>
           </div>
         </section>
 
@@ -3033,6 +3098,12 @@
                 Email
                 <input id="teacherEmail" type="email" />
               </label>
+              <fieldset class="stack">
+                <legend>Acceso de The Nest</legend>
+                <label><input id="teacherNestPilates" type="checkbox" /> Pilates</label>
+                <label><input id="teacherNestBarre" type="checkbox" /> Barre</label>
+                <small class="muted">La profesora podrá iniciar sesión con este correo y pasar lista en las disciplinas seleccionadas.</small>
+              </fieldset>
               <label>
                 Teléfono
                 <input id="teacherPhone" type="tel" />
@@ -3410,8 +3481,22 @@
           <button id="googleLoginBtn" class="btn ghost" type="button">
             Entrar con Google
           </button>
-          <p class="muted">* Usuarios se gestionan en Firebase Auth.</p>
+          <p class="muted">El acceso de OwlManage se gestiona por invitación. Alumnas y profes pueden crear una cuenta con el correo asociado a su ficha.</p>
         </form>
+        <hr />
+        <form id="nestSignupForm" class="stack">
+          <h3>Crear cuenta de reservas The Nest</h3>
+          <label>Correo de tu ficha<input id="nestSignupEmail" type="email" autocomplete="email" required /></label>
+          <label>Contraseña (mínimo 6 caracteres)<input id="nestSignupPassword" type="password" minlength="6" autocomplete="new-password" required /></label>
+          <button class="btn ghost" type="submit">Crear cuenta de The Nest</button>
+          <p id="nestSignupStatus" class="muted" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="card hidden" id="pendingAccessView">
+        <h2>Acceso pendiente</h2>
+        <p id="pendingAccessMessage" class="muted">No encontramos una ficha vinculada a este correo. Contacta con recepción para completar el alta.</p>
+        <button id="pendingAccessLogout" class="btn ghost" type="button">Cerrar sesión</button>
       </section>
 
       <section class="card hidden" id="passwordChangeView">
@@ -3468,6 +3553,14 @@
         <span class="icon">🏖️</span>
         <span>Vacaciones</span>
       </button>
+      <button class="mobile-nav-btn hidden" data-view="nestPilatesBookingView">
+        <span class="icon">🧘</span>
+        <span>Pilates</span>
+      </button>
+      <button class="mobile-nav-btn hidden" data-view="nestBarreBookingView">
+        <span class="icon">🩰</span>
+        <span>Barre</span>
+      </button>
       <button class="mobile-nav-btn" data-view="moreView">
         <span class="icon">☰</span>
         <span>Más</span>
@@ -3492,6 +3585,8 @@
           <button class="btn ghost" data-view="checkinsView" data-close-more>📋 Fichajes</button>
           <button class="btn ghost" data-view="trainingsView" data-close-more>🏃 Entrenamientos</button>
           <button class="btn ghost" data-view="classesView" data-close-more>🎓 Clases</button>
+          <button class="btn ghost" data-view="nestPilatesBookingView" data-close-more>🧘 Reservas · Pilates</button>
+          <button class="btn ghost" data-view="nestBarreBookingView" data-close-more>🩰 Reservas · Barre</button>
           <button class="btn ghost" data-view="rolesView" data-close-more>👥 Roles</button>
         </div>
       </div>
@@ -3523,7 +3618,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script type="module" src="js/main.js?v=20261104b" defer></script>
+    <script type="module" src="js/main.js?v=20261109c" defer></script>
     
     <!-- Script de debugging simplificado -->
     <script>

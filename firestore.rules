@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /employee_payments/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner();
     }
     function getUserData() {
@@ -11,7 +11,7 @@ service cloud.firestore {
 
     function role() {
       return exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : 'RECEPTION';
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : 'PENDING';
     }
 
     function isOwner() {
@@ -34,166 +34,186 @@ service cloud.firestore {
       return request.auth != null && (isOwner() || isReception() || isCoach() || isTeamLeader());
     }
 
+    function isStaff() {
+      return isAuthorized();
+    }
+
     function isSelf(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
 
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read: if isStaff() || isSelf(userId);
+      allow create: if isSelf(userId) &&
+        request.resource.data.role == 'PENDING' &&
+        request.resource.data.keys().hasOnly([
+          'email', 'displayName', 'firstName', 'lastName', 'role', 'mustChangePassword', 'createdAt'
+        ]);
       allow update: if isOwner() || (isSelf(userId) &&
         request.resource.data.diff(resource.data).changedKeys().hasOnly([
           'mustChangePassword',
           'firstName',
           'lastName',
           'updatedAt',
+          'photoUrl',
         ]));
       allow delete: if isOwner();
     }
 
     match /payments/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception();
     }
 
     match /expenses/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner();
     }
 
     match /checkins/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isCoach();
     }
 
     match /trainings/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isCoach();
     }
 
     match /athletes/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isTeamLeader();
     }
 
     match /athlete_months/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isTeamLeader();
     }
 
     match /athletes_acrobacias/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isTeamLeader();
     }
 
     match /athlete_acrobacias_months/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isTeamLeader();
     }
 
     match /athletes_halterofilia/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isTeamLeader();
     }
 
     match /athlete_halterofilia_months/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isTeamLeader();
     }
 
     match /athletes_telas/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isCoach() || isTeamLeader();
     }
 
     match /athlete_telas_months/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isCoach() || isTeamLeader();
     }
 
     match /athletes_pilates/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isCoach() || isTeamLeader();
     }
 
     match /athlete_pilates_months/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isCoach() || isTeamLeader();
     }
 
     match /nest_calendar/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isCoach() || isTeamLeader();
     }
 
     match /athletes_singleclasses/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isCoach() || isTeamLeader();
     }
 
     match /athlete_singleclasses_months/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isCoach() || isTeamLeader();
     }
 
     match /athletes_acrokids/{docId} {
-      allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null;
+      allow read: if isStaff();
+      allow create, update, delete: if isStaff();
     }
 
     match /athlete_acrokids_months/{docId} {
-      allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null;
+      allow read: if isStaff();
+      allow create, update, delete: if isStaff();
     }
 
     match /acrokids_calendar/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception() || isCoach() || isTeamLeader();
     }
 
     match /vacations/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception();
     }
 
     match /teachers/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isTeamLeader();
     }
 
     match /classes/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isTeamLeader();
     }
 
     match /class_assignments/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isTeamLeader();
     }
 
-    // Permitir a cualquier usuario autenticado leer y escribir ventas en la colección sales
+    // Ventas accesibles únicamente para personal autorizado.
     match /sales/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isStaff();
     }
 
-    // Permitir a cualquier usuario autenticado leer y escribir pedidos en la colección orders
+    // Pedidos accesibles únicamente para personal autorizado.
     match /orders/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isStaff();
     }
 
-    // Inventario visible para todos los roles autenticados
+    // Inventario visible únicamente para personal autorizado.
     match /inventory/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isStaff();
     }
 
     match /inventory_movements/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isStaff();
     }
 
     // Usuarios de WodBuster - Permitir a OWNER y RECEPTION gestionar usuarios
     match /wodbuster_users/{docId} {
-      allow read: if request.auth != null;
+      allow read: if isStaff();
       allow create, update, delete: if isOwner() || isReception();
+    }
+
+    // Las reservas solo se consultan y actualizan mediante Cloud Functions.
+    match /nest_class_sessions/{docId} {
+      allow read, write: if false;
+    }
+    match /nest_bookings/{docId} {
+      allow read, write: if false;
+    }
+    match /nest_monthly_usage/{docId} {
+      allow read, write: if false;
     }
 
   }

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#111827" />
+    <meta name="description" content="Reserva tus clases de The Nest Pilates y Barre." />
+    <title>Reservas The Nest</title>
+    <link rel="stylesheet" href="css/styles.css?v=20261109c" />
+    <link rel="stylesheet" href="css/booking.css?v=20261109b" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="The Nest reservas">
+        <span class="brand-mark">N</span>
+        <span><strong>THE NEST</strong><small>RESERVAS</small></span>
+      </a>
+      <div id="accountBar" class="account-bar hidden">
+        <span id="accountName" class="account-name"></span>
+        <button id="logoutBtn" class="button button-quiet" type="button">Salir</button>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section id="welcomePanel" class="welcome-panel">
+        <div class="welcome-copy">
+          <span class="eyebrow">PILATES · BARRE</span>
+          <h1>Tu próxima clase,<br /><em>a un toque.</em></h1>
+          <p>Entra para ver las clases disponibles y reservar tu plaza.</p>
+          <div class="welcome-points">
+            <span><i>01</i> Consulta el horario semanal</span>
+            <span><i>02</i> Elige tu clase</span>
+            <span><i>03</i> Confirma tu plaza</span>
+          </div>
+        </div>
+
+        <div class="auth-card">
+          <div class="auth-card-heading">
+            <span class="auth-icon">↗</span>
+            <div><h2>Bienvenida</h2><p>Accede con la dirección de correo de tu ficha.</p></div>
+          </div>
+          <form id="loginForm" class="form-stack">
+            <label>Correo electrónico<input id="emailInput" type="email" autocomplete="email" required /></label>
+            <label>Contraseña<input id="passwordInput" type="password" autocomplete="current-password" required /></label>
+            <button id="emailLoginBtn" class="button button-primary" type="submit">Entrar en mi cuenta <span>→</span></button>
+            <button id="passwordResetBtn" class="password-reset-link" type="button">He olvidado mi contraseña</button>
+          </form>
+          <div class="auth-divider"><span>o continúa con</span></div>
+          <button id="googleLoginBtn" class="button button-google" type="button">
+            <svg aria-hidden="true" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 3.06 13.22l7.98 6.19C12.93 13.72 18.04 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.73 7.18l7.64 5.92c4.46-4.12 7.13-10.2 7.13-17.57z"/><path fill="#FBBC05" d="M11.04 28.59A14.4 14.4 0 0 1 10.25 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 .5 24c0 3.88.93 7.55 2.53 10.78l8.01-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.88l-7.64-5.92c-2.12 1.42-4.83 2.26-8.26 2.26-5.96 0-11.07-4.22-12.96-9.91l-8.01 6.19C6.51 43.62 14.62 48 24 48z"/></svg>
+            Entrar con Google
+          </button>
+          <p id="authMessage" class="form-message" aria-live="polite"></p>
+          <details class="signup-details">
+            <summary>¿Es tu primera vez? Crear cuenta</summary>
+            <form id="signupForm" class="form-stack signup-form">
+              <label>Correo de tu ficha<input id="signupEmail" type="email" autocomplete="email" required /></label>
+              <label>Crea una contraseña<input id="signupPassword" type="password" minlength="6" autocomplete="new-password" required /></label>
+              <button class="button button-secondary" type="submit">Crear cuenta</button>
+              <p id="signupMessage" class="form-message" aria-live="polite"></p>
+            </form>
+          </details>
+          <p class="privacy-note">Tu cuenta solo tendrá acceso a las reservas asociadas a tu ficha.</p>
+        </div>
+      </section>
+
+      <section id="pendingPanel" class="pending-panel hidden" aria-live="polite">
+        <div class="pending-icon">i</div>
+        <h1>Estamos comprobando tu acceso</h1>
+        <p id="pendingMessage">Si tu correo coincide con la ficha registrada en The Nest, podrás acceder a tus reservas. Si no, contacta con recepción.</p>
+        <button id="resendVerificationBtn" class="button button-secondary hidden" type="button">Reenviar verificación de correo</button>
+        <button id="pendingLogoutBtn" class="button button-secondary" type="button">Cerrar sesión</button>
+      </section>
+
+      <section id="bookingPanel" class="booking-panel hidden">
+        <div class="booking-intro">
+          <div>
+            <span class="eyebrow">BIENVENIDA, <span id="memberName">ALUMNA</span></span>
+            <h1>Elige tu <em>clase.</em></h1>
+            <p>Reserva tu plaza en el horario semanal. Cada clase tiene un máximo de seis alumnas.</p>
+          </div>
+          <div class="capacity-note"><span class="capacity-dot"></span> Hasta 6 plazas por clase</div>
+        </div>
+        <div id="familyTabs" class="family-tabs" role="tablist" aria-label="Disciplina"></div>
+        <section id="bookingContent" class="booking-content"></section>
+      </section>
+    </main>
+
+    <footer class="site-footer"><span>THE NEST</span><span>Muévete a tu ritmo.</span></footer>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="js/app.js?v=20261109c"></script>
+  </body>
+</html>

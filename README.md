@@ -41,11 +41,15 @@ firebase deploy
 - `OWNER`: todo
 - `COACH`: entrenamientos + fichajes
 - `RECEPTION`: pagos + atletas + fichajes
+- `TEAM_LEADER`: gestión de equipo
+- `NEST_STUDENT` y `NEST_INSTRUCTOR`: acceso limitado al portal de reservas The Nest
+- `PENDING`: cuenta sin acceso hasta que el personal la autorice
 
 > Los roles viven en `users/{uid}.role` y se controlan en `firestore.rules`.
 
 ## Colecciones
 - `users`, `payments`, `expenses`, `checkins`, `trainings`, `athletes`
+- `nest_bookings`, `nest_class_sessions`, `nest_monthly_usage` (reservas de The Nest; solo se modifican desde Cloud Functions)
 
 ## Alta de usuarios (OWNER)
 Para crear usuarios con contraseña temporal desde la UI necesitas desplegar **Firebase Functions**.
@@ -58,5 +62,6 @@ Luego desde **Roles** puedes crear usuarios y se marcarán con `mustChangePasswo
 Al iniciar sesión por primera vez, el usuario verá el modal para cambiar su contraseña.
 
 ## Notas
-- La primera vez que un usuario entra se crea en `users` con rol `RECEPTION`.
-- Cambia el rol manualmente desde Firestore Console.
+- Las cuentas sin un perfil de rol empiezan como `PENDING`; no obtienen acceso interno automáticamente.
+- Las alumnas y profesoras de The Nest usan el portal limitado documentado en [README_RESERVAS_THE_NEST.md](README_RESERVAS_THE_NEST.md).
+- Las reservas verifican la mensualidad y el aforo en Cloud Functions; despliega Functions, reglas e índices de Firestore al publicar cambios.

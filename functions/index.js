@@ -11,12 +11,11 @@ exports.createUserWithRole = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("unauthenticated", "Auth requerida");
   }
 
-  // Determinar el rol del que llama igual que en las reglas de Firestore:
-  // si no hay documento o no tiene rol, se considera OWNER por defecto.
+  // Las cuentas sin rol explícito no deben recibir privilegios administrativos.
   const callerRef = admin.firestore().collection("users").doc(context.auth.uid);
   const callerSnap = await callerRef.get();
   const callerData = callerSnap.exists ? callerSnap.data() || {} : {};
-  const callerRole = callerData.role || "OWNER";
+  const callerRole = callerData.role || "PENDING";
 
   if (callerRole !== "OWNER") {
     throw new functions.https.HttpsError("permission-denied", "Solo OWNER");
@@ -83,6 +82,12 @@ exports.wodBusterProxy = functions.https.onCall(async (data, context) => {
   // Verificar autenticación
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "Autenticación requerida");
+  }
+
+  const caller = await admin.firestore().collection("users").doc(context.auth.uid).get();
+  const callerRole = caller.exists ? caller.data()?.role : "PENDING";
+  if (!["OWNER", "RECEPTION", "COACH", "TEAM_LEADER"].includes(callerRole)) {
+    throw new functions.https.HttpsError("permission-denied", "No tienes permiso para acceder a WodBuster.");
   }
 
   const endpoint = data.endpoint || '/api/users/Get';
@@ -179,3 +184,14 @@ exports.processFolderInvoices = invoiceProcessor.processFolderInvoices;
 exports.getInvoicesByPeriod = invoiceProcessor.getInvoicesByPeriod;
 exports.listInvoiceFolders = invoiceProcessor.listInvoiceFolders;
 exports.listInvoiceFiles = invoiceProcessor.listInvoiceFiles;
+
+// ===== THE NEST CLASS BOOKINGS =====
+const nestBooking = require('./nest-booking');
+exports.checkNestSignupEmail = nestBooking.checkNestSignupEmail;
+exports.registerNestPortalAccount = nestBooking.registerNestPortalAccount;
+exports.refreshNestPortalAccess = nestBooking.refreshNestPortalAccess;
+exports.getNestBookingSchedule = nestBooking.getNestBookingSchedule;
+exports.bookNestClass = nestBooking.bookNestClass;
+exports.cancelNestBooking = nestBooking.cancelNestBooking;
+exports.getNestClassRoster = nestBooking.getNestClassRoster;
+exports.setNestAttendance = nestBooking.setNestAttendance;

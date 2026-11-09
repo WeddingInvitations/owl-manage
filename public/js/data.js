@@ -1926,9 +1926,10 @@ export async function getAllTelasAthleteMonths() {
 
 // ========== PILATES ==========
 
-export async function createPilatesAthlete(name, userId) {
+export async function createPilatesAthlete(name, userId, email = "") {
   const docRef = await addDoc(collection(db, "athletes_pilates"), {
     name,
+    email: String(email || "").trim().toLowerCase(),
     createdAt: serverTimestamp(),
     createdBy: userId || null,
   });

@@ -18,6 +18,12 @@ exports.getInvoicesByPeriod = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('unauthenticated', 'Autenticación requerida');
   }
 
+  const userDoc = await admin.firestore().collection('users').doc(context.auth.uid).get();
+  const userRole = userDoc.exists ? userDoc.data()?.role : 'PENDING';
+  if (userRole !== 'OWNER') {
+    throw new functions.https.HttpsError('permission-denied', 'Solo OWNER puede consultar facturas');
+  }
+
   // Validar entrada
   const { startDate, endDate, supplier, status } = data;
   if (!startDate || !endDate) {

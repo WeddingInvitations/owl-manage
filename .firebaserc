@@ -2,6 +2,17 @@
   "projects": {
     "owlmanage": "owl-manage"
   },
-  "targets": {},
+  "targets": {
+    "owl-manage": {
+      "hosting": {
+        "owlmanage": [
+          "owl-manage"
+        ],
+        "nest-reservas": [
+          "the-nest-reservas"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

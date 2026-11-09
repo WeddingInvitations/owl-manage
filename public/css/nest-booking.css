@@ -1,0 +1,180 @@
+/* Agenda semanal de reservas The Nest */
+.nest-booking-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.nest-booking-toolbar .btn {
+  min-width: 38px;
+  min-height: 38px;
+}
+.nest-booking-week-label {
+  margin: 0.25rem 0 0.35rem;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.nest-booking-sessions {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(150px, 1fr));
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+.nest-booking-day {
+  min-height: 360px;
+  padding: 0.75rem;
+  border-right: 1px solid var(--border);
+  background: var(--card);
+}
+.nest-booking-day:last-child {
+  border-right: 0;
+}
+.nest-booking-day:nth-child(even) {
+  background: color-mix(in srgb, var(--accent) 26%, var(--card));
+}
+.nest-booking-day-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.1rem 0.65rem;
+  margin: 0 0 0.7rem;
+  border-bottom: 1px solid var(--border);
+}
+.nest-booking-day-name {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+}
+.nest-booking-day-number {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.nest-booking-day.is-today .nest-booking-day-number {
+  color: #fff;
+  background: var(--primary);
+}
+.nest-booking-empty-day {
+  padding: 1rem 0.25rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+.nest-booking-session {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin: 0 0 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 36%, var(--border));
+  border-left: 3px solid var(--primary);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.nest-booking-session.is-booked {
+  border-color: color-mix(in srgb, var(--success) 55%, var(--border));
+  border-left-color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, var(--card));
+}
+.nest-booking-session.is-full {
+  border-color: var(--border);
+  border-left-color: var(--muted);
+  background: color-mix(in srgb, var(--accent) 50%, var(--card));
+}
+.nest-booking-session-time {
+  color: var(--text);
+  font-size: 0.94rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.nest-booking-capacity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.nest-booking-seats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+}
+.nest-booking-seat {
+  height: 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--muted) 24%, var(--card));
+}
+.nest-booking-seat.is-taken {
+  background: var(--primary);
+}
+.nest-booking-session.is-booked .nest-booking-seat.is-taken {
+  background: var(--success);
+}
+.nest-booking-capacity-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.nest-booking-message {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+.nest-booking-action {
+  width: 100%;
+  min-height: 34px;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.77rem;
+}
+.nest-booking-roster {
+  display: grid;
+  gap: 0.4rem;
+  padding-top: 0.4rem;
+}
+.nest-booking-attendee {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text);
+  font-size: 0.8rem;
+}
+@media (max-width: 760px) {
+  #nestPilatesBookingView > .card,
+  #nestBarreBookingView > .card {
+    padding: 0.85rem;
+  }
+  #nestPilatesBookingView .detail-header,
+  #nestBarreBookingView .detail-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  .nest-booking-toolbar {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .nest-booking-sessions {
+    grid-template-columns: repeat(7, minmax(138px, 1fr));
+  }
+  .nest-booking-day {
+    min-height: 320px;
+    padding: 0.6rem;
+  }
+  .nest-booking-session {
+    padding: 0.6rem;
+  }
+}

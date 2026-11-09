@@ -24,6 +24,13 @@ export const ui = {
   loginEmail: $("loginEmail"),
   loginPassword: $("loginPassword"),
   googleLoginBtn: $("googleLoginBtn"),
+  nestSignupForm: $("nestSignupForm"),
+  nestSignupEmail: $("nestSignupEmail"),
+  nestSignupPassword: $("nestSignupPassword"),
+  nestSignupStatus: $("nestSignupStatus"),
+  pendingAccessView: $("pendingAccessView"),
+  pendingAccessMessage: $("pendingAccessMessage"),
+  pendingAccessLogout: $("pendingAccessLogout"),
   monthlySummaryBody: $("monthlySummaryBody"),
   monthlyYearSelect: $("monthlyYearSelect"),
   monthlyDetailView: $("monthlyDetailView"),
@@ -291,6 +298,14 @@ export const ui = {
   pilatesView: $("pilatesView"),
   pilatesForm: $("pilatesForm"),
   pilatesName: $("pilatesName"),
+  pilatesEmail: $("pilatesEmail"),
+  pilatesEditModal: $("pilatesEditModal"),
+  pilatesEditModalClose: $("pilatesEditModalClose"),
+  pilatesEditCancel: $("pilatesEditCancel"),
+  pilatesEditForm: $("pilatesEditForm"),
+  pilatesEditAthleteId: $("pilatesEditAthleteId"),
+  pilatesEditName: $("pilatesEditName"),
+  pilatesEditEmail: $("pilatesEditEmail"),
   pilatesNameList: $("pilatesNameList"),
   pilatesPaymentMonth: $("pilatesPaymentMonth"),
   pilatesTariff: $("pilatesTariff"),
@@ -377,7 +392,9 @@ export const ui = {
   teacherSpecialties: $("teacherSpecialties"),
   teacherStatus: $("teacherStatus"),
   cancelTeacher: $("cancelTeacher"),
-  
+  teacherNestPilates: $("teacherNestPilates"),
+  teacherNestBarre: $("teacherNestBarre"),
+
   classAssignmentModal: $("classAssignmentModal"),
   assignmentModalTitle: $("assignmentModalTitle"),
   assignmentModalClose: $("assignmentModalClose"),
@@ -640,6 +657,8 @@ export const ui = {
   passwordChangeNew: $("passwordChangeNew"),
   passwordChangeConfirm: $("passwordChangeConfirm"),
   passwordChangeStatus: $("passwordChangeStatus"),
+  nestPilatesBookingView: $("nestPilatesBookingView"),
+  nestBarreBookingView: $("nestBarreBookingView"),
   // Mobile navigation
   mobileNav: $("mobileNav"),
   mobileNavButtons: Array.from(document.querySelectorAll(".mobile-nav-btn")),
@@ -755,6 +774,7 @@ ui.syncCloseModalBtn = $("syncCloseModalBtn");
 
 export function setAuthUI(currentUi, user, role, mustChangePassword) {
   if (user) {
+    const pendingAccess = role === "PENDING";
     if (currentUi.logoutBtn) {
       currentUi.logoutBtn.disabled = false;
     }
@@ -769,7 +789,13 @@ export function setAuthUI(currentUi, user, role, mustChangePassword) {
       currentUi.passwordChangeView.classList.toggle("hidden", !mustChangePassword);
     }
     if (currentUi.mainShell) {
-      currentUi.mainShell.classList.toggle("hidden", Boolean(mustChangePassword));
+      currentUi.mainShell.classList.toggle("hidden", Boolean(mustChangePassword) || pendingAccess);
+    }
+    if (currentUi.pendingAccessView) {
+      currentUi.pendingAccessView.classList.toggle("hidden", !pendingAccess);
+    }
+    if (currentUi.pendingAccessMessage && pendingAccess) {
+      currentUi.pendingAccessMessage.textContent = "Esta cuenta no está vinculada a una ficha activa de alumna o a una ficha autorizada de profesora. Contacta con recepción para comprobar el correo.";
     }
   } else {
     if (currentUi.userBadge) {
@@ -802,13 +828,15 @@ export function setActiveView(viewId, currentUi) {
   });
 }
 
-export function updateMenuVisibility(currentUi, role) {
+export function updateMenuVisibility(currentUi, role, profile = {}) {
   // Definir qué secciones puede ver cada rol
   const visibleSections = {
     OWNER: ["contabilidad", "usuarios", "equipo", "admin"],
     RECEPTION: ["contabilidad", "usuarios", "equipo"],
     COACH: ["contabilidad", "usuarios", "equipo"],
-    TEAM_LEADER: ["contabilidad", "usuarios", "equipo"]
+    TEAM_LEADER: ["contabilidad", "usuarios", "equipo"],
+    NEST_STUDENT: ["usuarios"],
+    NEST_INSTRUCTOR: ["usuarios"],
   };
 
   // Vistas específicas que solo puede ver OWNER dentro de Contabilidad
@@ -886,6 +914,7 @@ export function updateMenuVisibility(currentUi, role) {
   
   // También ocultar botones de menú para vistas específicas de OWNER
   currentUi.menuButtons.forEach((button) => {
+    button.classList.remove("hidden");
     const viewId = button.dataset.view;
     if (ownerOnlyViews.includes(viewId) && role !== "OWNER") {
       button.classList.add("hidden");
@@ -896,5 +925,44 @@ export function updateMenuVisibility(currentUi, role) {
       button.classList.add("hidden");
     }
   });
+
+  currentUi.mobileNavButtons.forEach((button) => {
+    if (["nestPilatesBookingView", "nestBarreBookingView"].includes(button.dataset.view)) {
+      button.classList.add("hidden");
+    }
+  });
+  document.querySelectorAll("#moreMenu [data-view]").forEach((button) => {
+    button.classList.remove("hidden");
+  });
+
+  if (role === "NEST_STUDENT" || role === "NEST_INSTRUCTOR") {
+    const families = Array.isArray(profile.nestFamilies)
+      ? profile.nestFamilies
+      : ["pilates", "barre"];
+    const allowedViews = new Set(["nestPilatesBookingView", "nestBarreBookingView"]);
+    currentUi.menuButtons.forEach((button) => {
+      const viewId = button.dataset.view;
+      const family = viewId === "nestPilatesBookingView" ? "pilates" : viewId === "nestBarreBookingView" ? "barre" : null;
+      button.classList.toggle("hidden", !family || !families.includes(family));
+    });
+    currentUi.mobileNavButtons.forEach((button) => {
+      const viewId = button.dataset.view;
+      const family = viewId === "nestPilatesBookingView" ? "pilates" : viewId === "nestBarreBookingView" ? "barre" : null;
+      button.classList.toggle("hidden", viewId !== "moreView" && (!family || !families.includes(family)));
+    });
+    document.querySelectorAll("#moreMenu [data-view]").forEach((button) => {
+      const family = button.dataset.view === "nestPilatesBookingView" ? "pilates" : button.dataset.view === "nestBarreBookingView" ? "barre" : null;
+      button.classList.toggle("hidden", !family || !families.includes(family));
+    });
+    currentUi.views.forEach((view) => {
+      if (view.id === "profileView") return;
+      view.classList.toggle("hidden", !allowedViews.has(view.id));
+    });
+    menuSections.forEach((section) => section.classList.toggle("hidden", section.dataset.section !== "usuarios"));
+    const usersMenu = document.querySelector('[data-content="usuarios"]');
+    const usersToggle = document.querySelector('[data-toggle="usuarios"]');
+    usersMenu?.classList.add("expanded");
+    usersToggle?.classList.add("expanded");
+  }
 }
 
