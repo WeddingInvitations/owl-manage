@@ -11,6 +11,7 @@ const callables = {
   attendance: httpsCallable(functions, "setNestAttendance"),
 };
 let initialized = false;
+let activeFamily = "pilates";
 const selectedDateKey = { pilates: dateKey(dayAtNoon(0)), barre: dateKey(dayAtNoon(0)) };
 const requestNumber = { pilates: 0, barre: 0 };
 const monthScheduleCache = new Map();
@@ -92,6 +93,39 @@ function rangeLabel(start, end) {
   return `${from} – ${to}`;
 }
 
+function memberInitials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return parts.length === 1
+    ? parts[0].slice(0, 1).toLocaleUpperCase("es")
+    : `${parts[0][0]}${parts[parts.length - 1][0]}`.toLocaleUpperCase("es");
+}
+
+function createSeatAvatar(attendee, index) {
+  const name = attendee?.name || "Alumna";
+  const avatar = element("span", attendee ? "nest-booking-avatar is-occupied" : "nest-booking-avatar is-available");
+  avatar.setAttribute("role", "img");
+  avatar.setAttribute("aria-label", attendee ? `Plaza ocupada por ${name}` : `Plaza ${index + 1} disponible`);
+  avatar.title = attendee ? name : `Plaza ${index + 1} disponible`;
+
+  const photoUrl = String(attendee?.photoUrl || "");
+  if (attendee && (photoUrl.startsWith("https://") || /^data:image\/(?:jpeg|png|webp);base64,/i.test(photoUrl))) {
+    const image = document.createElement("img");
+    image.src = photoUrl;
+    image.alt = "";
+    image.loading = "lazy";
+    image.addEventListener("error", () => {
+      avatar.replaceChildren(element("span", "nest-booking-avatar-initials", memberInitials(name)));
+    }, { once: true });
+    avatar.append(image);
+  } else if (attendee) {
+    avatar.append(element("span", "nest-booking-avatar-initials", memberInitials(name)));
+  } else {
+    avatar.append(element("span", "nest-booking-avatar-plus", "+"));
+  }
+  return avatar;
+}
+
 function createClassCard(session, family) {
   const card = element("article", "nest-booking-session");
   card.classList.toggle("is-full", session.reservedCount >= session.capacity);
@@ -100,10 +134,11 @@ function createClassCard(session, family) {
 
   const capacity = element("div", "nest-booking-capacity");
   const seats = element("div", "nest-booking-seats");
+  const attendees = Array.isArray(session.attendees) ? session.attendees : [];
   for (let index = 0; index < session.capacity; index += 1) {
-    seats.append(element("span", index < session.reservedCount ? "nest-booking-seat is-taken" : "nest-booking-seat"));
+    seats.append(createSeatAvatar(attendees[index] || (index < session.reservedCount ? { name: "Plaza reservada" } : null), index));
   }
-  capacity.append(seats, element("span", "nest-booking-capacity-label", `${session.reservedCount}/${session.capacity} plazas`));
+  capacity.append(seats, element("span", "nest-booking-capacity-label", `${attendees.length || session.reservedCount}/${session.capacity} plazas ocupadas`));
   card.append(capacity);
 
   const full = session.reservedCount >= session.capacity;
@@ -198,7 +233,9 @@ function createClassCard(session, family) {
               checkbox.disabled = false;
             }
           });
-          label.append(checkbox, document.createTextNode(` ${attendee.name || "Alumna"}`));
+          const avatar = createSeatAvatar(attendee, 0);
+          avatar.classList.add("nest-booking-roster-avatar");
+          label.append(checkbox, avatar, document.createTextNode(attendee.name || "Alumna"));
           roster.append(label);
         });
         roster.classList.remove("hidden");
@@ -368,6 +405,11 @@ async function refreshFamily(family) {
 export function initializeBookingSchedule() {
   if (initialized) return;
   initialized = true;
+  document.addEventListener("nest-profile-photo-updated", () => {
+    invalidateMonthCache("pilates");
+    invalidateMonthCache("barre");
+    refreshFamily(activeFamily);
+  });
   document.addEventListener("click", (event) => {
     const refresh = event.target.closest("[data-nest-booking-refresh]");
     if (refresh) {
@@ -414,6 +456,7 @@ export function initializeBookingSchedule() {
 
 export async function showBookingFamily(family) {
   if (!views[family]) return;
+  activeFamily = family;
   document.querySelectorAll(".family-tab").forEach((button) => {
     const selected = button.dataset.family === family;
     button.classList.toggle("is-active", selected);

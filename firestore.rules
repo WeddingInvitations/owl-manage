@@ -47,7 +47,7 @@ service cloud.firestore {
       allow create: if isSelf(userId) &&
         request.resource.data.role == 'PENDING' &&
         request.resource.data.keys().hasOnly([
-          'email', 'displayName', 'firstName', 'lastName', 'role', 'mustChangePassword', 'createdAt'
+          'email', 'displayName', 'firstName', 'lastName', 'role', 'mustChangePassword', 'photoUrl', 'createdAt'
         ]);
       allow update: if isOwner() || (isSelf(userId) &&
         request.resource.data.diff(resource.data).changedKeys().hasOnly([

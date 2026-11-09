@@ -395,6 +395,38 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
     ...(athlete ? [db.collection('nest_bookings').doc(`${session.id}__${athlete.ref.id}`)] : []),
   ]);
   const snapshots = refs.length ? await db.getAll(...refs) : [];
+  const sessionIds = sessionInputs.map((session) => session.id);
+  const activeBookingDocs = [];
+  for (let index = 0; index < sessionIds.length; index += 30) {
+    const chunk = sessionIds.slice(index, index + 30);
+    if (!chunk.length) continue;
+    const bookingSnap = await db.collection('nest_bookings')
+      .where('sessionId', 'in', chunk)
+      .where('status', '==', 'BOOKED')
+      .get();
+    activeBookingDocs.push(...bookingSnap.docs);
+  }
+  const attendeeUids = Array.from(new Set(activeBookingDocs
+    .map((booking) => booking.data().userId)
+    .filter(Boolean)));
+  const attendeeProfiles = attendeeUids.length
+    ? await db.getAll(...attendeeUids.map((attendeeUid) => db.collection('users').doc(attendeeUid)))
+    : [];
+  const profileByUid = new Map(attendeeProfiles.map((profile) => [profile.id, profile.exists ? profile.data() || {} : {}]));
+  const attendeesBySession = new Map();
+  activeBookingDocs.forEach((booking) => {
+    const bookingData = booking.data();
+    const attendees = attendeesBySession.get(bookingData.sessionId) || [];
+    attendees.push({
+      id: booking.id,
+      athleteId: bookingData.athleteId,
+      name: bookingData.athleteName || '',
+      photoUrl: profileByUid.get(bookingData.userId)?.photoUrl || '',
+      attended: Boolean(bookingData.attended),
+      isCurrentUser: Boolean(athlete && bookingData.athleteId === athlete.ref.id),
+    });
+    attendeesBySession.set(bookingData.sessionId, attendees);
+  });
   const monthKeys = athlete ? Array.from(new Set(sessionInputs.map((session) => session.month))) : [];
   const [membershipPairs, usagePairs] = athlete ? await Promise.all([
     Promise.all(monthKeys.map(async (month) => [month, await findMonthlyMembership(athlete.ref.id, family, month)])),
@@ -419,6 +451,8 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
       capacity: CAPACITY,
       reservedCount: sessionSnap.exists ? Number(sessionSnap.data().reservedCount || 0) : 0,
       isBooked: Boolean(bookingSnap?.exists && bookingSnap.data().status === 'BOOKED'),
+      attendees: (attendeesBySession.get(session.id) || [])
+        .sort((first, second) => first.name.localeCompare(second.name, 'es')),
       canBook: Boolean(membership && startAt.getTime() > Date.now() && monthlyUsed < membership.monthlyLimit),
       activeForMonth: Boolean(membership),
       monthlyLimit: membership?.monthlyLimit || 0,
@@ -563,11 +597,20 @@ exports.getNestClassRoster = functions.https.onCall(async (data, context) => {
   if (profile.role === 'NEST_STUDENT') fail('permission-denied', 'No tienes permiso para ver el listado de la clase.');
   const id = sessionId(family, data.dateKey, data.slotId);
   const snap = await db.collection('nest_bookings').where('sessionId', '==', id).where('status', '==', 'BOOKED').get();
+  const userIds = Array.from(new Set(snap.docs.map((booking) => booking.data().userId).filter(Boolean)));
+  const profiles = userIds.length
+    ? await db.getAll(...userIds.map((userId) => db.collection('users').doc(userId)))
+    : [];
+  const profileByUid = new Map(profiles.map((userProfile) => [
+    userProfile.id,
+    userProfile.exists ? userProfile.data() || {} : {},
+  ]));
   return {
     attendees: snap.docs.map((doc) => ({
       id: doc.id,
       athleteId: doc.data().athleteId,
       name: doc.data().athleteName || '',
+      photoUrl: profileByUid.get(doc.data().userId)?.photoUrl || '',
       attended: Boolean(doc.data().attended),
     })),
   };

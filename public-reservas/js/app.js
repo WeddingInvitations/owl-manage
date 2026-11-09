@@ -20,7 +20,8 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-import { showBookingFamily } from "./booking.js?v=20261109d";
+import { showBookingFamily } from "./booking.js?v=20261109e";
+import { showToast } from "./toast.js";
 
 const $ = (id) => document.getElementById(id);
 const staffRoles = new Set(["OWNER", "RECEPTION", "COACH", "TEAM_LEADER"]);
@@ -34,6 +35,14 @@ const ui = {
   pendingMessage: $("pendingMessage"),
   authMessage: $("authMessage"),
   signupMessage: $("signupMessage"),
+  accountAvatar: $("accountAvatar"),
+  accountInitials: $("accountInitials"),
+  profileSettingsModal: $("profileSettingsModal"),
+  profileSettingsForm: $("profileSettingsForm"),
+  profileSettingsMessage: $("profileSettingsMessage"),
+  profilePhotoFile: $("profilePhotoFile"),
+  profilePhotoPreview: $("profilePhotoPreview"),
+  profilePhotoInitials: $("profilePhotoInitials"),
   resendVerification: $("resendVerificationBtn"),
   accountBar: $("accountBar"),
   accountName: $("accountName"),
@@ -41,6 +50,9 @@ const ui = {
   memberName: $("memberName"),
 };
 let authActionInProgress = false;
+let activeUser = null;
+let activeProfile = null;
+let pendingPhotoUrl = "";
 
 function showMessage(node, message, isError = false) {
   if (!node) return;
@@ -73,6 +85,80 @@ function getAuthMessage(error) {
   }
 }
 
+function safePhotoUrl(value) {
+  return value.startsWith("https://") || /^data:image\/(?:jpeg|png|webp);base64,/i.test(value);
+}
+
+function setAvatar(container, initials, photoUrl, imageClass = "") {
+  if (!container) return;
+  container.replaceChildren();
+  if (photoUrl && safePhotoUrl(photoUrl)) {
+    const image = document.createElement("img");
+    image.className = imageClass;
+    image.src = photoUrl;
+    image.alt = "";
+    image.addEventListener("error", () => {
+      const fallback = document.createElement("span");
+      fallback.textContent = initials || "?";
+      container.replaceChildren(fallback);
+    }, { once: true });
+    container.append(image);
+  } else {
+    const fallback = document.createElement("span");
+    fallback.textContent = initials || "?";
+    container.append(fallback);
+  }
+}
+
+function initialsFor(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return parts.length === 1
+    ? parts[0].slice(0, 1).toLocaleUpperCase("es")
+    : `${parts[0][0]}${parts[parts.length - 1][0]}`.toLocaleUpperCase("es");
+}
+
+function updateAccountAvatar(user, profile) {
+  const name = profile?.displayName || user?.displayName || user?.email || "";
+  const initials = initialsFor(name);
+  const photoUrl = profile?.photoUrl || user?.photoURL || "";
+  setAvatar(ui.accountAvatar, initials, photoUrl, "account-avatar-image");
+}
+
+function showProfilePhotoPreview(photoUrl) {
+  const name = activeProfile?.displayName || activeUser?.displayName || activeUser?.email || "";
+  const initials = initialsFor(name);
+  ui.profilePhotoInitials.textContent = initials;
+  if (photoUrl && safePhotoUrl(photoUrl)) {
+    setAvatar(ui.profilePhotoPreview, initials, photoUrl, "profile-photo-image");
+  } else {
+    setAvatar(ui.profilePhotoPreview, initials, "");
+  }
+}
+
+async function compressProfilePhoto(file) {
+  if (!file?.type?.startsWith("image/")) throw new Error("Selecciona un archivo de imagen.");
+  if (file.size > 8 * 1024 * 1024) throw new Error("La imagen no puede superar 8 MB.");
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = objectUrl;
+    await image.decode();
+    const maxSide = 256;
+    const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+    let dataUrl = canvas.toDataURL("image/jpeg", 0.72);
+    if (dataUrl.length > 240_000) dataUrl = canvas.toDataURL("image/jpeg", 0.48);
+    if (dataUrl.length > 280_000) throw new Error("No se pudo reducir la foto a un tamaño adecuado. Prueba con otra imagen.");
+    return dataUrl;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function getSignupEligibilityMessage(reason) {
   switch (reason) {
     case "already-linked":
@@ -97,11 +183,17 @@ async function getProfile(user) {
       lastName: "",
       role: "PENDING",
       mustChangePassword: false,
+      photoUrl: user.photoURL || "",
       createdAt: serverTimestamp(),
     });
     snapshot = await getDoc(profileRef);
   }
-  return { ref: profileRef, data: snapshot.data() || {} };
+  const profileData = snapshot.data() || {};
+  if (!profileData.photoUrl && user.photoURL) {
+    await updateDoc(profileRef, { photoUrl: user.photoURL, updatedAt: serverTimestamp() });
+    profileData.photoUrl = user.photoURL;
+  }
+  return { ref: profileRef, data: profileData };
 }
 
 async function resolveAccess(user) {
@@ -136,6 +228,8 @@ function authorizedFamilies(profile) {
 }
 
 function renderAuthorizedPortal(user, profile) {
+  activeUser = user;
+  activeProfile = profile;
   const families = authorizedFamilies(profile);
   ui.welcome.classList.add("hidden");
   ui.pending.classList.add("hidden");
@@ -144,6 +238,7 @@ function renderAuthorizedPortal(user, profile) {
   const name = profile.displayName || [profile.firstName, profile.lastName].filter(Boolean).join(" ") || user.email;
   ui.accountName.textContent = name;
   ui.memberName.textContent = name.split(/[\s@]/)[0].toLocaleUpperCase("es");
+  updateAccountAvatar(user, profile);
   ui.familyTabs.replaceChildren();
   const tabs = families.length ? families : ["pilates", "barre"];
   tabs.forEach((family) => {
@@ -159,6 +254,77 @@ function renderAuthorizedPortal(user, profile) {
   const initialFamily = tabs.includes("pilates") ? "pilates" : "barre";
   showBookingFamily(initialFamily);
 }
+
+function openProfileSettings() {
+  if (!activeUser) return;
+  pendingPhotoUrl = activeProfile?.photoUrl || activeUser.photoURL || "";
+  ui.profilePhotoFile.value = "";
+  ui.profileSettingsMessage.textContent = "";
+  ui.profileSettingsMessage.classList.remove("is-error");
+  showProfilePhotoPreview(pendingPhotoUrl);
+  ui.profileSettingsModal.classList.remove("hidden");
+}
+
+function closeProfileSettings() {
+  ui.profileSettingsModal.classList.add("hidden");
+  ui.profilePhotoFile.value = "";
+}
+
+document.querySelectorAll("#profileSettingsBtn, #profileSettingsTextBtn").forEach((button) => {
+  button.addEventListener("click", openProfileSettings);
+});
+$("profileSettingsClose").addEventListener("click", closeProfileSettings);
+$("profileSettingsCancel").addEventListener("click", closeProfileSettings);
+ui.profileSettingsModal.addEventListener("click", (event) => {
+  if (event.target === ui.profileSettingsModal) closeProfileSettings();
+});
+$("profilePhotoRemove").addEventListener("click", () => {
+  pendingPhotoUrl = "";
+  ui.profilePhotoFile.value = "";
+  showProfilePhotoPreview("");
+});
+ui.profilePhotoFile.addEventListener("change", async () => {
+  const file = ui.profilePhotoFile.files?.[0];
+  if (!file) return;
+  ui.profileSettingsMessage.textContent = "Preparando la foto…";
+  ui.profileSettingsMessage.classList.remove("is-error");
+  try {
+    pendingPhotoUrl = await compressProfilePhoto(file);
+    showProfilePhotoPreview(pendingPhotoUrl);
+    ui.profileSettingsMessage.textContent = "Vista previa lista. Pulsa «Guardar foto» para aplicarla.";
+  } catch (error) {
+    ui.profileSettingsMessage.textContent = error.message || "No se pudo procesar la imagen.";
+    ui.profileSettingsMessage.classList.add("is-error");
+    ui.profilePhotoFile.value = "";
+  }
+});
+ui.profileSettingsForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!activeUser) return;
+  const saveButton = ui.profileSettingsForm.querySelector('button[type="submit"]');
+  saveButton.disabled = true;
+  ui.profileSettingsMessage.textContent = "Guardando…";
+  ui.profileSettingsMessage.classList.remove("is-error");
+  try {
+    await updateDoc(doc(db, "users", activeUser.uid), {
+      photoUrl: pendingPhotoUrl,
+      updatedAt: serverTimestamp(),
+    });
+    activeProfile = { ...activeProfile, photoUrl: pendingPhotoUrl };
+    updateAccountAvatar(activeUser, activeProfile);
+    closeProfileSettings();
+    showToast("Foto de perfil actualizada", "success");
+    document.dispatchEvent(new CustomEvent("nest-profile-photo-updated", {
+      detail: { photoUrl: pendingPhotoUrl },
+    }));
+  } catch (error) {
+    console.error("Error saving The Nest profile photo:", error);
+    ui.profileSettingsMessage.textContent = getCallableMessage(error);
+    ui.profileSettingsMessage.classList.add("is-error");
+  } finally {
+    saveButton.disabled = false;
+  }
+});
 
 function showPending(user, message) {
   ui.welcome.classList.add("hidden");

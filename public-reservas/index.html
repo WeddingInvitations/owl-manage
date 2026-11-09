@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#111827" />
     <meta name="description" content="Reserva tus clases de The Nest Pilates y Barre." />
     <title>Reservas The Nest</title>
-    <link rel="stylesheet" href="css/styles.css?v=20261109c" />
-    <link rel="stylesheet" href="css/booking.css?v=20261109d" />
+    <link rel="stylesheet" href="css/styles.css?v=20261109d" />
+    <link rel="stylesheet" href="css/booking.css?v=20261109e" />
   </head>
   <body>
     <header class="topbar">
@@ -16,7 +16,11 @@
         <span><strong>THE NEST</strong><small>RESERVAS</small></span>
       </a>
       <div id="accountBar" class="account-bar hidden">
+        <button id="profileSettingsBtn" class="profile-settings-trigger" type="button" aria-label="Configuración de perfil">
+          <span id="accountAvatar" class="account-avatar"><span id="accountInitials">?</span></span>
+        </button>
         <span id="accountName" class="account-name"></span>
+        <button id="profileSettingsTextBtn" class="button button-quiet profile-settings-text" type="button">Mi perfil</button>
         <button id="logoutBtn" class="button button-quiet" type="button">Salir</button>
       </div>
     </header>
@@ -86,8 +90,31 @@
       </section>
     </main>
 
+    <div id="profileSettingsModal" class="profile-settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="profileSettingsTitle">
+      <form id="profileSettingsForm" class="profile-settings-card">
+        <div class="profile-settings-heading">
+          <div><span class="eyebrow">TU CUENTA</span><h2 id="profileSettingsTitle">Foto de perfil</h2></div>
+          <button id="profileSettingsClose" class="button button-quiet" type="button" aria-label="Cerrar">×</button>
+        </div>
+        <p>La foto aparecerá en las plazas que reserves. Si no añades una, las compañeras verán la inicial de tu nombre.</p>
+        <div class="profile-photo-preview-row">
+          <span id="profilePhotoPreview" class="profile-photo-preview"><span id="profilePhotoInitials">?</span></span>
+          <label class="button button-secondary profile-photo-select">
+            Elegir foto
+            <input id="profilePhotoFile" type="file" accept="image/*" class="visually-hidden" />
+          </label>
+          <button id="profilePhotoRemove" class="button button-quiet" type="button">Quitar foto</button>
+        </div>
+        <p id="profileSettingsMessage" class="form-message" aria-live="polite"></p>
+        <div class="profile-settings-actions">
+          <button class="button button-primary" type="submit">Guardar foto</button>
+          <button id="profileSettingsCancel" class="button button-quiet" type="button">Cancelar</button>
+        </div>
+      </form>
+    </div>
+
     <footer class="site-footer"><span>THE NEST</span><span>Muévete a tu ritmo.</span></footer>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="js/app.js?v=20261109d"></script>
+    <script type="module" src="js/app.js?v=20261109e"></script>
   </body>
 </html>
