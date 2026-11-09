@@ -20,7 +20,7 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-import { showBookingFamily } from "./booking.js";
+import { showBookingFamily } from "./booking.js?v=20261109d";
 
 const $ = (id) => document.getElementById(id);
 const staffRoles = new Set(["OWNER", "RECEPTION", "COACH", "TEAM_LEADER"]);

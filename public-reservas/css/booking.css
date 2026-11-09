@@ -27,7 +27,63 @@
 .booking-content .nest-booking-attendee { display:flex; align-items:center; gap:.4rem; color:var(--text); font-size:.8rem; }
 @media (max-width:760px) {
   .booking-content { padding:.65rem; }
-  .booking-content .nest-booking-sessions { grid-template-columns:repeat(7,minmax(138px,1fr)); }
-  .booking-content .nest-booking-day { min-height:310px; padding:.55rem; }
-  .booking-content .nest-booking-session { padding:.58rem; }
+  .booking-content .booking-week-toolbar { display:none; }
+  .booking-content .nest-booking-sessions { display:none; }
+  .booking-content .nest-mobile-calendar { display:block; }
+  .booking-content .nest-mobile-day-selector { display:flex; }
+  .booking-content .nest-mobile-day-view { display:block; }
+  .booking-content .nest-booking-session { padding:.85rem; }
+}
+
+.booking-content .nest-mobile-calendar,
+.booking-content .nest-mobile-day-selector,
+.booking-content .nest-mobile-day-view { display:none; }
+
+@media (max-width:760px) {
+  .booking-content .nest-mobile-calendar {
+    max-width:360px;
+    padding:.8rem .9rem .65rem;
+    margin:0 auto .8rem;
+    border:1px solid var(--border);
+    border-radius:14px;
+    background:var(--surface);
+  }
+  .nest-mini-month-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:.45rem; }
+  .nest-mini-month-header strong { color:var(--text); font-size:.9rem; text-transform:capitalize; }
+  .nest-mini-month-header .button { width:32px; min-height:30px; padding:.2rem; border-radius:8px; }
+  .nest-mini-month-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:2px; }
+  .nest-mini-weekday { display:grid; height:24px; place-items:center; color:var(--muted-2); font-size:.62rem; font-weight:750; }
+  .nest-mini-date { position:relative; display:grid; min-width:0; height:32px; place-items:center; padding:0; border:0; border-radius:50%; background:transparent; color:var(--text); font-size:.72rem; }
+  .nest-mini-date:hover { background:var(--surface-raised); }
+  .nest-mini-date.is-outside-month { color:var(--muted-2); opacity:.45; }
+  .nest-mini-date.is-selected { background:var(--accent); color:var(--accent-ink); font-weight:800; }
+  .nest-mini-date.is-today:not(.is-selected) { outline:1px solid var(--accent-strong); outline-offset:-2px; }
+  .nest-mini-booking-dot { position:absolute; bottom:2px; left:50%; width:4px; height:4px; border-radius:50%; background:var(--success); transform:translateX(-50%); }
+  .nest-mini-date.is-selected .nest-mini-booking-dot { background:currentColor; }
+  .nest-mini-month-legend { display:flex; align-items:center; justify-content:center; gap:.35rem; margin:.42rem 0 0; color:var(--muted-2); font-size:.6rem; }
+  .nest-mini-month-legend i { width:5px; height:5px; border-radius:50%; background:var(--success); }
+
+  .booking-content .nest-mobile-day-selector {
+    display:flex;
+    gap:.4rem;
+    overflow-x:auto;
+    padding:.15rem .05rem .65rem;
+    margin:0 -.1rem .35rem;
+    scrollbar-width:none;
+    overscroll-behavior-x:contain;
+  }
+  .booking-content .nest-mobile-day-selector::-webkit-scrollbar { display:none; }
+  .nest-week-day { position:relative; display:flex; flex:1 0 42px; min-width:42px; flex-direction:column; align-items:center; gap:.28rem; padding:.48rem .2rem .55rem; border:1px solid var(--border); border-radius:11px; background:var(--surface); color:var(--muted); }
+  .nest-week-day-name { font-size:.58rem; font-weight:750; letter-spacing:.03em; }
+  .nest-week-day-number { color:var(--text); font-size:.8rem; }
+  .nest-week-day.is-selected { border-color:var(--accent); background:var(--accent); color:var(--accent-ink); }
+  .nest-week-day.is-selected .nest-week-day-number { color:var(--accent-ink); }
+  .nest-week-day.is-today:not(.is-selected) { border-color:var(--accent-strong); }
+  .nest-week-booking-dot { position:absolute; bottom:4px; width:4px; height:4px; border-radius:50%; background:var(--success); }
+  .nest-week-day.is-selected .nest-week-booking-dot { background:currentColor; }
+
+  .booking-content .nest-mobile-day-view { min-height:180px; }
+  .nest-mobile-day-view > h2 { margin:.25rem 0 .7rem; color:var(--text); font-size:1.04rem; text-transform:capitalize; }
+  .nest-mobile-day-view [data-nest-day-classes] { display:grid; gap:.6rem; }
+  .nest-booking-empty-day-detail { padding:1.2rem 1rem; border:1px dashed var(--border); border-radius:12px; color:var(--muted); font-size:.82rem; text-align:center; }
 }

@@ -11,8 +11,9 @@ const callables = {
   attendance: httpsCallable(functions, "setNestAttendance"),
 };
 let initialized = false;
-const weekOffset = { pilates: 0, barre: 0 };
+const selectedDateKey = { pilates: dateKey(dayAtNoon(0)), barre: dateKey(dayAtNoon(0)) };
 const requestNumber = { pilates: 0, barre: 0 };
+const monthScheduleCache = new Map();
 
 function dateKey(date) {
   const year = date.getFullYear();
@@ -28,11 +29,49 @@ function dayAtNoon(offset) {
   return date;
 }
 
-function weekStart(offset) {
-  const date = dayAtNoon(0);
-  const weekday = date.getDay() || 7;
-  date.setDate(date.getDate() - weekday + 1 + offset * 7);
-  return date;
+function dateFromKey(key) {
+  return new Date(`${key}T12:00:00`);
+}
+
+function monthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(date) {
+  return new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(date);
+}
+
+function monthBounds(date) {
+  return {
+    start: new Date(date.getFullYear(), date.getMonth(), 1, 12),
+    end: new Date(date.getFullYear(), date.getMonth() + 1, 0, 12),
+  };
+}
+
+function invalidateMonthCache(family, key) {
+  if (key) {
+    monthScheduleCache.delete(`${family}__${auth.currentUser?.uid || "guest"}__${key.slice(0, 7)}`);
+    return;
+  }
+  for (const cacheKey of monthScheduleCache.keys()) {
+    if (cacheKey.startsWith(`${family}__${auth.currentUser?.uid || "guest"}__`)) monthScheduleCache.delete(cacheKey);
+  }
+}
+
+async function getMonthSessions(family, date) {
+  const key = `${family}__${auth.currentUser?.uid || "guest"}__${monthKey(date)}`;
+  if (!monthScheduleCache.has(key)) {
+    const { start, end } = monthBounds(date);
+    monthScheduleCache.set(key, callables.schedule({
+      family,
+      startDate: dateKey(start),
+      endDate: dateKey(end),
+    }).then((result) => result.data.sessions || []).catch((error) => {
+      monthScheduleCache.delete(key);
+      throw error;
+    }));
+  }
+  return monthScheduleCache.get(key);
 }
 
 function element(tag, className, text) {
@@ -78,6 +117,7 @@ function createClassCard(session, family) {
       cancel.disabled = true;
       try {
         await callables.cancel({ family, dateKey: session.dateKey, slotId: session.slotId });
+        invalidateMonthCache(family, session.dateKey);
         showToast("Reserva cancelada", "success");
         await refreshFamily(family);
       } catch (error) {
@@ -95,6 +135,7 @@ function createClassCard(session, family) {
       book.disabled = true;
       try {
         await callables.book({ family, dateKey: session.dateKey, slotId: session.slotId, startTime: session.startTime });
+        invalidateMonthCache(family, session.dateKey);
         showToast("Plaza reservada", "success");
         await refreshFamily(family);
       } catch (error) {
@@ -112,6 +153,7 @@ function createClassCard(session, family) {
       book.disabled = true;
       try {
         await callables.book({ family, dateKey: session.dateKey, slotId: session.slotId, startTime: session.startTime, athleteEmail: email.trim().toLowerCase() });
+        invalidateMonthCache(family, session.dateKey);
         showToast("Plaza reservada para la alumna", "success");
         await refreshFamily(family);
       } catch (error) {
@@ -171,6 +213,101 @@ function createClassCard(session, family) {
   return card;
 }
 
+function renderMiniMonth(family, sessions, selectedDate) {
+  const root = document.querySelector(`[data-nest-mini-month="${family}"]`);
+  if (!root) return;
+  const monthDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1, 12);
+  const { start, end } = monthBounds(selectedDate);
+  const title = root.querySelector("[data-mini-month-label]");
+  if (title) title.textContent = monthLabel(monthDate);
+
+  const counts = new Map();
+  sessions.filter((session) => session.isBooked).forEach((session) => {
+    counts.set(session.dateKey, (counts.get(session.dateKey) || 0) + 1);
+  });
+  const grid = root.querySelector("[data-mini-month-grid]");
+  if (!grid) return;
+  grid.replaceChildren();
+  ["L", "M", "X", "J", "V", "S", "D"].forEach((day) => {
+    grid.append(element("span", "nest-mini-weekday", day));
+  });
+
+  const firstDayOffset = (start.getDay() + 6) % 7;
+  const gridStart = new Date(start);
+  gridStart.setDate(start.getDate() - firstDayOffset);
+  const todayKey = dateKey(dayAtNoon(0));
+  for (let index = 0; index < 42; index += 1) {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    const key = dateKey(date);
+    const sameMonth = date.getMonth() === monthDate.getMonth();
+    const count = counts.get(key) || 0;
+    const button = element("button", "nest-mini-date", String(date.getDate()));
+    button.type = "button";
+    button.dataset.nestSelectDate = key;
+    button.dataset.nestSelectFamily = family;
+    button.classList.toggle("is-outside-month", !sameMonth);
+    button.classList.toggle("is-selected", key === dateKey(selectedDate));
+    button.classList.toggle("is-today", key === todayKey);
+    button.classList.toggle("has-booking", count > 0);
+    button.setAttribute("aria-label", `${date.toLocaleDateString("es-ES")}${count ? `, ${count} reservada(s)` : ""}`);
+    if (count) button.append(element("i", "nest-mini-booking-dot"));
+    grid.append(button);
+  }
+  root.dataset.monthStart = dateKey(start);
+  root.dataset.monthEnd = dateKey(end);
+}
+
+function renderWeekDaySelector(family, selectedDate, weekSessions) {
+  const root = document.querySelector(`[data-nest-week-days="${family}"]`);
+  if (!root) return;
+  const weekday = selectedDate.getDay() || 7;
+  const monday = new Date(selectedDate);
+  monday.setDate(selectedDate.getDate() - weekday + 1);
+  root.replaceChildren();
+  const bookedDates = new Set(weekSessions.filter((session) => session.isBooked).map((session) => session.dateKey));
+  for (let index = 0; index < 7; index += 1) {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    const key = dateKey(date);
+    const button = element("button", "nest-week-day");
+    button.type = "button";
+    button.dataset.nestSelectDate = key;
+    button.dataset.nestSelectFamily = family;
+    button.classList.toggle("is-selected", key === dateKey(selectedDate));
+    button.classList.toggle("is-today", key === dateKey(dayAtNoon(0)));
+    button.append(
+      element("span", "nest-week-day-name", weekdayLabel(date)),
+      element("strong", "nest-week-day-number", String(date.getDate()))
+    );
+    if (bookedDates.has(key)) button.append(element("i", "nest-week-booking-dot"));
+    root.append(button);
+  }
+}
+
+function renderMobileDay(family, selectedDate, sessions) {
+  const root = document.querySelector(`[data-nest-day-view="${family}"]`);
+  if (!root) return;
+  const key = dateKey(selectedDate);
+  const daySessions = sessions
+    .filter((session) => session.dateKey === key)
+    .sort((first, second) => first.startTime.localeCompare(second.startTime));
+  const title = root.querySelector("[data-nest-day-title]");
+  if (title) {
+    title.textContent = new Intl.DateTimeFormat("es-ES", {
+      weekday: "long", day: "numeric", month: "long",
+    }).format(selectedDate);
+  }
+  const cards = root.querySelector("[data-nest-day-classes]");
+  if (!cards) return;
+  cards.replaceChildren();
+  if (!daySessions.length) {
+    cards.append(element("p", "nest-booking-empty-day-detail", "No hay clases programadas para este día."));
+    return;
+  }
+  daySessions.forEach((session) => cards.append(createClassCard(session, family)));
+}
+
 async function refreshFamily(family) {
   const grid = document.querySelector(`[data-nest-booking-sessions="${family}"]`);
   const status = document.querySelector(`[data-nest-booking-status="${family}"]`);
@@ -178,14 +315,29 @@ async function refreshFamily(family) {
   if (!grid || !auth.currentUser) return;
   const currentRequest = ++requestNumber[family];
   if (status) status.textContent = "Cargando horario…";
-  const start = weekStart(weekOffset[family]);
+  const selectedDate = dateFromKey(selectedDateKey[family]);
+  const selectedWeekday = selectedDate.getDay() || 7;
+  const start = new Date(selectedDate);
+  start.setDate(selectedDate.getDate() - selectedWeekday + 1);
   const end = new Date(start);
-  end.setDate(end.getDate() + 6);
+  end.setDate(start.getDate() + 6);
   if (label) label.textContent = rangeLabel(start, end);
   try {
-    const result = await callables.schedule({ family, startDate: dateKey(start), endDate: dateKey(end) });
+    const monthSessions = await getMonthSessions(family, selectedDate);
+    const weekMonthKeys = new Set(Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      return monthKey(date);
+    }));
+    const weekSessionsByMonth = await Promise.all(Array.from(weekMonthKeys, async (key) => {
+      const [year, month] = key.split("-").map(Number);
+      return getMonthSessions(family, new Date(year, month - 1, 1, 12));
+    }));
     if (currentRequest !== requestNumber[family]) return;
-    const sessions = (result.data.sessions || []).filter((item) => item.isBooked || !item.past || item.canManageRoster);
+    const sessions = weekSessionsByMonth.flat().filter((item) => item.isBooked || !item.past || item.canManageRoster);
+    renderMiniMonth(family, monthSessions, selectedDate);
+    renderWeekDaySelector(family, selectedDate, sessions);
+    renderMobileDay(family, selectedDate, sessions);
     const todayKey = dateKey(dayAtNoon(0));
     const days = [];
     for (let index = 0; index < 7; index += 1) {
@@ -202,7 +354,10 @@ async function refreshFamily(family) {
       days.push(day);
     }
     grid.replaceChildren(...days);
-    if (status) status.textContent = `${sessions.length} clases esta semana`;
+    if (status) {
+      const bookedCount = monthSessions.filter((session) => session.isBooked).length;
+      status.textContent = `${sessions.length} clases esta semana · ${bookedCount} reservas este mes`;
+    }
   } catch (error) {
     console.error(`Error loading ${family} reservations:`, error);
     if (status) status.textContent = error.message || "No se pudo cargar el horario.";
@@ -222,14 +377,36 @@ export function initializeBookingSchedule() {
     const shift = event.target.closest("[data-nest-week-shift]");
     if (shift) {
       const family = shift.dataset.nestWeekFamily;
-      weekOffset[family] += Number(shift.dataset.nestWeekShift || 0);
+      const selected = dateFromKey(selectedDateKey[family]);
+      selected.setDate(selected.getDate() + Number(shift.dataset.nestWeekShift || 0) * 7);
+      selectedDateKey[family] = dateKey(selected);
       refreshFamily(family);
       return;
     }
     const today = event.target.closest("[data-nest-week-today]");
     if (today) {
       const family = today.dataset.nestWeekToday;
-      weekOffset[family] = 0;
+      selectedDateKey[family] = dateKey(dayAtNoon(0));
+      refreshFamily(family);
+      return;
+    }
+    const selectDate = event.target.closest("[data-nest-select-date]");
+    if (selectDate) {
+      const family = selectDate.dataset.nestSelectFamily;
+      selectedDateKey[family] = selectDate.dataset.nestSelectDate;
+      refreshFamily(family);
+      return;
+    }
+    const monthShift = event.target.closest("[data-nest-month-shift]");
+    if (monthShift) {
+      const family = monthShift.dataset.nestMonthFamily;
+      const selected = dateFromKey(selectedDateKey[family]);
+      const desiredDay = selected.getDate();
+      selected.setDate(1);
+      selected.setMonth(selected.getMonth() + Number(monthShift.dataset.nestMonthShift || 0));
+      const lastDay = new Date(selected.getFullYear(), selected.getMonth() + 1, 0).getDate();
+      selected.setDate(Math.min(desiredDay, lastDay));
+      selectedDateKey[family] = dateKey(selected);
       refreshFamily(family);
     }
   });
@@ -259,6 +436,20 @@ export async function showBookingFamily(family) {
       </div>
       <strong class="nest-booking-week-label" data-nest-booking-week="${family}"></strong>
       <span class="nest-booking-status" data-nest-booking-status="${family}"></span>
+    </div>
+    <div class="nest-mobile-calendar" data-nest-mini-month="${family}">
+      <div class="nest-mini-month-header">
+        <button class="button button-secondary" type="button" data-nest-month-shift="-1" data-nest-month-family="${family}" aria-label="Mes anterior">‹</button>
+        <strong data-mini-month-label></strong>
+        <button class="button button-secondary" type="button" data-nest-month-shift="1" data-nest-month-family="${family}" aria-label="Mes siguiente">›</button>
+      </div>
+      <div class="nest-mini-month-grid" data-mini-month-grid></div>
+      <p class="nest-mini-month-legend"><i></i> Tienes una clase reservada</p>
+    </div>
+    <div class="nest-mobile-day-selector" data-nest-week-days="${family}" aria-label="Seleccionar día de la semana"></div>
+    <div class="nest-mobile-day-view" data-nest-day-view="${family}">
+      <h2 data-nest-day-title></h2>
+      <div data-nest-day-classes></div>
     </div>
     <div class="nest-booking-sessions" data-nest-booking-sessions="${family}"></div>`;
   panel.append(title, section);
