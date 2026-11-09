@@ -144,15 +144,15 @@ async function compressProfilePhoto(file) {
     const image = new Image();
     image.src = objectUrl;
     await image.decode();
-    const maxSide = 192;
+    const maxSide = 160;
     const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
     canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-    let dataUrl = canvas.toDataURL("image/jpeg", 0.65);
-    if (dataUrl.length > 64_000) dataUrl = canvas.toDataURL("image/jpeg", 0.42);
-    if (dataUrl.length > 80_000) throw new Error("No se pudo reducir la foto a un tamaño adecuado. Prueba con otra imagen.");
+    let dataUrl = canvas.toDataURL("image/jpeg", 0.58);
+    if (dataUrl.length > 40_000) dataUrl = canvas.toDataURL("image/jpeg", 0.38);
+    if (dataUrl.length > 48_000) throw new Error("No se pudo reducir la foto a un tamaño adecuado. Prueba con otra imagen.");
     return dataUrl;
   } finally {
     URL.revokeObjectURL(objectUrl);

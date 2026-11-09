@@ -36,7 +36,6 @@
   .booking-content .nest-booking-sessions { display:none; }
   .booking-content .nest-mobile-calendar { display:block; }
   .booking-content .nest-mobile-day-selector { display:flex; }
-  .booking-content .nest-mobile-day-view { display:block; }
   .booking-content .nest-booking-session { padding:.85rem; }
   .booking-content .nest-booking-avatar { width:clamp(30px,8vw,42px); }
 }
@@ -46,6 +45,7 @@
 .booking-content .nest-mobile-day-view { display:none; }
 
 @media (max-width:760px) {
+  .booking-content .nest-mobile-day-view { display:block; }
   .booking-content .nest-mobile-calendar {
     max-width:360px;
     padding:.8rem .9rem .65rem;

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="title desc">
+  <title id="title">The Nest Pilates</title>
+  <desc id="desc">Ilustración lineal de una mujer practicando Pilates Reformer, enmarcada por una rama botánica.</desc>
+  <rect width="320" height="320" rx="28" fill="#f3f0e8"/>
+  <g fill="none" stroke="#625849" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Nido y rama envolvente -->
+    <path stroke-width="4" d="M72 250C38 225 33 177 51 142c11-22 26-39 42-53M74 248c35 28 111 32 169 4 35-17 55-49 57-85"/>
+    <path stroke-width="5" d="M51 216c-19-24-21-46-10-70 9-19 20-30 38-42M56 228c35 21 84 29 128 23M263 230c25-25 34-51 28-77-4-17-12-30-24-42"/>
+    <path stroke-width="3.5" d="M63 238c26 14 55 21 84 22M229 252c-25 12-51 17-78 16M84 94c19-20 38-32 58-37M235 109c-9-24-20-42-34-57M231 110c22-13 40-20 60-22"/>
+    <!-- Hojas -->
+    <path stroke-width="3" d="M90 74c-21-5-35-16-43-34 20 1 36 11 43 34ZM120 60c-17-14-23-31-19-49 17 10 25 27 19 49ZM158 48c-7-19-4-36 9-51 8 19 5 36-9 51ZM207 49c5-21 17-35 36-42-4 21-16 35-36 42ZM263 78c11-19 26-28 47-28-9 19-25 28-47 28ZM43 126c-20-8-31-21-35-41 20 5 32 18 35 41ZM277 125c17-12 34-15 53-8-14 16-31 19-53 8ZM48 190c-20 0-35-8-47-24 21-5 37 3 47 24ZM273 192c18-7 35-5 51 7-19 11-36 8-51-7ZM83 247c-19 4-35 0-50-14 20-9 37-5 50 14ZM236 250c15-14 32-19 52-13-14 15-31 19-52 13Z"/>
+    <!-- Plataforma Reformer -->
+    <path stroke-width="4" d="M69 238h183M83 232v-12h14v12M225 238l19-43h15v43M69 246h188"/>
+    <path stroke-width="3" d="M91 220h104M203 220h28M244 195v-31h10v31"/>
+    <!-- Figura sentada, brazos y piernas -->
+    <path stroke-width="3.5" d="M109 164c-7-9-7-20-1-29 5-7 14-9 22-4 7 4 10 13 8 21l-5 15M113 159c-10 5-14 17-11 29l8 24M127 166c12 7 27 12 43 11 16-1 35-8 49-20l27-23M137 153c18-8 36-13 54-15 17-2 34-10 48-23l18-18M110 211c12 5 25 8 39 8 12 0 25-2 37-7M125 175c10 14 20 24 31 32l25 12M176 207c7-4 13-9 19-15l29-43M198 192c11 4 23 7 35 6l23-3"/>
+    <circle cx="111" cy="125" r="11" fill="#f3f0e8" stroke-width="3.5"/>
+    <!-- Cintas del reformer -->
+    <path stroke-width="2.5" d="M89 224l77-51M93 224l142-98M98 224l36-54"/>
+    <!-- Detalles del nido -->
+    <path stroke-width="4" d="M58 260c31 14 63 19 94 18M176 278c29-2 54-10 77-24M46 247c12 7 24 12 36 15M250 263c13-8 24-17 34-28"/>
+  </g>
+</svg>
