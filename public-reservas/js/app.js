@@ -20,7 +20,7 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-import { showBookingFamily } from "./booking.js?v=20261109e";
+import { showBookingFamily } from "./booking.js?v=20261110a";
 import { showToast } from "./toast.js";
 
 const $ = (id) => document.getElementById(id);
@@ -144,15 +144,15 @@ async function compressProfilePhoto(file) {
     const image = new Image();
     image.src = objectUrl;
     await image.decode();
-    const maxSide = 256;
+    const maxSide = 192;
     const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
     canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-    let dataUrl = canvas.toDataURL("image/jpeg", 0.72);
-    if (dataUrl.length > 240_000) dataUrl = canvas.toDataURL("image/jpeg", 0.48);
-    if (dataUrl.length > 280_000) throw new Error("No se pudo reducir la foto a un tamaño adecuado. Prueba con otra imagen.");
+    let dataUrl = canvas.toDataURL("image/jpeg", 0.65);
+    if (dataUrl.length > 64_000) dataUrl = canvas.toDataURL("image/jpeg", 0.42);
+    if (dataUrl.length > 80_000) throw new Error("No se pudo reducir la foto a un tamaño adecuado. Prueba con otra imagen.");
     return dataUrl;
   } finally {
     URL.revokeObjectURL(objectUrl);

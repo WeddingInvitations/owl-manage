@@ -1,0 +1,22 @@
+[debug] [2026-11-09T23:11:28.556Z] ----------------------------------------------------------------------
+[debug] [2026-11-09T23:11:28.560Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\o001830\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions:getNestBookingSchedule,functions:getNestClassRoster --project owl-manage
+[debug] [2026-11-09T23:11:28.561Z] CLI Version:   15.5.1
+[debug] [2026-11-09T23:11:28.561Z] Platform:      win32
+[debug] [2026-11-09T23:11:28.561Z] Node Version:  v20.20.0
+[debug] [2026-11-09T23:11:28.561Z] Time:          Tue Nov 10 2026 00:11:28 GMT+0100 (hora estándar de Europa central)
+[debug] [2026-11-09T23:11:28.561Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-09T23:11:30.818Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-09T23:11:30.819Z] > authorizing via signed-in user (weddinginvitationscampfire@gmail.com)
+[debug] [2026-11-09T23:11:30.819Z] [iam] checking project owl-manage for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-11-09T23:11:30.820Z] Checked if tokens are valid: true, expires at: 1794268286117
+[debug] [2026-11-09T23:11:30.821Z] Checked if tokens are valid: true, expires at: 1794268286117
+[debug] [2026-11-09T23:11:30.822Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage:testIamPermissions [none]
+[debug] [2026-11-09T23:11:30.822Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage:testIamPermissions  x-goog-user-project=owl-manage
+[debug] [2026-11-09T23:11:30.822Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-11-09T23:11:31.632Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage:testIamPermissions 200
+[debug] [2026-11-09T23:11:31.632Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/owl-manage:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-11-09T23:11:31.633Z] Checked if tokens are valid: true, expires at: 1794268286117
+[debug] [2026-11-09T23:11:31.633Z] Checked if tokens are valid: true, expires at: 1794268286117
+[debug] [2026-11-09T23:11:31.633Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/owl-manage/serviceAccounts/owl-manage@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-11-09T23:11:31.633Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/owl-manage/serviceAccounts/owl-manage@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}

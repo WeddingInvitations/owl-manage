@@ -67,7 +67,16 @@ async function getMonthSessions(family, date) {
       family,
       startDate: dateKey(start),
       endDate: dateKey(end),
-    }).then((result) => result.data.sessions || []).catch((error) => {
+    }).then((result) => {
+      const photos = result.data.memberPhotos || {};
+      return (result.data.sessions || []).map((session) => ({
+        ...session,
+        attendees: (session.attendees || []).map((attendee) => ({
+          ...attendee,
+          photoUrl: photos[attendee.userId] || attendee.photoUrl || "",
+        })),
+      }));
+    }).catch((error) => {
       monthScheduleCache.delete(key);
       throw error;
     }));

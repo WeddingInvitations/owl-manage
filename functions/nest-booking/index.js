@@ -421,7 +421,7 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
       id: booking.id,
       athleteId: bookingData.athleteId,
       name: bookingData.athleteName || '',
-      photoUrl: profileByUid.get(bookingData.userId)?.photoUrl || '',
+      userId: bookingData.userId || null,
       attended: Boolean(bookingData.attended),
       isCurrentUser: Boolean(athlete && bookingData.athleteId === athlete.ref.id),
     });
@@ -463,7 +463,10 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
       canBookForOthers: isStaff,
     };
   });
-  return { family, sessions };
+  const memberPhotos = Object.fromEntries(attendeeUids
+    .map((attendeeUid) => [attendeeUid, profileByUid.get(attendeeUid)?.photoUrl || ''])
+    .filter(([, photoUrl]) => Boolean(photoUrl)));
+  return { family, sessions, memberPhotos };
 });
 
 exports.bookNestClass = functions.https.onCall(async (data, context) => {
