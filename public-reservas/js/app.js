@@ -273,17 +273,17 @@ function closeProfileSettings() {
 document.querySelectorAll("#profileSettingsBtn, #profileSettingsTextBtn").forEach((button) => {
   button.addEventListener("click", openProfileSettings);
 });
-$("profileSettingsClose").addEventListener("click", closeProfileSettings);
-$("profileSettingsCancel").addEventListener("click", closeProfileSettings);
-ui.profileSettingsModal.addEventListener("click", (event) => {
+$("profileSettingsClose")?.addEventListener("click", closeProfileSettings);
+$("profileSettingsCancel")?.addEventListener("click", closeProfileSettings);
+ui.profileSettingsModal?.addEventListener("click", (event) => {
   if (event.target === ui.profileSettingsModal) closeProfileSettings();
 });
-$("profilePhotoRemove").addEventListener("click", () => {
+$("profilePhotoRemove")?.addEventListener("click", () => {
   pendingPhotoUrl = "";
   ui.profilePhotoFile.value = "";
   showProfilePhotoPreview("");
 });
-ui.profilePhotoFile.addEventListener("change", async () => {
+ui.profilePhotoFile?.addEventListener("change", async () => {
   const file = ui.profilePhotoFile.files?.[0];
   if (!file) return;
   ui.profileSettingsMessage.textContent = "Preparando la foto…";
@@ -298,7 +298,7 @@ ui.profilePhotoFile.addEventListener("change", async () => {
     ui.profilePhotoFile.value = "";
   }
 });
-ui.profileSettingsForm.addEventListener("submit", async (event) => {
+ui.profileSettingsForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!activeUser) return;
   const saveButton = ui.profileSettingsForm.querySelector('button[type="submit"]');
