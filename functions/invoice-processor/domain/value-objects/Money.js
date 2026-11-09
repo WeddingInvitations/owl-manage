@@ -7,10 +7,6 @@ class Money {
     if (typeof amount !== 'number' || isNaN(amount)) {
       throw new Error('Amount must be a valid number');
     }
-    if (amount < 0) {
-      throw new Error('Amount cannot be negative');
-    }
-    
     this._amount = Math.round(amount * 100) / 100; // 2 decimales
     this._currency = currency.toUpperCase();
     Object.freeze(this);

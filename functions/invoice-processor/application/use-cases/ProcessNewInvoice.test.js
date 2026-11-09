@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { ProcessNewInvoice } = require('./ProcessNewInvoice');
 
-function createProcessor(issueDate, folderName = null) {
+function createProcessor(issueDate, folderName = null, invoiceData = {}) {
   const saved = { invoice: null, expense: null };
   const processor = new ProcessNewInvoice({
     documentExtractor: {
@@ -15,6 +15,7 @@ function createProcessor(issueDate, folderName = null) {
         number: 'INV-001', issueDate, dueDate: null, supplierName: 'Proveedor',
         items: [{ description: 'Servicio', quantity: 1, unitPrice: 10, taxRate: 0, total: 10 }],
         subtotal: 10, taxAmount: 0, total: 10,
+        ...invoiceData,
       }),
     },
     invoiceRepository: {
@@ -69,4 +70,23 @@ test('la carpeta prevalece sobre un mes de selector diferente', async () => {
   const { processor, saved } = createProcessor('2026-08-20', 'SETIEMBRE 2026');
   await processor.execute({ driveFileId: 'file', expenseMonth: '2026-08' });
   assert.equal(saved.expense.date, '2026-09-01');
+});
+
+test('procesa una factura con línea negativa si el total de la factura es positivo', async () => {
+  const { processor, saved } = createProcessor('2026-09-15', null, {
+    items: [
+      { description: 'Servicio', quantity: 1, unitPrice: 100, taxRate: 0, total: 100 },
+      { description: 'Descuento', quantity: 1, unitPrice: -10, taxRate: 0, total: -10 },
+    ],
+    subtotal: 90,
+    taxAmount: 0,
+    total: 90,
+  });
+
+  const result = await processor.execute({ driveFileId: 'file', userId: 'owner' });
+
+  assert.equal(result.success, true);
+  assert.equal(saved.expense.amount, 90);
+  assert.equal(saved.invoice.items[1].total.amount, -10);
+  assert.equal(saved.invoice.validateTotals(), true);
 });
