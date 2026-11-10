@@ -2,8 +2,8 @@
 .booking-content .nest-booking-toolbar .btn { min-width:38px; min-height:38px; }
 .booking-content .nest-booking-week-label { margin:.25rem 0 .35rem; color:var(--text); font-size:1.05rem; font-weight:700; text-transform:capitalize; }
 .booking-content .nest-booking-status { margin:.25rem 0 .75rem; color:var(--muted); font-size:.78rem; }
-.booking-content .nest-booking-sessions { display:grid; grid-template-columns:repeat(7,minmax(150px,1fr)); gap:0; width:100%; min-width:0; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:thin; border:1px solid var(--border); border-radius:12px; background:var(--surface); }
-.booking-content .nest-booking-day { min-height:350px; padding:.7rem; border-right:1px solid var(--border); background:var(--surface); }
+.booking-content .nest-booking-sessions { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:0; width:100%; min-width:0; overflow:hidden; border:1px solid var(--border); border-radius:12px; background:var(--surface); }
+.booking-content .nest-booking-day { min-width:0; min-height:350px; padding:.55rem; border-right:1px solid var(--border); background:var(--surface); }
 .booking-content .nest-booking-day:last-child { border-right:0; }
 .booking-content .nest-booking-day:nth-child(even) { background:color-mix(in srgb,var(--surface-raised) 55%,var(--surface)); }
 .booking-content .nest-booking-day-heading { display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:0 .1rem .65rem; margin:0 0 .7rem; border-bottom:1px solid var(--border); }
@@ -16,13 +16,13 @@
 .booking-content .nest-booking-session.is-full { border-color:var(--border); border-left-color:var(--muted-2); background:color-mix(in srgb,var(--surface-raised) 65%,var(--surface)); }
 .booking-content .nest-booking-session-time { color:var(--text); font-size:.94rem; font-weight:750; font-variant-numeric:tabular-nums; }
 .booking-content .nest-booking-capacity { display:flex; flex-direction:column; gap:.3rem; }
-.booking-content .nest-booking-seats { display:grid; grid-template-columns:repeat(6,1fr); gap:3px; }
-.booking-content .nest-booking-avatar { position:relative; display:grid; width:clamp(20px,1.8vw,26px); aspect-ratio:1; min-width:0; place-items:center; overflow:hidden; border:1px solid var(--border); border-radius:50%; background:var(--surface-raised); color:var(--text); }
+.booking-content .nest-booking-seats { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); justify-items:center; gap:2px; width:100%; }
+.booking-content .nest-booking-avatar { position:relative; display:grid; width:min(100%,26px); aspect-ratio:1; min-width:0; place-items:center; overflow:hidden; border:1px solid var(--border); border-radius:50%; background:var(--surface-raised); color:var(--text); }
 .booking-content .nest-booking-avatar.is-occupied { border-color:color-mix(in srgb,var(--accent-strong) 55%,var(--border)); background:color-mix(in srgb,var(--accent) 18%,var(--surface)); }
 .booking-content .nest-booking-avatar.is-available { border-style:dashed; background:transparent; color:var(--muted-2); }
 .booking-content .nest-booking-avatar img { width:100%; height:100%; object-fit:cover; }
-.booking-content .nest-booking-avatar-initials { font-size:clamp(.65rem,1.2vw,.9rem); font-weight:750; }
-.booking-content .nest-booking-avatar-plus { font-size:1.05rem; line-height:1; }
+.booking-content .nest-booking-avatar-initials { font-size:clamp(.58rem,.8vw,.75rem); font-weight:750; }
+.booking-content .nest-booking-avatar-plus { font-size:.9rem; line-height:1; }
 .booking-content .nest-booking-capacity-label { color:var(--muted); font-size:.72rem; font-variant-numeric:tabular-nums; }
 .booking-content .nest-booking-message { margin:0; color:var(--muted); font-size:.75rem; line-height:1.35; }
 .booking-content .nest-booking-action { width:100%; min-height:34px; padding:.4rem .55rem; font-size:.76rem; }
@@ -32,12 +32,13 @@
 .booking-content .nest-booking-roster-avatar .nest-booking-avatar-initials { font-size:.72rem; }
 @media (max-width:760px) {
   .booking-content { padding:.65rem; }
-  .booking-content .booking-week-toolbar { display:none; }
   .booking-content .nest-booking-sessions { display:none; }
+  .booking-content .nest-mobile-day-view { display:block; }
   .booking-content .nest-mobile-calendar { display:block; }
   .booking-content .nest-mobile-day-selector { display:flex; }
+  .booking-content .booking-week-toolbar { display:none; }
   .booking-content .nest-booking-session { padding:.85rem; }
-  .booking-content .nest-booking-avatar { width:clamp(30px,8vw,42px); }
+  .booking-content .nest-booking-avatar { width:min(100%,42px); }
 }
 
 .booking-content .nest-mobile-calendar,
@@ -45,7 +46,6 @@
 .booking-content .nest-mobile-day-view { display:none; }
 
 @media (max-width:760px) {
-  .booking-content .nest-mobile-day-view { display:block; }
   .booking-content .nest-mobile-calendar {
     max-width:360px;
     padding:.8rem .9rem .65rem;
@@ -57,11 +57,12 @@
   .nest-mini-month-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:.45rem; }
   .nest-mini-month-header strong { color:var(--text); font-size:.9rem; text-transform:capitalize; }
   .nest-mini-month-header .button { width:32px; min-height:30px; padding:.2rem; border-radius:8px; }
-  .nest-mini-month-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:2px; }
+  .nest-mini-month-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px; }
   .nest-mini-weekday { display:grid; height:24px; place-items:center; color:var(--muted-2); font-size:.62rem; font-weight:750; }
   .nest-mini-date { position:relative; display:grid; min-width:0; height:32px; place-items:center; padding:0; border:0; border-radius:50%; background:transparent; color:var(--text); font-size:.72rem; }
   .nest-mini-date:hover { background:var(--surface-raised); }
-  .nest-mini-date.is-outside-month { color:var(--muted-2); opacity:.45; }
+  .nest-mini-date.is-outside-month { color:var(--muted-2); opacity:.3; }
+  .nest-mini-date:disabled { cursor:default; }
   .nest-mini-date.is-selected { background:var(--accent); color:var(--accent-ink); font-weight:800; }
   .nest-mini-date.is-today:not(.is-selected) { outline:1px solid var(--accent-strong); outline-offset:-2px; }
   .nest-mini-booking-dot { position:absolute; bottom:2px; left:50%; width:4px; height:4px; border-radius:50%; background:var(--success); transform:translateX(-50%); }

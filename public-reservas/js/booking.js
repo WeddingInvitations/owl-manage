@@ -3,6 +3,7 @@ import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.4/fireba
 import { showToast } from "./toast.js";
 
 const views = { pilates: "pilates", barre: "barre" };
+const WEEKDAY_COUNT = 5;
 const callables = {
   schedule: httpsCallable(functions, "getNestBookingSchedule"),
   book: httpsCallable(functions, "bookNestClass"),
@@ -12,7 +13,7 @@ const callables = {
 };
 let initialized = false;
 let activeFamily = "pilates";
-const selectedDateKey = { pilates: dateKey(dayAtNoon(0)), barre: dateKey(dayAtNoon(0)) };
+const selectedDateKey = { pilates: dateKey(normalizeWorkday(dayAtNoon(0))), barre: dateKey(normalizeWorkday(dayAtNoon(0))) };
 const requestNumber = { pilates: 0, barre: 0 };
 const monthScheduleCache = new Map();
 
@@ -47,6 +48,14 @@ function monthBounds(date) {
     start: new Date(date.getFullYear(), date.getMonth(), 1, 12),
     end: new Date(date.getFullYear(), date.getMonth() + 1, 0, 12),
   };
+}
+
+function normalizeWorkday(date) {
+  const normalized = new Date(date);
+  normalized.setHours(12, 0, 0, 0);
+  if (normalized.getDay() === 6) normalized.setDate(normalized.getDate() - 1);
+  if (normalized.getDay() === 0) normalized.setDate(normalized.getDate() + 1);
+  return normalized;
 }
 
 function invalidateMonthCache(family, key) {
@@ -274,7 +283,7 @@ function renderMiniMonth(family, sessions, selectedDate) {
   const grid = root.querySelector("[data-mini-month-grid]");
   if (!grid) return;
   grid.replaceChildren();
-  ["L", "M", "X", "J", "V", "S", "D"].forEach((day) => {
+  ["L", "M", "X", "J", "V"].forEach((day) => {
     grid.append(element("span", "nest-mini-weekday", day));
   });
 
@@ -282,9 +291,15 @@ function renderMiniMonth(family, sessions, selectedDate) {
   const gridStart = new Date(start);
   gridStart.setDate(start.getDate() - firstDayOffset);
   const todayKey = dateKey(dayAtNoon(0));
-  for (let index = 0; index < 42; index += 1) {
+  const lastWeekday = new Date(end);
+  if (lastWeekday.getDay() === 6) lastWeekday.setDate(lastWeekday.getDate() - 1);
+  if (lastWeekday.getDay() === 0) lastWeekday.setDate(lastWeekday.getDate() - 2);
+  const rowCount = Math.floor((lastWeekday - gridStart) / (7 * 86400000)) + 1;
+  for (let index = 0; index < rowCount * WEEKDAY_COUNT; index += 1) {
     const date = new Date(gridStart);
-    date.setDate(gridStart.getDate() + index);
+    const row = Math.floor(index / WEEKDAY_COUNT);
+    const weekday = index % WEEKDAY_COUNT;
+    date.setDate(gridStart.getDate() + row * 7 + weekday);
     const key = dateKey(date);
     const sameMonth = date.getMonth() === monthDate.getMonth();
     const count = counts.get(key) || 0;
@@ -293,6 +308,7 @@ function renderMiniMonth(family, sessions, selectedDate) {
     button.dataset.nestSelectDate = key;
     button.dataset.nestSelectFamily = family;
     button.classList.toggle("is-outside-month", !sameMonth);
+    button.disabled = !sameMonth;
     button.classList.toggle("is-selected", key === dateKey(selectedDate));
     button.classList.toggle("is-today", key === todayKey);
     button.classList.toggle("has-booking", count > 0);
@@ -312,7 +328,7 @@ function renderWeekDaySelector(family, selectedDate, weekSessions) {
   monday.setDate(selectedDate.getDate() - weekday + 1);
   root.replaceChildren();
   const bookedDates = new Set(weekSessions.filter((session) => session.isBooked).map((session) => session.dateKey));
-  for (let index = 0; index < 7; index += 1) {
+  for (let index = 0; index < WEEKDAY_COUNT; index += 1) {
     const date = new Date(monday);
     date.setDate(monday.getDate() + index);
     const key = dateKey(date);
@@ -366,11 +382,11 @@ async function refreshFamily(family) {
   const start = new Date(selectedDate);
   start.setDate(selectedDate.getDate() - selectedWeekday + 1);
   const end = new Date(start);
-  end.setDate(start.getDate() + 6);
+  end.setDate(start.getDate() + WEEKDAY_COUNT - 1);
   if (label) label.textContent = rangeLabel(start, end);
   try {
     const monthSessions = await getMonthSessions(family, selectedDate);
-    const weekMonthKeys = new Set(Array.from({ length: 7 }, (_, index) => {
+    const weekMonthKeys = new Set(Array.from({ length: WEEKDAY_COUNT }, (_, index) => {
       const date = new Date(start);
       date.setDate(start.getDate() + index);
       return monthKey(date);
@@ -386,7 +402,7 @@ async function refreshFamily(family) {
     renderMobileDay(family, selectedDate, sessions);
     const todayKey = dateKey(dayAtNoon(0));
     const days = [];
-    for (let index = 0; index < 7; index += 1) {
+    for (let index = 0; index < WEEKDAY_COUNT; index += 1) {
       const date = new Date(start);
       date.setDate(start.getDate() + index);
       const key = dateKey(date);
@@ -437,27 +453,27 @@ export function initializeBookingSchedule() {
     const today = event.target.closest("[data-nest-week-today]");
     if (today) {
       const family = today.dataset.nestWeekToday;
-      selectedDateKey[family] = dateKey(dayAtNoon(0));
+      selectedDateKey[family] = dateKey(normalizeWorkday(dayAtNoon(0)));
       refreshFamily(family);
       return;
     }
     const selectDate = event.target.closest("[data-nest-select-date]");
     if (selectDate) {
       const family = selectDate.dataset.nestSelectFamily;
-      selectedDateKey[family] = selectDate.dataset.nestSelectDate;
+      selectedDateKey[family] = dateKey(normalizeWorkday(dateFromKey(selectDate.dataset.nestSelectDate)));
       refreshFamily(family);
       return;
     }
     const monthShift = event.target.closest("[data-nest-month-shift]");
     if (monthShift) {
       const family = monthShift.dataset.nestMonthFamily;
-      const selected = dateFromKey(selectedDateKey[family]);
+      const selected = normalizeWorkday(dateFromKey(selectedDateKey[family]));
       const desiredDay = selected.getDate();
       selected.setDate(1);
       selected.setMonth(selected.getMonth() + Number(monthShift.dataset.nestMonthShift || 0));
       const lastDay = new Date(selected.getFullYear(), selected.getMonth() + 1, 0).getDate();
       selected.setDate(Math.min(desiredDay, lastDay));
-      selectedDateKey[family] = dateKey(selected);
+      selectedDateKey[family] = dateKey(normalizeWorkday(selected));
       refreshFamily(family);
     }
   });
