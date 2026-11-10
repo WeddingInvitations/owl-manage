@@ -10,6 +10,7 @@ import {
   orderBy,
   where,
   serverTimestamp,
+  arrayUnion,
   doc,
   updateDoc,
   deleteDoc,
@@ -1977,6 +1978,15 @@ export async function getPilatesAthletes() {
 }
 
 export async function upsertPilatesAthleteMonth(athleteId, month, payload, userId) {
+  const tariff = payload?.tariff || payload?.tarifa || payload?.plan || "";
+  const normalizedTariff = String(tariff).trim().toLowerCase();
+  const family = normalizedTariff.includes("barre")
+    ? "barre"
+    : normalizedTariff.includes("reformer")
+      ? "pilates"
+      : "";
+  if (!family) throw new Error("La mensualidad debe tener una tarifa de Pilates o Barre.");
+
   const snap = await getDocs(
     query(
       collection(db, "athlete_pilates_months"),
@@ -1984,28 +1994,44 @@ export async function upsertPilatesAthleteMonth(athleteId, month, payload, userI
       where("month", "==", month)
     )
   );
-  let docId = null;
-  snap.forEach((docSnap) => {
-    docId = docSnap.id;
+  const matchingRecords = snap.docs.filter((docSnap) => {
+    const data = docSnap.data();
+    const recordTariff = String(data.tariff || data.tarifa || data.plan || "").trim().toLowerCase();
+    const recordFamily = data.family || (recordTariff.includes("barre")
+      ? "barre"
+      : recordTariff.includes("reformer")
+        ? "pilates"
+        : "");
+    return recordFamily === family;
   });
+  const existing = matchingRecords[matchingRecords.length - 1] || null;
 
-  if (docId) {
-    await updateDoc(doc(db, "athlete_pilates_months", docId), {
+  let monthRecordId = existing?.id || "";
+  if (existing) {
+    await updateDoc(existing.ref, {
+      family,
       ...payload,
       updatedAt: serverTimestamp(),
       updatedBy: userId || null,
     });
-    return docId;
+  } else {
+    const created = await addDoc(collection(db, "athlete_pilates_months"), {
+      athleteId,
+      month,
+      family,
+      ...payload,
+      createdAt: serverTimestamp(),
+      createdBy: userId || null,
+    });
+    monthRecordId = created.id;
   }
 
-  const docRef = await addDoc(collection(db, "athlete_pilates_months"), {
-    athleteId,
-    month,
-    ...payload,
-    createdAt: serverTimestamp(),
-    createdBy: userId || null,
+  await updateDoc(doc(db, "athletes_pilates", athleteId), {
+    nestFamilies: arrayUnion(family),
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
   });
-  return docRef.id;
+  return monthRecordId;
 }
 
 export async function getPilatesAthleteMonthsForMonth(month) {

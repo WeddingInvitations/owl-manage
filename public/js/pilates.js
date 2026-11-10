@@ -58,12 +58,45 @@ function getPilatesFamilyForTariff(tariff) {
   return "pilates";
 }
 
+function familyForMonthlyRecord(record) {
+  if (record?.family === "pilates" || record?.family === "barre") return record.family;
+  const tariff = String(extractPilatesTariff(record) || "").trim().toLowerCase();
+  if (tariff.includes("barre")) return "barre";
+  if (tariff.includes("reformer")) return "pilates";
+  return null;
+}
+
+function groupMonthlyRecordsByFamily(records) {
+  const grouped = new Map();
+  records.forEach((record) => {
+    const family = familyForMonthlyRecord(record);
+    if (family) grouped.set(`${record.athleteId}__${family}`, record);
+    else grouped.set(`${record.athleteId}__legacy`, record);
+  });
+  return grouped;
+}
+
+function getMonthlyRecordForFamily(recordsByFamily, athleteId, family = activePilatesFamily) {
+  return recordsByFamily.get(`${athleteId}__${family}`)
+    || recordsByFamily.get(`${athleteId}__legacy`)
+    || null;
+}
+
+function getHistoryForFamily(history, family = activePilatesFamily) {
+  return (history || []).filter((record) => familyForMonthlyRecord(record) === family);
+}
+
+function athleteHasFamily(athlete, family = activePilatesFamily) {
+  return Array.isArray(athlete?.nestFamilies) && athlete.nestFamilies.includes(family);
+}
+
 function extractPilatesTariff(record) {
   return record?.tariff || record?.tarifa || record?.plan || record?.idTarifa || "";
 }
 
 function getPilatesTariffFromRecords(current, previous, lastPaid) {
-  return extractPilatesTariff(current) || extractPilatesTariff(previous) || extractPilatesTariff(lastPaid) || "Reformer 4";
+  return extractPilatesTariff(current) || extractPilatesTariff(previous) || extractPilatesTariff(lastPaid) ||
+    (activePilatesFamily === "barre" ? "Barre 4" : "Reformer 4");
 }
 
 function renderPilatesTariffOptions() {
@@ -408,6 +441,11 @@ function attachPilatesRowListeners() {
       ui.pilatesEditAthleteId.value = athlete.id;
       ui.pilatesEditName.value = athlete.name || "";
       ui.pilatesEditEmail.value = athlete.email || "";
+      const history = pilatesListCacheData?.athleteHistory.get(athlete.id) || [];
+      const historicalFamilies = new Set(history.map(familyForMonthlyRecord).filter(Boolean));
+      const athleteFamilies = new Set([...(athlete.nestFamilies || []), ...historicalFamilies]);
+      ui.pilatesEditFamilyPilates.checked = athleteFamilies.has("pilates");
+      ui.pilatesEditFamilyBarre.checked = athleteFamilies.has("barre");
       ui.pilatesEditModal.classList.remove("hidden");
     });
   });
@@ -459,7 +497,11 @@ if (ui.pilatesEditForm) {
       return;
     }
 
-    const updates = { name, email };
+    const nestFamilies = [
+      ...(ui.pilatesEditFamilyPilates.checked ? ["pilates"] : []),
+      ...(ui.pilatesEditFamilyBarre.checked ? ["barre"] : []),
+    ];
+    const updates = { name, email, nestFamilies };
     if (String(athlete.email || "").trim().toLowerCase() !== email) updates.authUid = null;
     const saveButton = ui.pilatesEditForm.querySelector('button[type="submit"]');
     saveButton.disabled = true;
@@ -493,18 +535,18 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
   let listAthletes = !searchValue && filteredAthletes.length === 0 ? athletesFallback : filteredAthletes;
 
   listAthletes = listAthletes.map((athlete) => {
-    const current = listMonthMap.get(athlete.id);
-    const history = athleteHistory.get(athlete.id) || [];
+    const current = getMonthlyRecordForFamily(listMonthMap, athlete.id);
+    const history = getHistoryForFamily(athleteHistory.get(athlete.id));
     const mostRecent = history.length > 0 ? history[0] : null;
     const lastUpdate = current?.updatedAt || current?.createdAt || mostRecent?.updatedAt || mostRecent?.createdAt;
     return { ...athlete, lastUpdate };
   }).filter((athlete) => {
-    const current = listMonthMap.get(athlete.id);
-    const previous = listPreviousMap.get(athlete.id);
-    const history = athleteHistory.get(athlete.id) || [];
+    const current = getMonthlyRecordForFamily(listMonthMap, athlete.id);
+    const previous = getMonthlyRecordForFamily(listPreviousMap, athlete.id);
+    const history = getHistoryForFamily(athleteHistory.get(athlete.id));
     const lastPaid = history.find((record) => record.paid);
     const tariff = getPilatesTariffFromRecords(current, previous, lastPaid);
-    return familyTariffs.has(tariff);
+    return familyTariffs.has(tariff) || athleteHasFamily(athlete);
   }).sort((a, b) => {
     if (pilatesNameSortDirection) {
       const comparison = getPilatesSortableName(a.name).localeCompare(getPilatesSortableName(b.name), "es");
@@ -522,9 +564,9 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
   ui.pilatesList.innerHTML = "";
   let visibleCount = 0;
   listAthletes.forEach((athlete) => {
-    const current = listMonthMap.get(athlete.id);
-    const previous = listPreviousMap.get(athlete.id);
-    const history = athleteHistory.get(athlete.id) || [];
+    const current = getMonthlyRecordForFamily(listMonthMap, athlete.id);
+    const previous = getMonthlyRecordForFamily(listPreviousMap, athlete.id);
+    const history = getHistoryForFamily(athleteHistory.get(athlete.id));
     const lastPaid = history.find((record) => record.paid);
     const tariff = getPilatesTariffFromRecords(current, previous, lastPaid);
     const fallbackPlan = { durationMonths: 1, priceTotal: 0, priceMonthly: 0 };
@@ -612,12 +654,12 @@ export function getPilatesFamilyAthletes() {
 
   return allAthletes
     .filter((athlete) => {
-      const current = listMonthMap.get(athlete.id);
-      const previous = listPreviousMap.get(athlete.id);
-      const history = athleteHistory.get(athlete.id) || [];
+      const current = getMonthlyRecordForFamily(listMonthMap, athlete.id);
+      const previous = getMonthlyRecordForFamily(listPreviousMap, athlete.id);
+      const history = getHistoryForFamily(athleteHistory.get(athlete.id));
       const lastPaid = history.find((record) => record.paid);
       const tariff = getPilatesTariffFromRecords(current, previous, lastPaid);
-      return familyTariffs.has(tariff);
+      return familyTariffs.has(tariff) || athleteHasFamily(athlete);
     })
     .sort((first, second) => String(first.name || "").localeCompare(String(second.name || ""), "es"));
 }
@@ -683,12 +725,9 @@ export async function refreshPilatesMonthly(
     });
   }
 
-  const summaryMonthMap = new Map();
-  summaryMonthRecords.forEach((record) => summaryMonthMap.set(record.athleteId, record));
-  const listMonthMap = new Map();
-  listMonthRecords.forEach((record) => listMonthMap.set(record.athleteId, record));
-  const listPreviousMap = new Map();
-  listPreviousRecords.forEach((record) => listPreviousMap.set(record.athleteId, record));
+  const summaryMonthMap = groupMonthlyRecordsByFamily(summaryMonthRecords);
+  const listMonthMap = groupMonthlyRecordsByFamily(listMonthRecords);
+  const listPreviousMap = groupMonthlyRecordsByFamily(listPreviousRecords);
 
   const athleteHistory = new Map();
   allMonthRecords.forEach((record) => {
@@ -703,12 +742,12 @@ export async function refreshPilatesMonthly(
   const newAthletes = new Set();
   const familyAthletes = new Set();
   athletes.forEach((athlete) => {
-    const current = summaryMonthMap.get(athlete.id);
-    const history = athleteHistory.get(athlete.id) || [];
+    const current = getMonthlyRecordForFamily(summaryMonthMap, athlete.id);
+    const history = getHistoryForFamily(athleteHistory.get(athlete.id));
     const lastPaid = history.find((record) => record.paid);
     const latestRecord = history[0];
     const tariff = getPilatesTariffFromRecords(current, latestRecord, lastPaid);
-    if (!familyTariffs.has(tariff)) return;
+    if (!familyTariffs.has(tariff) && !athleteHasFamily(athlete)) return;
     familyAthletes.add(athlete.id);
     const paid = Boolean(current?.paid);
     if (paid) {
@@ -719,8 +758,9 @@ export async function refreshPilatesMonthly(
     }
   });
 
+  const familyListRecords = listMonthRecords.filter((record) => familyForMonthlyRecord(record) === activePilatesFamily);
   const athletesFallback = Array.from(
-    new Map(listMonthRecords.map((record) => [
+    new Map(familyListRecords.map((record) => [
       record.athleteId,
       { id: record.athleteId, name: record.athleteName || "(Sin nombre)" },
     ])).values()

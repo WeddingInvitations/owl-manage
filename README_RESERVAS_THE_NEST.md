@@ -18,6 +18,8 @@ Antes de que una alumna se registre, su ficha de The Nest necesita un correo cor
 2. Para nuevas alumnas, el formulario de alta solicita el correo.
 3. Al crear la cuenta, la alumna debe utilizar y verificar exactamente ese correo.
 
+En el editor de la ficha se pueden marcar por separado **The Nest Pilates** y **The Nest Barre**. Cada disciplina conserva su propia mensualidad; guardar una no sustituye la cuota de la otra. Si una ficha antigua no muestra una de sus disciplinas porque la cuota anterior fue sobrescrita, recepción puede marcar ambas en ese editor.
+
 La ficha se asocia a la cuenta por email; la reserva no se autoriza solo por tener una cuenta. Si no se encuentra la ficha, hay duplicados o el email no coincide, recepción debe corregir los datos antes de habilitar el acceso.
 
 ## Reservar una clase

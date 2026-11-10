@@ -306,6 +306,8 @@ export const ui = {
   pilatesEditAthleteId: $("pilatesEditAthleteId"),
   pilatesEditName: $("pilatesEditName"),
   pilatesEditEmail: $("pilatesEditEmail"),
+  pilatesEditFamilyPilates: $("pilatesEditFamilyPilates"),
+  pilatesEditFamilyBarre: $("pilatesEditFamilyBarre"),
   pilatesNameList: $("pilatesNameList"),
   pilatesPaymentMonth: $("pilatesPaymentMonth"),
   pilatesTariff: $("pilatesTariff"),

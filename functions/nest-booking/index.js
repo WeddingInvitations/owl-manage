@@ -92,6 +92,9 @@ function tariffMonthlyLimit(record) {
 
 function familiesFromHistory(records, athlete = {}) {
   const families = new Set((records || []).map((record) => tariffFamily(record)).filter(Boolean));
+  (Array.isArray(athlete.nestFamilies) ? athlete.nestFamilies : []).forEach((family) => {
+    if (['pilates', 'barre'].includes(family)) families.add(family);
+  });
   const athleteFamily = tariffFamily(athlete);
   if (athleteFamily) families.add(athleteFamily);
   return Array.from(families);
@@ -133,15 +136,18 @@ async function findMonthlyMembership(athleteId, family, month) {
   const snap = await db.collection('athlete_pilates_months')
     .where('athleteId', '==', athleteId)
     .where('month', '==', month)
-    .limit(1)
     .get();
-  if (snap.empty) return null;
-  const doc = snap.docs[0];
-  const data = doc.data();
-  if (data.paid !== true || tariffFamily(data) !== family) return null;
-  const monthlyLimit = tariffMonthlyLimit(data);
-  if (!monthlyLimit) return null;
-  return { ref: doc.ref, data, monthlyLimit };
+  const memberships = snap.docs
+    .map((doc) => ({ ref: doc.ref, data: doc.data() }))
+    .filter(({ data }) => data.paid === true && tariffFamily(data) === family)
+    .map((membership) => ({ ...membership, monthlyLimit: tariffMonthlyLimit(membership.data) }))
+    .filter((membership) => membership.monthlyLimit)
+    .sort((first, second) => {
+      const firstUpdated = first.data.updatedAt?.toMillis?.() || first.data.createdAt?.toMillis?.() || 0;
+      const secondUpdated = second.data.updatedAt?.toMillis?.() || second.data.createdAt?.toMillis?.() || 0;
+      return secondUpdated - firstUpdated;
+    });
+  return memberships[0] || null;
 }
 
 function scheduledSlots(family, customSlots) {
@@ -199,7 +205,7 @@ exports.checkNestSignupEmail = functions.https.onCall(async (data) => {
     const history = await db.collection('athlete_pilates_months')
       .where('athleteId', '==', athlete.id)
       .get();
-    const hasNestTariff = history.docs.some((doc) => tariffFamily(doc.data().tariff));
+    const hasNestTariff = familiesFromHistory(history.docs.map((doc) => doc.data()), athlete.data()).length > 0;
     return hasNestTariff
       ? { eligible: true }
       : { eligible: false, reason: 'missing-family' };
