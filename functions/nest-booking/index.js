@@ -465,6 +465,10 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
       capacity: CAPACITY,
       reservedCount: sessionSnap.exists ? Number(sessionSnap.data().reservedCount || 0) : 0,
       isBooked: Boolean(bookingSnap?.exists && bookingSnap.data().status === 'BOOKED'),
+      myBookingStatus: bookingSnap?.exists ? bookingSnap.data().status || null : null,
+      myAttended: Boolean(bookingSnap?.exists && bookingSnap.data().attended),
+      myAttendanceMarked: Boolean(bookingSnap?.exists &&
+        (bookingSnap.data().attended === true || bookingSnap.data().attendedAt)),
       attendees: (attendeesBySession.get(session.id) || [])
         .sort((first, second) => first.name.localeCompare(second.name, 'es')),
       canBook: Boolean(membership && startAt.getTime() > Date.now() && monthlyUsed < membership.monthlyLimit),

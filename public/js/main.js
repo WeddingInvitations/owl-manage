@@ -52,7 +52,7 @@ import {
   renderPilatesCsvMonthOptions,
   importPilatesAthletesFromCsv,
   renderFilteredPilatesList,
-} from "./pilates.js?v=20261110b";
+} from "./pilates.js?v=20261110c";
 import {
   addPayment,
   addExpense,
@@ -165,7 +165,7 @@ import {
   loadOrdersForMonth,
   addEmployeePayment,
   loadEmployeePayments,
-} from "./data.js?v=20261014c";
+} from "./data.js?v=20261110c";
 
 import { createUserWithRole } from "./admin.js";
 

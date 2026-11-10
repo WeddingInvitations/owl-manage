@@ -148,6 +148,7 @@ function createClassCard(session, family) {
   const card = element("article", "nest-booking-session");
   card.classList.toggle("is-full", session.reservedCount >= session.capacity);
   card.classList.toggle("is-booked", session.isBooked);
+  card.classList.toggle("is-past", session.past);
   card.append(element("strong", "nest-booking-session-time", `${session.startTime}–${session.endTime}`));
 
   const capacity = element("div", "nest-booking-capacity");
@@ -161,7 +162,14 @@ function createClassCard(session, family) {
 
   const full = session.reservedCount >= session.capacity;
   const isInstructor = session.canManageRoster;
-  if (session.isBooked) {
+  if (session.past && session.myBookingStatus === "BOOKED") {
+    const attendanceMessage = session.myAttendanceMarked
+      ? (session.myAttended ? "Asististe a esta clase" : "Asistencia: no asististe")
+      : "Asistencia pendiente de confirmar";
+    card.append(element("p", "nest-booking-message nest-booking-history-status", attendanceMessage));
+  } else if (session.past && session.myBookingStatus === "CANCELLED") {
+    card.append(element("p", "nest-booking-message", "Cancelaste esta clase"));
+  } else if (session.isBooked) {
     card.append(element("p", "nest-booking-message", "Tu plaza está reservada"));
     const cancel = element("button", "button button-secondary nest-booking-action", "Cancelar");
     cancel.type = "button";
@@ -215,6 +223,8 @@ function createClassCard(session, family) {
       }
     });
     card.append(book);
+  } else if (session.past) {
+    card.append(element("p", "nest-booking-message nest-booking-history-status", "No tenías una reserva para esta clase"));
   } else if (!session.activeForMonth && !session.canManageRoster) {
     card.append(element("p", "nest-booking-message", "Necesitas una mensualidad pagada este mes."));
   } else if (full) {
@@ -396,7 +406,7 @@ async function refreshFamily(family) {
       return getMonthSessions(family, new Date(year, month - 1, 1, 12));
     }));
     if (currentRequest !== requestNumber[family]) return;
-    const sessions = weekSessionsByMonth.flat().filter((item) => item.isBooked || !item.past || item.canManageRoster);
+    const sessions = weekSessionsByMonth.flat();
     renderMiniMonth(family, monthSessions, selectedDate);
     renderWeekDaySelector(family, selectedDate, sessions);
     renderMobileDay(family, selectedDate, sessions);

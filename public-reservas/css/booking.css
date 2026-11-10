@@ -14,6 +14,7 @@
 .booking-content .nest-booking-session { display:flex; flex-direction:column; gap:.5rem; padding:.7rem; margin:0 0 .65rem; border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border)); border-left:3px solid var(--accent-strong); border-radius:9px; background:color-mix(in srgb,var(--accent) 7%,var(--surface)); }
 .booking-content .nest-booking-session.is-booked { border-color:color-mix(in srgb,var(--success) 55%,var(--border)); border-left-color:var(--success); background:color-mix(in srgb,var(--success) 9%,var(--surface)); }
 .booking-content .nest-booking-session.is-full { border-color:var(--border); border-left-color:var(--muted-2); background:color-mix(in srgb,var(--surface-raised) 65%,var(--surface)); }
+.booking-content .nest-booking-session.is-past { border-left-color:var(--muted-2); }
 .booking-content .nest-booking-session-time { color:var(--text); font-size:.94rem; font-weight:750; font-variant-numeric:tabular-nums; }
 .booking-content .nest-booking-capacity { display:flex; flex-direction:column; gap:.3rem; }
 .booking-content .nest-booking-seats { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); justify-items:center; gap:2px; width:100%; }
@@ -25,6 +26,7 @@
 .booking-content .nest-booking-avatar-plus { font-size:.9rem; line-height:1; }
 .booking-content .nest-booking-capacity-label { color:var(--muted); font-size:.72rem; font-variant-numeric:tabular-nums; }
 .booking-content .nest-booking-message { margin:0; color:var(--muted); font-size:.75rem; line-height:1.35; }
+.booking-content .nest-booking-history-status { padding:.42rem .55rem; border-radius:7px; background:color-mix(in srgb,var(--surface-raised) 68%,var(--surface)); color:var(--text); font-weight:600; }
 .booking-content .nest-booking-action { width:100%; min-height:34px; padding:.4rem .55rem; font-size:.76rem; }
 .booking-content .nest-booking-roster { display:grid; gap:.4rem; padding-top:.4rem; }
 .booking-content .nest-booking-attendee { display:flex; align-items:center; gap:.5rem; color:var(--text); font-size:.8rem; }

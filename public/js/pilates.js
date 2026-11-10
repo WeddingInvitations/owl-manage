@@ -59,10 +59,11 @@ function getPilatesFamilyForTariff(tariff) {
 }
 
 function familyForMonthlyRecord(record) {
+  if (record?.family === "pilates" || record?.family === "barre") return record.family;
   const tariff = String(extractPilatesTariff(record) || "").trim().toLowerCase();
   if (tariff.includes("barre")) return "barre";
   if (tariff.includes("reformer")) return "pilates";
-  return record?.family === "pilates" || record?.family === "barre" ? record.family : null;
+  return null;
 }
 
 function groupMonthlyRecordsByFamily(records) {
