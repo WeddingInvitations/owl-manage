@@ -59,27 +59,28 @@ function getPilatesFamilyForTariff(tariff) {
 }
 
 function familyForMonthlyRecord(record) {
-  if (record?.family === "pilates" || record?.family === "barre") return record.family;
   const tariff = String(extractPilatesTariff(record) || "").trim().toLowerCase();
   if (tariff.includes("barre")) return "barre";
   if (tariff.includes("reformer")) return "pilates";
-  return null;
+  return record?.family === "pilates" || record?.family === "barre" ? record.family : null;
 }
 
 function groupMonthlyRecordsByFamily(records) {
   const grouped = new Map();
   records.forEach((record) => {
     const family = familyForMonthlyRecord(record);
-    if (family) grouped.set(`${record.athleteId}__${family}`, record);
-    else grouped.set(`${record.athleteId}__legacy`, record);
+    if (!family) return;
+    const key = `${record.athleteId}__${family}`;
+    const existing = grouped.get(key);
+    const currentTimestamp = record.updatedAt?.toMillis?.() || record.createdAt?.toMillis?.() || 0;
+    const existingTimestamp = existing?.updatedAt?.toMillis?.() || existing?.createdAt?.toMillis?.() || 0;
+    if (!existing || currentTimestamp >= existingTimestamp) grouped.set(key, record);
   });
   return grouped;
 }
 
 function getMonthlyRecordForFamily(recordsByFamily, athleteId, family = activePilatesFamily) {
-  return recordsByFamily.get(`${athleteId}__${family}`)
-    || recordsByFamily.get(`${athleteId}__legacy`)
-    || null;
+  return recordsByFamily.get(`${athleteId}__${family}`) || null;
 }
 
 function getHistoryForFamily(history, family = activePilatesFamily) {

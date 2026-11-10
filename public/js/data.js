@@ -16,6 +16,7 @@ import {
   deleteDoc,
   Timestamp,
   runTransaction,
+  writeBatch,
   limit,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { functions } from "./firebase.js";
@@ -1994,36 +1995,43 @@ export async function upsertPilatesAthleteMonth(athleteId, month, payload, userI
       where("month", "==", month)
     )
   );
+  const recordFamily = (data) => {
+    const storedTariff = String(data.tariff || data.tarifa || data.plan || data.idTarifa || "").trim().toLowerCase();
+    if (storedTariff.includes("barre")) return "barre";
+    if (storedTariff.includes("reformer")) return "pilates";
+    return ["pilates", "barre"].includes(data.family) ? data.family : "";
+  };
   const matchingRecords = snap.docs.filter((docSnap) => {
     const data = docSnap.data();
-    const recordTariff = String(data.tariff || data.tarifa || data.plan || "").trim().toLowerCase();
-    const recordFamily = data.family || (recordTariff.includes("barre")
-      ? "barre"
-      : recordTariff.includes("reformer")
-        ? "pilates"
-        : "");
-    return recordFamily === family;
+    return recordFamily(data) === family;
   });
-  const existing = matchingRecords[matchingRecords.length - 1] || null;
+  const canonicalId = `${athleteId}__${month}__${family}`;
+  const canonicalRef = doc(db, "athlete_pilates_months", canonicalId);
+  const canonicalExisting = matchingRecords.find((docSnap) => docSnap.id === canonicalId);
+  const legacyRecords = matchingRecords.filter((docSnap) => docSnap.id !== canonicalId);
+  const mostRecentLegacy = [...legacyRecords].sort((first, second) => {
+    const firstAt = first.data().updatedAt?.toMillis?.() || first.data().createdAt?.toMillis?.() || 0;
+    const secondAt = second.data().updatedAt?.toMillis?.() || second.data().createdAt?.toMillis?.() || 0;
+    return secondAt - firstAt;
+  })[0];
+  const previous = canonicalExisting?.data() || mostRecentLegacy?.data() || {};
 
-  let monthRecordId = existing?.id || "";
-  if (existing) {
-    await updateDoc(existing.ref, {
-      family,
-      ...payload,
-      updatedAt: serverTimestamp(),
-      updatedBy: userId || null,
-    });
-  } else {
-    const created = await addDoc(collection(db, "athlete_pilates_months"), {
-      athleteId,
-      month,
-      family,
-      ...payload,
-      createdAt: serverTimestamp(),
-      createdBy: userId || null,
-    });
-    monthRecordId = created.id;
+  await setDoc(canonicalRef, {
+    ...previous,
+    athleteId,
+    month,
+    family,
+    ...payload,
+    createdAt: previous.createdAt || serverTimestamp(),
+    createdBy: previous.createdBy || userId || null,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId || null,
+  }, { merge: true });
+
+  if (legacyRecords.length) {
+    const batch = writeBatch(db);
+    legacyRecords.forEach((docSnap) => batch.delete(docSnap.ref));
+    await batch.commit();
   }
 
   await updateDoc(doc(db, "athletes_pilates", athleteId), {
@@ -2031,7 +2039,7 @@ export async function upsertPilatesAthleteMonth(athleteId, month, payload, userI
     updatedAt: serverTimestamp(),
     updatedBy: userId || null,
   });
-  return monthRecordId;
+  return canonicalId;
 }
 
 export async function getPilatesAthleteMonthsForMonth(month) {

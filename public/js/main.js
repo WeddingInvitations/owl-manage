@@ -52,7 +52,7 @@ import {
   renderPilatesCsvMonthOptions,
   importPilatesAthletesFromCsv,
   renderFilteredPilatesList,
-} from "./pilates.js?v=20261110a";
+} from "./pilates.js?v=20261110b";
 import {
   addPayment,
   addExpense,
