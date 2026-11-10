@@ -73,16 +73,28 @@ async function assertFamilyAccess(profile, family) {
   fail('permission-denied', 'No tienes permiso para acceder a esta disciplina.');
 }
 
-function tariffFamily(tariff) {
-  const value = String(tariff || '').toLowerCase();
+function tariffValue(record) {
+  if (typeof record === 'string') return record;
+  return record?.tariff || record?.tarifa || record?.plan || record?.idTarifa || record?.family || '';
+}
+
+function tariffFamily(record) {
+  const value = String(tariffValue(record) || '').toLowerCase();
   if (value.includes('barre')) return 'barre';
   if (value.includes('reformer')) return 'pilates';
   return null;
 }
 
-function tariffMonthlyLimit(tariff) {
-  const match = String(tariff || '').match(/(?:reformer|barre)\s+(4|8|12)/i);
+function tariffMonthlyLimit(record) {
+  const match = String(tariffValue(record) || '').match(/(?:reformer|barre)\s+(4|8|12)/i);
   return match ? Number(match[1]) : null;
+}
+
+function familiesFromHistory(records, athlete = {}) {
+  const families = new Set((records || []).map((record) => tariffFamily(record)).filter(Boolean));
+  const athleteFamily = tariffFamily(athlete);
+  if (athleteFamily) families.add(athleteFamily);
+  return Array.from(families);
 }
 
 function sessionId(family, dateKey, slotId) {
@@ -126,8 +138,8 @@ async function findMonthlyMembership(athleteId, family, month) {
   if (snap.empty) return null;
   const doc = snap.docs[0];
   const data = doc.data();
-  if (data.paid !== true || tariffFamily(data.tariff) !== family) return null;
-  const monthlyLimit = tariffMonthlyLimit(data.tariff);
+  if (data.paid !== true || tariffFamily(data) !== family) return null;
+  const monthlyLimit = tariffMonthlyLimit(data);
   if (!monthlyLimit) return null;
   return { ref: doc.ref, data, monthlyLimit };
 }
@@ -277,9 +289,7 @@ exports.registerNestPortalAccount = functions.https.onCall(async (_data, context
   const monthHistory = await db.collection('athlete_pilates_months')
     .where('athleteId', '==', athletes[0].id)
     .get();
-  const nestFamilies = Array.from(new Set(monthHistory.docs
-    .map((doc) => tariffFamily(doc.data().tariff))
-    .filter(Boolean)));
+  const nestFamilies = familiesFromHistory(monthHistory.docs.map((doc) => doc.data()), athlete);
   if (!nestFamilies.length) {
     fail('failed-precondition', 'La ficha todavía no tiene una tarifa de Pilates o Barre. Contacta con recepción.');
   }
@@ -329,9 +339,7 @@ exports.refreshNestPortalAccess = functions.https.onCall(async (_data, context) 
     const history = await db.collection('athlete_pilates_months')
       .where('athleteId', '==', profile.athleteId)
       .get();
-    const families = Array.from(new Set(history.docs
-      .map((doc) => tariffFamily(doc.data().tariff))
-      .filter(Boolean)));
+    const families = familiesFromHistory(history.docs.map((doc) => doc.data()), athlete);
     if (!families.length) {
       await profileRef.update({ role: 'PENDING', nestFamilies: [] });
       return { role: 'PENDING', nestFamilies: [] };
@@ -512,10 +520,10 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
       transaction.get(membership.ref), transaction.get(athlete.ref),
     ]);
     const activeMonthlyLimit = membershipSnap.exists
-      ? tariffMonthlyLimit(membershipSnap.data().tariff)
+      ? tariffMonthlyLimit(membershipSnap.data())
       : null;
     if (!membershipSnap.exists || membershipSnap.data().paid !== true ||
-        tariffFamily(membershipSnap.data().tariff) !== family || !activeMonthlyLimit) {
+        tariffFamily(membershipSnap.data()) !== family || !activeMonthlyLimit) {
       fail('failed-precondition', 'La mensualidad ya no está activa para este mes.');
     }
     if (!athleteSnap.exists || (staffBooking

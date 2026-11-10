@@ -29,7 +29,7 @@ La ficha se asocia a la cuenta por email; la reserva no se autoriza solo por ten
 5. La tarifa mensual establece el máximo de reservas de ese mes: **Reformer/Barre 4, 8 o 12**. Una cancelación hecha al menos **2 horas antes** de empezar libera la plaza y devuelve una sesión al límite mensual.
 6. Si la clase está completa, no se puede reservar. No hay lista de espera en esta primera versión.
 
-En móvil, la reserva muestra un mini calendario mensual con marcas en los días reservados, una tira para elegir el día de la semana y debajo las clases de ese día. Cada clase presenta sus seis plazas como avatares: al reservar, se ocupa una plaza; las vacías quedan disponibles. Si una alumna no tiene foto, se muestra la inicial de su nombre.
+En móvil, la reserva muestra un mini calendario mensual laboral (lunes a viernes) con marcas en los días reservados, una tira de los cinco días laborables y debajo las clases del día elegido. En ordenador, la semana también aparece de lunes a viernes en cinco columnas. Cada clase presenta sus seis plazas como avatares: al reservar, se ocupa una plaza; las vacías quedan disponibles. Si una alumna no tiene foto, se muestra la inicial de su nombre.
 
 Cada persona puede abrir **Mi perfil** y añadir o quitar su foto. La imagen se reduce en el dispositivo y se guarda en su perfil; no es necesario subirla para poder reservar.
 
