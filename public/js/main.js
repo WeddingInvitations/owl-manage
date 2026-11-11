@@ -41,6 +41,7 @@ import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/fireb
 import { initializeCaja, initializeInventory } from "./caja.js?v=20260622a";
 import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js?v=20261104a";
 import { initializeNestCalendar } from "./nest-calendar.js?v=20261111b";
+import { initializeDiscountFilters, matchesListDiscountReason } from "./discount-filter.mjs";
 import { initializeNestBookings, refreshNestBookings } from "./nest-booking.js?v=20261109b";
 import {
   initializePilates,
@@ -52,7 +53,7 @@ import {
   renderPilatesCsvMonthOptions,
   importPilatesAthletesFromCsv,
   renderFilteredPilatesList,
-} from "./pilates.js?v=20261110c";
+} from "./pilates.js?v=20261111discount1";
 import {
   addPayment,
   addExpense,
@@ -1050,6 +1051,7 @@ function filterAndRenderAthleteList() {
     if (athletePaidFilter === "SI" && !paid) return;
     if (athletePaidFilter === "NO" && paid) return;
     if (athleteTariffFilter !== "ALL" && tariff !== athleteTariffFilter) return;
+    if (!matchesListDiscountReason("athlete", discountReason)) return;
     visibleCount += 1;
     const planDuration = plan.durationMonths || 1;
     const planLabel = planDuration === 1 ? "Mensual" : planDuration === 3 ? "Trimestral" : planDuration === 6 ? "Semestral" : "Anual";
@@ -1606,6 +1608,7 @@ function filterAndRenderAcroList() {
     const paymentMethod = current?.paymentMethod || previous?.paymentMethod || lastPaid?.paymentMethod || "Efectivo";
     if (acroPaidFilter === "SI" && !paid) return;
     if (acroPaidFilter === "NO" && paid) return;
+    if (!matchesListDiscountReason("acro", discountReason)) return;
     visibleCount += 1;
     const planDuration = plan.durationMonths || 1;
     const row = document.createElement("tr");
@@ -1740,6 +1743,7 @@ function filterAndRenderAcroKidsList() {
     const paymentMethod = current?.paymentMethod || previous?.paymentMethod || lastPaid?.paymentMethod || "Efectivo";
     if (acroKidsPaidFilter === "SI" && !paid) return;
     if (acroKidsPaidFilter === "NO" && paid) return;
+    if (!matchesListDiscountReason("acroKids", discountReason)) return;
     visibleCount += 1;
     const planDuration = plan.durationMonths || 1;
     const row = document.createElement("tr");
@@ -2788,6 +2792,7 @@ function filterAndRenderHalteList() {
     const paymentMethod = current?.paymentMethod || previous?.paymentMethod || lastPaid?.paymentMethod || "Efectivo";
     if (haltePaidFilter === "SI" && !paid) return;
     if (haltePaidFilter === "NO" && paid) return;
+    if (!matchesListDiscountReason("halte", discountReason)) return;
     visibleCount += 1;
     const planDuration = plan.durationMonths || 1;
     const row = document.createElement("tr");
@@ -3190,6 +3195,7 @@ function filterAndRenderTelasList() {
   if (!telasListCacheData || !ui.telasList) return;
   const { allSortedEntries } = telasListCacheData;
   let filtered = allSortedEntries;
+  filtered = filtered.filter((entry) => matchesListDiscountReason("telas", entry.discountReason));
   if (telasPaidFilter === "SI") {
     filtered = filtered.filter((e) => e.paid);
   } else if (telasPaidFilter === "NO") {
@@ -3531,6 +3537,8 @@ async function importSingleClassesAthletesFromCsv(file, monthKey) {
   });
 }
 
+let singleClassesListCacheData = null;
+
 async function refreshSingleClassesMonthly() {
   const monthKey = selectedSingleClassesListMonth;
   if (!monthKey || !ui.singleClassesList) return;
@@ -3595,7 +3603,16 @@ async function refreshSingleClassesMonthly() {
     return timeB - timeA;
   });
 
+  singleClassesListCacheData = { entries, athleteHistory, monthKey, allAthletes };
+  filterAndRenderSingleClassesList();
+}
+
+function filterAndRenderSingleClassesList() {
+  if (!singleClassesListCacheData || !ui.singleClassesList) return;
+  const { entries, athleteHistory, monthKey, allAthletes } = singleClassesListCacheData;
+  ui.singleClassesList.innerHTML = "";
   let filtered = entries;
+  filtered = filtered.filter((entry) => matchesListDiscountReason("singleClasses", entry.discountReason));
   if (singleClassesPaidFilter === "PAID") {
     filtered = filtered.filter((e) => e.paid);
   } else if (singleClassesPaidFilter === "UNPAID") {
@@ -8429,6 +8446,16 @@ on(ui.athleteTariffFilter, "change", (event) => {
 on(ui.athletePaidFilter, "change", (event) => {
   athletePaidFilter = event.target.value;
   filterAndRenderAthleteList();
+});
+
+initializeDiscountFilters({
+  athlete: filterAndRenderAthleteList,
+  acro: filterAndRenderAcroList,
+  acroKids: filterAndRenderAcroKidsList,
+  halte: filterAndRenderHalteList,
+  telas: filterAndRenderTelasList,
+  singleClasses: filterAndRenderSingleClassesList,
+  pilates: () => renderFilteredPilatesList(pilatesSearchTerm, pilatesPaidFilter),
 });
 
 document.querySelectorAll("[data-more-filters-button]").forEach((button) => {

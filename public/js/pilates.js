@@ -1,5 +1,6 @@
 import { ui, formatCurrency } from "./ui.js";
 import { normalizeSearchText } from "./search.js";
+import { matchesListDiscountReason } from "./discount-filter.mjs";
 import {
   getPilatesAthletes,
   getPilatesAthleteMonthsForMonth,
@@ -580,6 +581,7 @@ function filterAndRenderPilatesList(searchTerm, paidFilter) {
     const paymentMethod = current?.paymentMethod || previous?.paymentMethod || lastPaid?.paymentMethod || "Efectivo";
     if (paidFilter === "SI" && !paid) return;
     if (paidFilter === "NO" && paid) return;
+    if (!matchesListDiscountReason("pilates", discountReason)) return;
 
     visibleCount += 1;
     const row = document.createElement("tr");
