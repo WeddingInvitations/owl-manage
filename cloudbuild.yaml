@@ -14,18 +14,25 @@ steps:
 
   # Firebase CLI uses Application Default Credentials from the build service account.
   # Explicit project/targets avoid relying on an interactive Firebase login or alias.
-  - id: deploy-firebase
+  - id: deploy-firestore
     name: node:22-bookworm
-    entrypoint: npx
-    args:
-      - --yes
-      - firebase-tools@14.22.0
-      - deploy
-      - --project
-      - owl-manage
-      - --only
-      - firestore,functions,hosting:owlmanage,hosting:nest-reservas
-      - --non-interactive
+    entrypoint: bash
+    args: ["scripts/deploy-firebase.sh", "firestore"]
+
+  - id: deploy-functions
+    name: node:22-bookworm
+    entrypoint: bash
+    args: ["scripts/deploy-firebase.sh", "functions"]
+
+  - id: deploy-hosting
+    name: node:22-bookworm
+    entrypoint: bash
+    args: ["scripts/deploy-firebase.sh", "hosting:owlmanage,hosting:nest-reservas"]
+
+  - id: verify-published-hosting
+    name: node:22-bookworm
+    entrypoint: node
+    args: ["scripts/verify-hosting.mjs"]
 
   # Keep publishing the existing OwlManage App Engine endpoint too.
   - id: deploy-app-engine
