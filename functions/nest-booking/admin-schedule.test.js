@@ -48,7 +48,10 @@ function setup(role = 'OWNER', entries = {}) {
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8'), {
     exports: exported,
     require(name) {
-      if (name === 'firebase-functions') return { https: { onCall: (handler) => handler, HttpsError } };
+      if (name === 'firebase-functions') {
+        const https = { onCall: (handler) => handler, HttpsError };
+        return { https, runWith: (options) => { assert.equal(options.invoker, 'public'); return { https }; } };
+      }
       if (name === 'firebase-admin') {
         const firestore = () => db;
         firestore.FieldValue = { serverTimestamp: () => 'timestamp' };
@@ -160,4 +163,35 @@ test('rejects stale schedule version rather than overwriting another manager', a
   const { handlers, records } = setup('OWNER', withReservation());
   await assert.rejects(handlers.saveNestAdminSchedule({ family: 'pilates', slots: [slot], version: 2 }, context), { code: 'aborted' });
   assert.equal(records.get(configKey).version, 3);
+});
+
+test('protects active bookings even if their session document is missing', async () => {
+  const entries = withReservation();
+  delete entries['nest_class_sessions/session'];
+  const { handlers } = setup('OWNER', entries);
+  await assert.rejects(handlers.saveNestAdminSchedule({ family: 'pilates', slots: [], version: 3 }, context), { code: 'failed-precondition' });
+});
+
+test('edits time, weekdays and capacity of an unreserved class', async () => {
+  const { handlers, records } = setup('OWNER', { [configKey]: { slots: [slot], version: 1 } });
+  await handlers.saveNestAdminSchedule({ family: 'pilates', slots: [{ ...slot, daysOfWeek: [5], startTime: '21:00', capacity: 12 }], version: 1 }, context);
+  const saved = records.get(configKey).slots[0];
+  assert.equal(saved.startTime, '21:00');
+  assert.equal(saved.daysOfWeek[0], 5);
+  assert.equal(saved.capacity, 12);
+});
+
+test('deletes an unreserved class and reloads the remaining schedule', async () => {
+  const { handlers } = setup('OWNER', { [configKey]: { slots: [slot], version: 1 } });
+  await handlers.saveNestAdminSchedule({ family: 'pilates', slots: [], version: 1 }, context);
+  const result = await handlers.getNestAdminSchedule({ family: 'pilates' }, context);
+  assert.equal(result.slots.length, 0);
+  assert.equal(result.version, 2);
+});
+
+test('editing Barre leaves Pilates configuration unchanged', async () => {
+  const { handlers, records } = setup('OWNER', { [configKey]: { slots: [slot], version: 1 } });
+  await handlers.saveNestAdminSchedule({ family: 'barre', slots: [slot], version: 0 }, context);
+  assert.equal(records.get(configKey).version, 1);
+  assert.equal(records.get('nest_calendar/barre__booking-slots').version, 1);
 });

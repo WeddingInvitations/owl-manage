@@ -186,7 +186,8 @@ async function requireNestStaff(uid) {
   return profile;
 }
 
-exports.getNestAdminSchedule = functions.https.onCall(async (data, context) => {
+// HTTP must accept browser preflight; Firebase Auth and staff roles are checked below.
+exports.getNestAdminSchedule = functions.runWith({ invoker: 'public' }).https.onCall(async (data, context) => {
   const uid = requireAuth(context);
   const family = validateFamily(data.family);
   await requireNestStaff(uid);
@@ -196,7 +197,7 @@ exports.getNestAdminSchedule = functions.https.onCall(async (data, context) => {
   });
 });
 
-exports.saveNestAdminSchedule = functions.https.onCall(async (data, context) => {
+exports.saveNestAdminSchedule = functions.runWith({ invoker: 'public' }).https.onCall(async (data, context) => {
   const uid = requireAuth(context);
   const family = validateFamily(data.family);
   await requireNestStaff(uid);
@@ -223,18 +224,20 @@ exports.saveNestAdminSchedule = functions.https.onCall(async (data, context) => 
       transaction.get(db.collection('nest_bookings').where('family', '==', family)),
     ]);
     const activeBookingCounts = new Map();
+    const protectedSessions = new Map(allSessions.docs.map((sessionDoc) => [sessionDoc.id, sessionDoc.data()]));
     allBookings.docs.forEach((bookingDoc) => {
       const booking = bookingDoc.data();
       if (booking.family !== family || booking.status !== 'BOOKED' || booking.dateKey < todayKey) return;
-      activeBookingCounts.set(booking.sessionId, (activeBookingCounts.get(booking.sessionId) || 0) + 1);
+      const id = booking.sessionId || sessionId(family, booking.dateKey, booking.slotId);
+      activeBookingCounts.set(id, (activeBookingCounts.get(id) || 0) + 1);
+      if (!protectedSessions.has(id)) protectedSessions.set(id, { ...booking, reservedCount: 0 });
     });
 
-    for (const sessionDoc of allSessions.docs) {
-      const session = sessionDoc.data();
+    for (const [id, session] of protectedSessions) {
       if (session.family !== family || session.dateKey < todayKey) continue;
       const reservedCount = Math.max(
         Number(session.reservedCount || 0),
-        activeBookingCounts.get(sessionDoc.id) || 0
+        activeBookingCounts.get(id) || 0
       );
       if (!reservedCount) continue;
       const replacement = nextById.get(session.slotId);

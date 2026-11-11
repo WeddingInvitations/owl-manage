@@ -81,6 +81,9 @@ function showMessage(node, message, isError = false) {
 }
 
 function getCallableMessage(error) {
+  if (["functions/internal", "functions/unavailable", "functions/deadline-exceeded"].includes(error?.code)) {
+    return "No se pudo conectar con el servidor. Reintenta; si persiste, comprueba el despliegue y el permiso de invocación de la función.";
+  }
   return error?.message?.replace(/^FirebaseError:\s*/i, "") || "No se pudo completar la operación.";
 }
 
@@ -294,6 +297,22 @@ function readAdminDraft() {
   }));
 }
 
+function validateAdminDraft(slots) {
+  if (slots.length > 40) throw new Error("El horario admite como máximo 40 clases semanales.");
+  const occupied = new Set();
+  for (const slot of slots) {
+    if (!slot.daysOfWeek.length) throw new Error(`Selecciona al menos un día para la clase de las ${slot.startTime}.`);
+    if (!Number.isInteger(slot.capacity) || slot.capacity < 1 || slot.capacity > 30) {
+      throw new Error(`El aforo de la clase de las ${slot.startTime} debe ser un entero entre 1 y 30.`);
+    }
+    for (const day of slot.daysOfWeek) {
+      const key = `${day}__${slot.startTime}`;
+      if (occupied.has(key)) throw new Error(`Hay dos clases el mismo día a las ${slot.startTime}. Corrige el horario.`);
+      occupied.add(key);
+    }
+  }
+}
+
 function setAdminBusy(busy) {
   adminScheduleBusy = busy;
   ui.scheduleAdminModal.querySelectorAll("button, input, select").forEach((control) => {
@@ -395,12 +414,21 @@ async function loadAdminSchedule(family) {
   adminScheduleDirty = false;
   adminScheduleLoaded = false;
   adminSlots = [];
+  ui.scheduleAdminAddForm.reset();
+  ui.scheduleAdminFamilies.querySelectorAll("[data-admin-family]").forEach((button) => {
+    const selected = button.dataset.adminFamily === family;
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-selected", String(selected));
+  });
   renderAdminSlots();
   ui.scheduleAdminMessage.textContent = "Cargando horario…";
   ui.scheduleAdminMessage.classList.remove("is-error");
   setAdminBusy(true);
   try {
     const result = await getNestAdminSchedule({ family });
+    if (!Array.isArray(result.data?.slots) || !Number.isInteger(result.data.version)) {
+      throw new Error("La función de administración no devuelve un horario válido. Comprueba que está desplegada la versión actual.");
+    }
     adminScheduleVersion = result.data.version;
     adminScheduleLoaded = true;
     adminSlots = (result.data.slots || []).map((slot) => ({
@@ -445,6 +473,10 @@ function closeAdminSchedule() {
 ui.scheduleAdminOpen.addEventListener("click", openAdminSchedule);
 ui.scheduleAdminClose.addEventListener("click", closeAdminSchedule);
 ui.scheduleAdminCancel.addEventListener("click", closeAdminSchedule);
+$("scheduleAdminReload").addEventListener("click", () => {
+  if (adminScheduleDirty && !window.confirm("Hay cambios sin guardar. ¿Quieres descartarlos y recargar?")) return;
+  loadAdminSchedule(adminFamily);
+});
 ui.scheduleAdminModal.addEventListener("click", (event) => {
   if (event.target === ui.scheduleAdminModal) closeAdminSchedule();
 });
@@ -476,6 +508,12 @@ ui.scheduleAdminAddForm.addEventListener("submit", (event) => {
   const startTime = ui.scheduleAdminAddTime.value;
   const capacity = Number(ui.scheduleAdminAddCapacity.value);
   adminSlots = readAdminDraft();
+  try {
+    validateAdminDraft([...adminSlots, { daysOfWeek, startTime, capacity }]);
+  } catch (error) {
+    showMessage(ui.scheduleAdminMessage, error.message, true);
+    return;
+  }
   if (adminSlots.length >= 40 || adminSlots.some((slot) => slot.startTime === startTime &&
       daysOfWeek.some((day) => slot.daysOfWeek.includes(day)))) {
     showMessage(ui.scheduleAdminMessage, "Máximo 40 clases y una sola clase por día y hora.", true);
@@ -487,7 +525,7 @@ ui.scheduleAdminAddForm.addEventListener("submit", (event) => {
   adminSlots.push({ id: createId, daysOfWeek, startTime, capacity, active: true });
   adminScheduleDirty = true;
   renderAdminSlots();
-  ui.scheduleAdminAddForm.querySelectorAll('[name="dayOfWeek"]').forEach((checkbox) => { checkbox.checked = false; });
+  ui.scheduleAdminAddForm.reset();
   ui.scheduleAdminMessage.textContent = "Clase añadida al borrador. Pulsa «Guardar cambios» para aplicar.";
   ui.scheduleAdminMessage.classList.remove("is-error");
 });
@@ -495,13 +533,20 @@ ui.scheduleAdminSlots.addEventListener("input", () => { adminScheduleDirty = tru
 ui.scheduleAdminSlots.addEventListener("change", () => { adminScheduleDirty = true; });
 ui.scheduleAdminSave.addEventListener("click", async () => {
   if (adminScheduleBusy || !adminScheduleLoaded) return;
+  const slots = readAdminDraft();
+  try {
+    validateAdminDraft(slots);
+  } catch (error) {
+    showMessage(ui.scheduleAdminMessage, error.message, true);
+    return;
+  }
+  if (!slots.length && !window.confirm("Vas a eliminar todas las clases semanales de esta disciplina. ¿Guardar el horario vacío?")) return;
   const saveButton = ui.scheduleAdminSave;
   const oldText = saveButton.textContent;
   setAdminBusy(true);
   ui.scheduleAdminMessage.textContent = "Guardando horario…";
   ui.scheduleAdminMessage.classList.remove("is-error");
   try {
-    const slots = readAdminDraft();
     const result = await saveNestAdminSchedule({ family: adminFamily, slots, version: adminScheduleVersion });
     adminScheduleVersion = result.data.version;
     adminSlots = result.data.slots;
