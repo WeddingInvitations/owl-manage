@@ -1,7 +1,37 @@
 steps:
-  - name: gcr.io/cloud-builders/gcloud
+  - id: validate-and-install-functions
+    name: node:22-bookworm
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        node --test functions/nest-booking/admin-schedule.test.js
+        node --check functions/index.js
+        node --check functions/nest-booking/index.js
+        node --check public-reservas/js/app.js
+        node --check public-reservas/js/booking.js
+        npm ci --prefix functions --no-audit --no-fund
+
+  # Firebase CLI uses Application Default Credentials from the build service account.
+  # Explicit project/targets avoid relying on an interactive Firebase login or alias.
+  - id: deploy-firebase
+    name: node:22-bookworm
+    entrypoint: npx
+    args:
+      - --yes
+      - firebase-tools@14.22.0
+      - deploy
+      - --project
+      - owl-manage
+      - --only
+      - firestore,functions,hosting:owlmanage,hosting:nest-reservas
+      - --non-interactive
+
+  # Keep publishing the existing OwlManage App Engine endpoint too.
+  - id: deploy-app-engine
+    name: gcr.io/cloud-builders/gcloud
     args: ["app", "deploy", "app.yaml", "--quiet"]
 
-timeout: "1200s"
+timeout: "3600s"
 options:
   logging: CLOUD_LOGGING_ONLY

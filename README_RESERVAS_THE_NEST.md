@@ -46,6 +46,21 @@ Cada persona puede abrir **Mi perfil** y añadir o quitar su foto. La imagen se 
 
 El código ya contempla las funciones de servidor, las vistas y las reglas de acceso; para utilizarlas en producción hay que desplegar Functions, reglas e índices de Firestore y Hosting. Además, hay que rellenar los emails de las alumnas existentes y dar acceso de disciplina a las profesoras en sus fichas.
 
+### Publicación automática al hacer push
+
+El trigger de Cloud Build conectado a la rama de despliegue debe usar [cloudbuild.yaml](cloudbuild.yaml). Con esa configuración, cada push que active el trigger:
+
+1. Ejecuta las pruebas de administración y comprueba la sintaxis de los módulos de reservas. Si fallan, se detiene sin publicar.
+2. Instala las dependencias de Functions desde su lockfile usando Node.js 22.
+3. Publica las reglas e índices de Firestore, todas las Cloud Functions y los dos targets de Firebase Hosting del proyecto **owl-manage**: **owlmanage** y **nest-reservas** (https://the-nest-reservas.web.app).
+4. Publica también OwlManage en App Engine, conservando el despliegue anterior.
+
+El proceso usa la cuenta de servicio del trigger de Cloud Build, sin contraseñas ni tokens Firebase en el repositorio. Esa cuenta debe tener permisos para desplegar Firebase Hosting, Firestore y Cloud Functions, usar las cuentas de servicio de ejecución y realizar el despliegue existente de App Engine. Estos permisos se configuran una vez en Google Cloud IAM; un push no los concede automáticamente. Las APIs correspondientes deben estar habilitadas.
+
+Si el build falla con un error de permisos, hay que revisar la cuenta indicada por el trigger y concederle únicamente los permisos necesarios. Si solicita confirmar la eliminación de funciones antiguas, se detendrá: no se fuerza su borrado automático.
+
+Un push no implica que el despliegue haya terminado correctamente. Comprueba que el build finalice con estado **Correcto** antes de probar la web publicada. Si el trigger usa otra configuración en lugar de este archivo, debe actualizarse en Cloud Build. Los recursos se publican por etapas: un fallo posterior no revierte los que ya se hayan desplegado.
+
 El calendario administrativo anterior conserva listas recurrentes de alumnas. Antes de activar las reservas para una clase, el personal debe contrastar esa lista con las reservas nuevas y acordar desde qué fecha se considera el aforo de seis plazas; el portal nuevo no convierte automáticamente las asignaciones antiguas en reservas individuales.
 
 No se deben dar permisos Firestore directos de lectura a las cuentas de alumnas/profesoras. Las reservas pasan por Cloud Functions para verificar identidad, mensualidad, cupo y límite del bono de forma atómica.
