@@ -169,6 +169,8 @@ function createClassCard(session, family) {
     card.append(element("p", "nest-booking-message nest-booking-history-status", attendanceMessage));
   } else if (session.past && session.myBookingStatus === "CANCELLED") {
     card.append(element("p", "nest-booking-message", "Cancelaste esta clase"));
+  } else if (session.past && session.myBookingStatus) {
+    card.append(element("p", "nest-booking-message nest-booking-history-status", "Esta clase quedó registrada en tu historial"));
   } else if (session.isBooked) {
     card.append(element("p", "nest-booking-message", "Tu plaza está reservada"));
     const cancel = element("button", "button button-secondary nest-booking-action", "Cancelar");
@@ -380,10 +382,12 @@ function renderMobileDay(family, selectedDate, sessions) {
   daySessions.forEach((session) => cards.append(createClassCard(session, family)));
 }
 
-async function refreshFamily(family) {
+async function refreshFamily(family, { focusSelectedDay = false } = {}) {
   const grid = document.querySelector(`[data-nest-booking-sessions="${family}"]`);
   const status = document.querySelector(`[data-nest-booking-status="${family}"]`);
   const label = document.querySelector(`[data-nest-booking-week="${family}"]`);
+  const dayRoot = document.querySelector(`[data-nest-day-view="${family}"]`);
+  const dayClasses = dayRoot?.querySelector("[data-nest-day-classes]");
   if (!grid || !auth.currentUser) return;
   const currentRequest = ++requestNumber[family];
   if (status) status.textContent = "Cargando horario…";
@@ -394,6 +398,10 @@ async function refreshFamily(family) {
   const end = new Date(start);
   end.setDate(start.getDate() + WEEKDAY_COUNT - 1);
   if (label) label.textContent = rangeLabel(start, end);
+  if (dayClasses) {
+    dayRoot.setAttribute("aria-busy", "true");
+    dayClasses.replaceChildren(element("p", "nest-booking-empty-day-detail is-loading", "Cargando las clases de este día…"));
+  }
   try {
     const monthSessions = await getMonthSessions(family, selectedDate);
     const weekMonthKeys = new Set(Array.from({ length: WEEKDAY_COUNT }, (_, index) => {
@@ -410,6 +418,14 @@ async function refreshFamily(family) {
     renderMiniMonth(family, monthSessions, selectedDate);
     renderWeekDaySelector(family, selectedDate, sessions);
     renderMobileDay(family, selectedDate, sessions);
+    if (focusSelectedDay && window.matchMedia("(max-width: 760px)").matches) {
+      requestAnimationFrame(() => {
+        document.querySelector(`[data-nest-day-view="${family}"]`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    }
     const todayKey = dateKey(dayAtNoon(0));
     const days = [];
     for (let index = 0; index < WEEKDAY_COUNT; index += 1) {
@@ -431,9 +447,13 @@ async function refreshFamily(family) {
       status.textContent = `${sessions.length} clases esta semana · ${bookedCount} reservas este mes`;
     }
   } catch (error) {
+    if (currentRequest !== requestNumber[family]) return;
     console.error(`Error loading ${family} reservations:`, error);
     if (status) status.textContent = error.message || "No se pudo cargar el horario.";
     grid.replaceChildren(element("p", "nest-booking-error", error.message || "No se pudo cargar el horario."));
+    if (dayClasses) dayClasses.replaceChildren(element("p", "nest-booking-error", error.message || "No se pudieron cargar las clases de este día."));
+  } finally {
+    if (currentRequest === requestNumber[family]) dayRoot?.removeAttribute("aria-busy");
   }
 }
 
@@ -457,21 +477,21 @@ export function initializeBookingSchedule() {
       const selected = dateFromKey(selectedDateKey[family]);
       selected.setDate(selected.getDate() + Number(shift.dataset.nestWeekShift || 0) * 7);
       selectedDateKey[family] = dateKey(selected);
-      refreshFamily(family);
+      refreshFamily(family, { focusSelectedDay: true });
       return;
     }
     const today = event.target.closest("[data-nest-week-today]");
     if (today) {
       const family = today.dataset.nestWeekToday;
       selectedDateKey[family] = dateKey(normalizeWorkday(dayAtNoon(0)));
-      refreshFamily(family);
+      refreshFamily(family, { focusSelectedDay: true });
       return;
     }
     const selectDate = event.target.closest("[data-nest-select-date]");
     if (selectDate) {
       const family = selectDate.dataset.nestSelectFamily;
       selectedDateKey[family] = dateKey(normalizeWorkday(dateFromKey(selectDate.dataset.nestSelectDate)));
-      refreshFamily(family);
+      refreshFamily(family, { focusSelectedDay: true });
       return;
     }
     const monthShift = event.target.closest("[data-nest-month-shift]");
@@ -484,7 +504,7 @@ export function initializeBookingSchedule() {
       const lastDay = new Date(selected.getFullYear(), selected.getMonth() + 1, 0).getDate();
       selected.setDate(Math.min(desiredDay, lastDay));
       selectedDateKey[family] = dateKey(normalizeWorkday(selected));
-      refreshFamily(family);
+      refreshFamily(family, { focusSelectedDay: true });
     }
   });
 }
@@ -532,5 +552,5 @@ export async function showBookingFamily(family) {
     <div class="nest-booking-sessions" data-nest-booking-sessions="${family}"></div>`;
   panel.append(title, section);
   initializeBookingSchedule();
-  await refreshFamily(family);
+  await refreshFamily(family, { focusSelectedDay: true });
 }

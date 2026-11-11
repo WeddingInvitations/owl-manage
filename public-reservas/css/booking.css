@@ -74,10 +74,14 @@
 
   .booking-content .nest-mobile-day-selector {
     display:flex;
+    position:sticky;
+    top:0;
+    z-index:5;
     gap:.4rem;
     overflow-x:auto;
     padding:.15rem .05rem .65rem;
     margin:0 -.1rem .35rem;
+    background:var(--page);
     scrollbar-width:none;
     overscroll-behavior-x:contain;
   }
@@ -92,7 +96,9 @@
   .nest-week-day.is-selected .nest-week-booking-dot { background:currentColor; }
 
   .booking-content .nest-mobile-day-view { min-height:180px; }
+  .booking-content .nest-mobile-day-view { display:block; scroll-margin-top:58px; width:100%; min-width:0; }
   .nest-mobile-day-view > h2 { margin:.25rem 0 .7rem; color:var(--text); font-size:1.04rem; text-transform:capitalize; }
-  .nest-mobile-day-view [data-nest-day-classes] { display:grid; gap:.6rem; }
+  .nest-mobile-day-view [data-nest-day-classes] { display:grid; width:100%; min-width:0; gap:.6rem; }
+  .nest-mobile-day-view .nest-booking-session { width:100%; min-width:0; }
   .nest-booking-empty-day-detail { padding:1.2rem 1rem; border:1px dashed var(--border); border-radius:12px; color:var(--muted); font-size:.82rem; text-align:center; }
 }

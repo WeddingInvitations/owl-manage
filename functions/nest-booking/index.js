@@ -404,6 +404,28 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
       sessionInputs.push({ id, dateKey, slotId: slot.id, startTime: slot.startTime, month: monthKey(dateKey) });
     }
   }
+  if (athlete) {
+    const ownBookings = await db.collection('nest_bookings')
+      .where('athleteId', '==', athlete.ref.id)
+      .get();
+    const sessionInputIds = new Set(sessionInputs.map((session) => session.id));
+    ownBookings.docs.forEach((booking) => {
+      const record = booking.data();
+      if (record.family !== family || !validDateKey(record.dateKey) ||
+          record.dateKey < startDate || record.dateKey > endDate ||
+          !['BOOKED', 'CANCELLED'].includes(record.status)) return;
+      const id = record.sessionId || sessionId(family, record.dateKey, record.slotId);
+      if (sessionInputIds.has(id) || !record.slotId || !record.startTime) return;
+      sessionInputs.push({
+        id,
+        dateKey: record.dateKey,
+        slotId: record.slotId,
+        startTime: record.startTime,
+        month: monthKey(record.dateKey),
+      });
+      sessionInputIds.add(id);
+    });
+  }
   const refs = sessionInputs.flatMap((session) => [
     db.collection('nest_class_sessions').doc(session.id),
     ...(athlete ? [db.collection('nest_bookings').doc(`${session.id}__${athlete.ref.id}`)] : []),
