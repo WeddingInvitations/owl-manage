@@ -9,8 +9,9 @@ import {
   updateNestCalendarRecurringEntry,
   getNestCalendarDateRangeData,
   getNestCalendarSlots,
+  getNestCalendarBookingSlots,
   createNestCalendarSlot,
-} from "./data.js?v=20261014c";
+} from "./data.js?v=20261111b";
 
 const schedules = {
   pilates: [
@@ -38,13 +39,14 @@ const dayLabels = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Vierne
 
 function slotFromRecord(record) {
   const hour = Number(record.startTime.slice(0, 2));
-  const endTime = `${String(hour + 1).padStart(2, "0")}:00`;
+  const endTime = `${String((hour + 1) % 24).padStart(2, "0")}:00`;
+  const daysOfWeek = record.daysOfWeek || [record.dayOfWeek];
   return {
     id: record.id,
-    daysOfWeek: [record.dayOfWeek],
+    daysOfWeek,
     startTime: record.startTime,
     endTime,
-    label: `${dayLabels[record.dayOfWeek]} ${record.startTime}-${endTime}`,
+    label: `${daysOfWeek.map((day) => dayLabels[day]).join(" y ")} ${record.startTime}-${endTime}`,
   };
 }
 
@@ -147,8 +149,13 @@ async function refreshVisibleRange() {
   if (!calendar) return;
   const requestedFamily = activeFamily;
   const requestNumber = ++refreshNumber;
-  const customSlots = await getNestCalendarSlots(requestedFamily);
-  const slots = [...schedules[requestedFamily], ...customSlots.map(slotFromRecord)];
+  const [configuredSlots, customSlots] = await Promise.all([
+    getNestCalendarBookingSlots(requestedFamily),
+    getNestCalendarSlots(requestedFamily),
+  ]);
+  const slots = configuredSlots
+    ? configuredSlots.filter((slot) => slot.active !== false).map(slotFromRecord)
+    : [...schedules[requestedFamily], ...customSlots.map(slotFromRecord)];
   const events = await buildEvents(calendar.view.activeStart, calendar.view.activeEnd, requestedFamily, slots);
   if (requestedFamily !== activeFamily || requestNumber !== refreshNumber) return;
   visibleSlots = slots;
@@ -350,9 +357,15 @@ async function addWeeklyClass(event) {
   }
   ui.nestCalendarAddClassSubmit.disabled = true;
   try {
-    const customSlots = await getNestCalendarSlots(family);
-    if (schedules[family].some((slot) => slot.daysOfWeek.includes(dayOfWeek) && slot.startTime === startTime) ||
-        customSlots.some((slot) => slot.dayOfWeek === dayOfWeek && slot.startTime === startTime)) {
+    const [configuredSlots, customSlots] = await Promise.all([
+      getNestCalendarBookingSlots(family),
+      getNestCalendarSlots(family),
+    ]);
+    const isDuplicate = configuredSlots
+      ? configuredSlots.some((slot) => (slot.daysOfWeek || []).includes(dayOfWeek) && slot.startTime === startTime)
+      : schedules[family].some((slot) => slot.daysOfWeek.includes(dayOfWeek) && slot.startTime === startTime) ||
+        customSlots.some((slot) => slot.dayOfWeek === dayOfWeek && slot.startTime === startTime);
+    if (isDuplicate) {
       throw new Error("Ya existe una clase a esa hora ese día");
     }
     await createNestCalendarSlot(family, dayOfWeek, startTime, auth.currentUser?.uid || null);

@@ -20,7 +20,7 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-import { showBookingFamily } from "./booking.js?v=20261111a";
+import { showBookingFamily } from "./booking.js?v=20261111b";
 import { showToast } from "./toast.js";
 
 const $ = (id) => document.getElementById(id);
@@ -28,6 +28,8 @@ const staffRoles = new Set(["OWNER", "RECEPTION", "COACH", "TEAM_LEADER"]);
 const checkNestSignupEmail = httpsCallable(functions, "checkNestSignupEmail");
 const registerNestPortalAccount = httpsCallable(functions, "registerNestPortalAccount");
 const refreshNestPortalAccess = httpsCallable(functions, "refreshNestPortalAccess");
+const getNestAdminSchedule = httpsCallable(functions, "getNestAdminSchedule");
+const saveNestAdminSchedule = httpsCallable(functions, "saveNestAdminSchedule");
 const ui = {
   welcome: $("welcomePanel"),
   booking: $("bookingPanel"),
@@ -46,6 +48,18 @@ const ui = {
   resendVerification: $("resendVerificationBtn"),
   accountBar: $("accountBar"),
   accountName: $("accountName"),
+  scheduleAdminOpen: $("scheduleAdminOpen"),
+  scheduleAdminModal: $("scheduleAdminModal"),
+  scheduleAdminClose: $("scheduleAdminClose"),
+  scheduleAdminCancel: $("scheduleAdminCancel"),
+  scheduleAdminFamilies: $("scheduleAdminFamilies"),
+  scheduleAdminAddForm: $("scheduleAdminAddForm"),
+  scheduleAdminAddTime: $("scheduleAdminAddTime"),
+  scheduleAdminAddCapacity: $("scheduleAdminAddCapacity"),
+  scheduleAdminSlots: $("scheduleAdminSlots"),
+  scheduleAdminCount: $("scheduleAdminCount"),
+  scheduleAdminSave: $("scheduleAdminSave"),
+  scheduleAdminMessage: $("scheduleAdminMessage"),
   familyTabs: $("familyTabs"),
   memberName: $("memberName"),
 };
@@ -53,6 +67,12 @@ let authActionInProgress = false;
 let activeUser = null;
 let activeProfile = null;
 let pendingPhotoUrl = "";
+let adminFamily = "pilates";
+let adminSlots = [];
+let adminScheduleDirty = false;
+let adminScheduleBusy = false;
+let adminScheduleLoaded = false;
+let adminScheduleVersion = 0;
 
 function showMessage(node, message, isError = false) {
   if (!node) return;
@@ -235,6 +255,7 @@ function renderAuthorizedPortal(user, profile) {
   ui.pending.classList.add("hidden");
   ui.booking.classList.remove("hidden");
   ui.accountBar.classList.remove("hidden");
+  ui.scheduleAdminOpen.classList.toggle("hidden", !staffRoles.has(profile.role));
   const name = profile.displayName || [profile.firstName, profile.lastName].filter(Boolean).join(" ") || user.email;
   ui.accountName.textContent = name;
   ui.memberName.textContent = name.split(/[\s@]/)[0].toLocaleUpperCase("es");
@@ -253,6 +274,270 @@ function renderAuthorizedPortal(user, profile) {
   });
   const initialFamily = tabs.includes("pilates") ? "pilates" : "barre";
   showBookingFamily(initialFamily);
+}
+
+const adminWeekdays = [
+  { value: 1, short: "Lun", long: "Lunes" },
+  { value: 2, short: "Mar", long: "Martes" },
+  { value: 3, short: "Mié", long: "Miércoles" },
+  { value: 4, short: "Jue", long: "Jueves" },
+  { value: 5, short: "Vie", long: "Viernes" },
+];
+
+function readAdminDraft() {
+  return Array.from(ui.scheduleAdminSlots.querySelectorAll(".schedule-admin-slot")).map((card) => ({
+    id: card.dataset.slotId,
+    daysOfWeek: Array.from(card.querySelectorAll("[data-slot-day]:checked")).map((checkbox) => Number(checkbox.value)),
+    startTime: card.querySelector("[data-slot-time]").value,
+    capacity: Number(card.querySelector("[data-slot-capacity]").value),
+    active: true,
+  }));
+}
+
+function setAdminBusy(busy) {
+  adminScheduleBusy = busy;
+  ui.scheduleAdminModal.querySelectorAll("button, input, select").forEach((control) => {
+    control.disabled = busy;
+  });
+  if (!busy) {
+    ui.scheduleAdminSave.disabled = !adminScheduleLoaded;
+    ui.scheduleAdminAddForm.querySelectorAll("button, input, select").forEach((control) => {
+      control.disabled = !adminScheduleLoaded;
+    });
+  }
+  ui.scheduleAdminModal.setAttribute("aria-busy", String(busy));
+}
+
+function renderAdminSlots() {
+  ui.scheduleAdminSlots.replaceChildren();
+  ui.scheduleAdminCount.textContent = `${adminSlots.length} clase(s)`;
+  if (!adminSlots.length) {
+    const empty = document.createElement("p");
+    empty.className = "schedule-admin-empty";
+    empty.textContent = "No hay clases semanales. Añade una arriba.";
+    ui.scheduleAdminSlots.append(empty);
+    return;
+  }
+
+  adminSlots.forEach((slot) => {
+    const card = document.createElement("article");
+    card.className = "schedule-admin-slot";
+    card.dataset.slotId = slot.id;
+
+    const heading = document.createElement("div");
+    heading.className = "schedule-admin-slot-heading";
+    const title = document.createElement("strong");
+    title.textContent = `${slot.startTime} · ${adminWeekdays
+      .filter((day) => slot.daysOfWeek.includes(day.value))
+      .map((day) => day.short)
+      .join(", ")}`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "button button-danger-quiet";
+    remove.dataset.removeSlot = slot.id;
+    remove.textContent = "Eliminar";
+    heading.append(title, remove);
+    card.append(heading);
+
+    const settings = document.createElement("div");
+    settings.className = "schedule-admin-slot-settings";
+    const days = document.createElement("fieldset");
+    days.className = "schedule-admin-days";
+    const legend = document.createElement("legend");
+    legend.textContent = "Días";
+    days.append(legend);
+    adminWeekdays.forEach((weekday) => {
+      const label = document.createElement("label");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = String(weekday.value);
+      checkbox.dataset.slotDay = "true";
+      checkbox.checked = slot.daysOfWeek.includes(weekday.value);
+      label.append(checkbox, document.createTextNode(weekday.short));
+      days.append(label);
+    });
+
+    const timeLabel = document.createElement("label");
+    timeLabel.textContent = "Hora";
+    const time = document.createElement("select");
+    time.dataset.slotTime = "true";
+    for (let hour = 7; hour <= 22; hour += 1) {
+      const value = `${String(hour).padStart(2, "0")}:00`;
+      time.add(new Option(value, value));
+    }
+    if (![...time.options].some((option) => option.value === slot.startTime)) {
+      time.add(new Option(slot.startTime, slot.startTime));
+    }
+    time.value = slot.startTime;
+    timeLabel.append(time);
+
+    const capacityLabel = document.createElement("label");
+    capacityLabel.textContent = "Aforo";
+    const capacity = document.createElement("input");
+    capacity.type = "number";
+    capacity.min = "1";
+    capacity.max = "30";
+    capacity.step = "1";
+    capacity.required = true;
+    capacity.value = String(slot.capacity || 6);
+    capacity.dataset.slotCapacity = "true";
+    capacityLabel.append(capacity);
+
+    settings.append(days, timeLabel, capacityLabel);
+    card.append(settings);
+    ui.scheduleAdminSlots.append(card);
+  });
+}
+
+async function loadAdminSchedule(family) {
+  if (adminScheduleBusy) return;
+  adminFamily = family;
+  adminScheduleDirty = false;
+  adminScheduleLoaded = false;
+  adminSlots = [];
+  renderAdminSlots();
+  ui.scheduleAdminMessage.textContent = "Cargando horario…";
+  ui.scheduleAdminMessage.classList.remove("is-error");
+  setAdminBusy(true);
+  try {
+    const result = await getNestAdminSchedule({ family });
+    adminScheduleVersion = result.data.version;
+    adminScheduleLoaded = true;
+    adminSlots = (result.data.slots || []).map((slot) => ({
+      ...slot,
+      daysOfWeek: Array.from(new Set((slot.daysOfWeek || []).map(Number))).filter((day) => day >= 1 && day <= 5),
+      capacity: Number(slot.capacity) || 6,
+    }));
+    renderAdminSlots();
+    ui.scheduleAdminMessage.textContent = "Puedes cambiar días, hora y aforo. Guarda para aplicar el horario.";
+    ui.scheduleAdminFamilies.querySelectorAll("[data-admin-family]").forEach((button) => {
+      const selected = button.dataset.adminFamily === family;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-selected", String(selected));
+    });
+  } catch (error) {
+    console.error("Error loading The Nest admin schedule:", error);
+    ui.scheduleAdminSlots.replaceChildren();
+    ui.scheduleAdminMessage.textContent = getCallableMessage(error);
+    ui.scheduleAdminMessage.classList.add("is-error");
+  } finally {
+    setAdminBusy(false);
+    ui.scheduleAdminClose.focus();
+  }
+}
+
+function openAdminSchedule() {
+  if (!activeUser || !staffRoles.has(activeProfile?.role)) return;
+  const selectedTab = document.querySelector(".family-tab.is-active[data-family]");
+  adminFamily = selectedTab?.dataset.family || "pilates";
+  ui.scheduleAdminModal.classList.remove("hidden");
+  loadAdminSchedule(adminFamily);
+}
+
+function closeAdminSchedule() {
+  if (adminScheduleBusy) return;
+  if (adminScheduleDirty && !window.confirm("Hay cambios sin guardar. ¿Quieres descartarlos?")) return;
+  ui.scheduleAdminModal.classList.add("hidden");
+  adminScheduleDirty = false;
+  ui.scheduleAdminOpen.focus();
+}
+
+ui.scheduleAdminOpen.addEventListener("click", openAdminSchedule);
+ui.scheduleAdminClose.addEventListener("click", closeAdminSchedule);
+ui.scheduleAdminCancel.addEventListener("click", closeAdminSchedule);
+ui.scheduleAdminModal.addEventListener("click", (event) => {
+  if (event.target === ui.scheduleAdminModal) closeAdminSchedule();
+});
+ui.scheduleAdminFamilies.addEventListener("click", (event) => {
+  if (adminScheduleBusy) return;
+  const tab = event.target.closest("[data-admin-family]");
+  if (!tab || tab.dataset.adminFamily === adminFamily) return;
+  if (adminScheduleDirty && !window.confirm("Hay cambios sin guardar. ¿Quieres descartarlos y cambiar de disciplina?")) return;
+  loadAdminSchedule(tab.dataset.adminFamily);
+});
+ui.scheduleAdminSlots.addEventListener("click", (event) => {
+  const remove = event.target.closest("[data-remove-slot]");
+  if (!remove || adminScheduleBusy || !adminScheduleLoaded) return;
+  adminSlots = readAdminDraft().filter((slot) => slot.id !== remove.dataset.removeSlot);
+  adminScheduleDirty = true;
+  renderAdminSlots();
+  ui.scheduleAdminMessage.textContent = "Clase marcada para eliminar. Guarda los cambios para aplicar.";
+});
+ui.scheduleAdminAddForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (adminScheduleBusy || !adminScheduleLoaded) return;
+  const daysOfWeek = Array.from(ui.scheduleAdminAddForm.querySelectorAll('[name="dayOfWeek"]:checked'))
+    .map((checkbox) => Number(checkbox.value));
+  if (!daysOfWeek.length) {
+    ui.scheduleAdminMessage.textContent = "Selecciona al menos un día laborable.";
+    ui.scheduleAdminMessage.classList.add("is-error");
+    return;
+  }
+  const startTime = ui.scheduleAdminAddTime.value;
+  const capacity = Number(ui.scheduleAdminAddCapacity.value);
+  adminSlots = readAdminDraft();
+  if (adminSlots.length >= 40 || adminSlots.some((slot) => slot.startTime === startTime &&
+      daysOfWeek.some((day) => slot.daysOfWeek.includes(day)))) {
+    showMessage(ui.scheduleAdminMessage, "Máximo 40 clases y una sola clase por día y hora.", true);
+    return;
+  }
+  const createId = globalThis.crypto?.randomUUID
+    ? `managed-${crypto.randomUUID()}`
+    : `managed-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  adminSlots.push({ id: createId, daysOfWeek, startTime, capacity, active: true });
+  adminScheduleDirty = true;
+  renderAdminSlots();
+  ui.scheduleAdminAddForm.querySelectorAll('[name="dayOfWeek"]').forEach((checkbox) => { checkbox.checked = false; });
+  ui.scheduleAdminMessage.textContent = "Clase añadida al borrador. Pulsa «Guardar cambios» para aplicar.";
+  ui.scheduleAdminMessage.classList.remove("is-error");
+});
+ui.scheduleAdminSlots.addEventListener("input", () => { adminScheduleDirty = true; });
+ui.scheduleAdminSlots.addEventListener("change", () => { adminScheduleDirty = true; });
+ui.scheduleAdminSave.addEventListener("click", async () => {
+  if (adminScheduleBusy || !adminScheduleLoaded) return;
+  const saveButton = ui.scheduleAdminSave;
+  const oldText = saveButton.textContent;
+  setAdminBusy(true);
+  ui.scheduleAdminMessage.textContent = "Guardando horario…";
+  ui.scheduleAdminMessage.classList.remove("is-error");
+  try {
+    const slots = readAdminDraft();
+    const result = await saveNestAdminSchedule({ family: adminFamily, slots, version: adminScheduleVersion });
+    adminScheduleVersion = result.data.version;
+    adminSlots = result.data.slots;
+    adminScheduleDirty = false;
+    renderAdminSlots();
+    ui.scheduleAdminMessage.textContent = "Horario guardado. Las reservas existentes se han conservado.";
+    showToast("Horario actualizado", "success");
+    await showBookingFamily(adminFamily, { forceRefresh: true });
+  } catch (error) {
+    console.error("Error saving The Nest admin schedule:", error);
+    ui.scheduleAdminMessage.textContent = getCallableMessage(error);
+    ui.scheduleAdminMessage.classList.add("is-error");
+  } finally {
+    setAdminBusy(false);
+    saveButton.textContent = oldText;
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (ui.scheduleAdminModal.classList.contains("hidden")) return;
+  if (event.key === "Escape") closeAdminSchedule();
+  if (event.key !== "Tab") return;
+  const controls = Array.from(ui.scheduleAdminModal.querySelectorAll("button:not(:disabled), input:not(:disabled), select:not(:disabled)"));
+  const first = controls[0];
+  const last = controls[controls.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last?.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first?.focus();
+  }
+});
+
+for (let hour = 7; hour <= 22; hour += 1) {
+  const value = `${String(hour).padStart(2, "0")}:00`;
+  ui.scheduleAdminAddTime.add(new Option(value, value));
 }
 
 function openProfileSettings() {
@@ -433,6 +718,11 @@ $("signupForm").addEventListener("submit", async (event) => {
 
 async function loginStateChanged(user) {
   if (authActionInProgress) return;
+  activeUser = null;
+  activeProfile = null;
+  adminScheduleDirty = false;
+  ui.scheduleAdminModal.classList.add("hidden");
+  ui.scheduleAdminOpen.classList.add("hidden");
   if (!user) {
     ui.welcome.classList.remove("hidden");
     ui.booking.classList.add("hidden");

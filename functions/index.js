@@ -188,6 +188,8 @@ exports.listInvoiceFiles = invoiceProcessor.listInvoiceFiles;
 // ===== THE NEST CLASS BOOKINGS =====
 const nestBooking = require('./nest-booking');
 exports.checkNestSignupEmail = nestBooking.checkNestSignupEmail;
+exports.getNestAdminSchedule = nestBooking.getNestAdminSchedule;
+exports.saveNestAdminSchedule = nestBooking.saveNestAdminSchedule;
 exports.registerNestPortalAccount = nestBooking.registerNestPortalAccount;
 exports.refreshNestPortalAccess = nestBooking.refreshNestPortalAccess;
 exports.getNestBookingSchedule = nestBooking.getNestBookingSchedule;

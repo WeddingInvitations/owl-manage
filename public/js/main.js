@@ -40,7 +40,7 @@ import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { initializeCaja, initializeInventory } from "./caja.js?v=20260622a";
 import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js?v=20261104a";
-import { initializeNestCalendar } from "./nest-calendar.js?v=20261014c";
+import { initializeNestCalendar } from "./nest-calendar.js?v=20261111b";
 import { initializeNestBookings, refreshNestBookings } from "./nest-booking.js?v=20261109b";
 import {
   initializePilates,

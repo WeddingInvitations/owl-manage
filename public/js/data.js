@@ -2139,20 +2139,47 @@ export async function getNestCalendarSlots(family) {
   return snap.exists() && Array.isArray(snap.data().slots) ? snap.data().slots : [];
 }
 
+export async function getNestCalendarBookingSlots(family) {
+  const snap = await getDoc(doc(db, "nest_calendar", `${family}__booking-slots`));
+  return snap.exists() && Array.isArray(snap.data().slots) ? snap.data().slots : null;
+}
+
 export async function createNestCalendarSlot(family, dayOfWeek, startTime, userId) {
   if (!["pilates", "barre"].includes(family) || !Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6 ||
       !/^(?:0\d|1\d|2[0-3]):00$/.test(startTime)) {
     throw new Error("Horario no válido");
   }
   const slotId = `custom-${dayOfWeek}-${startTime.replace(":", "")}`;
-  const slotRef = doc(db, "nest_calendar", `${family}__weekly-slots`);
+  const legacySlotRef = doc(db, "nest_calendar", `${family}__weekly-slots`);
+  const bookingSlotRef = doc(db, "nest_calendar", `${family}__booking-slots`);
   await runTransaction(db, async (transaction) => {
-    const snap = await transaction.get(slotRef);
-    const slots = snap.exists() && Array.isArray(snap.data().slots) ? snap.data().slots : [];
+    const [bookingSnap, legacySnap] = await Promise.all([
+      transaction.get(bookingSlotRef),
+      transaction.get(legacySlotRef),
+    ]);
+    if (bookingSnap.exists() && Array.isArray(bookingSnap.data().slots)) {
+      const slots = bookingSnap.data().slots;
+      if (slots.length >= 40 || dayOfWeek < 1 || dayOfWeek > 5) {
+        throw new Error("El horario admite hasta 40 clases de lunes a viernes");
+      }
+      if (slots.some((slot) => slot.startTime === startTime && (slot.daysOfWeek || []).includes(dayOfWeek))) {
+        throw new Error("Ya existe una clase a esa hora ese día");
+      }
+      transaction.set(bookingSlotRef, {
+        family,
+        slots: [...slots, { id: slotId, dayOfWeek, daysOfWeek: [dayOfWeek], startTime, capacity: 6, active: true }],
+        version: Number(bookingSnap.data().version || 0) + 1,
+        updatedAt: serverTimestamp(),
+        updatedBy: userId || null,
+      }, { merge: true });
+      return;
+    }
+
+    const slots = legacySnap.exists() && Array.isArray(legacySnap.data().slots) ? legacySnap.data().slots : [];
     if (slots.some((slot) => slot.dayOfWeek === dayOfWeek && slot.startTime === startTime)) {
       throw new Error("Ya existe una clase a esa hora ese día");
     }
-    transaction.set(slotRef, {
+    transaction.set(legacySlotRef, {
       family,
       slots: [...slots, { id: slotId, dayOfWeek, startTime }],
       updatedAt: serverTimestamp(),

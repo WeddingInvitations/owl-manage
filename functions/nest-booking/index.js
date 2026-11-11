@@ -151,18 +151,155 @@ async function findMonthlyMembership(athleteId, family, month) {
 }
 
 function scheduledSlots(family, customSlots) {
-  const slots = SCHEDULES[family].map((slot) => ({ ...slot }));
+  const slots = SCHEDULES[family].map((slot) => ({ ...slot, capacity: CAPACITY, active: true }));
   (Array.isArray(customSlots) ? customSlots : []).forEach((slot) => {
-    slots.push({ id: slot.id, daysOfWeek: [slot.dayOfWeek], startTime: slot.startTime });
+    slots.push({
+      id: slot.id,
+      daysOfWeek: [slot.dayOfWeek],
+      startTime: slot.startTime,
+      capacity: CAPACITY,
+      active: true,
+    });
   });
   return slots;
 }
 
+async function getEffectiveSlots(family, transaction = null) {
+  const configRef = db.collection('nest_calendar').doc(`${family}__booking-slots`);
+  const configuredSnap = await (transaction ? transaction.get(configRef) : configRef.get());
+  if (configuredSnap.exists && Array.isArray(configuredSnap.data().slots)) {
+    return configuredSnap.data().slots
+      .filter((slot) => slot.active !== false)
+      .map((slot) => ({ ...slot, capacity: Number(slot.capacity) || CAPACITY }));
+  }
+  const legacyRef = db.collection('nest_calendar').doc(`${family}__weekly-slots`);
+  const legacySnap = await (transaction ? transaction.get(legacyRef) : legacyRef.get());
+  const legacyCustomSlots = legacySnap.exists ? legacySnap.data().slots || [] : [];
+  return scheduledSlots(family, legacyCustomSlots);
+}
+
+async function requireNestStaff(uid) {
+  const profile = await getProfile(uid);
+  if (!STAFF_ROLES.has(profile.role)) {
+    fail('permission-denied', 'Solo el personal de OwlManage puede administrar los horarios de The Nest.');
+  }
+  return profile;
+}
+
+exports.getNestAdminSchedule = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const family = validateFamily(data.family);
+  await requireNestStaff(uid);
+  return db.runTransaction(async (transaction) => {
+    const config = await transaction.get(db.collection('nest_calendar').doc(`${family}__booking-slots`));
+    return { family, slots: await getEffectiveSlots(family, transaction), version: Number(config.data()?.version || 0) };
+  });
+});
+
+exports.saveNestAdminSchedule = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const family = validateFamily(data.family);
+  await requireNestStaff(uid);
+  const nextSlots = validateAdminSlots(data.slots);
+  const nextById = new Map(nextSlots.map((slot) => [slot.id, slot]));
+  if (!Number.isInteger(data.version) || data.version < 0) {
+    fail('invalid-argument', 'Recarga el horario antes de guardar los cambios.');
+  }
+  const todayKey = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const configRef = db.collection('nest_calendar').doc(`${family}__booking-slots`);
+  const version = await db.runTransaction(async (transaction) => {
+    const currentConfig = await transaction.get(configRef);
+    const previousVersion = Number(currentConfig.data()?.version || 0);
+    if (previousVersion !== data.version) {
+      fail('aborted', 'Otro gestor ha modificado el horario. Cierra y vuelve a abrir Administración para cargar sus cambios.');
+    }
+    const [allSessions, allBookings] = await Promise.all([
+      transaction.get(db.collection('nest_class_sessions').where('family', '==', family)),
+      transaction.get(db.collection('nest_bookings').where('family', '==', family)),
+    ]);
+    const activeBookingCounts = new Map();
+    allBookings.docs.forEach((bookingDoc) => {
+      const booking = bookingDoc.data();
+      if (booking.family !== family || booking.status !== 'BOOKED' || booking.dateKey < todayKey) return;
+      activeBookingCounts.set(booking.sessionId, (activeBookingCounts.get(booking.sessionId) || 0) + 1);
+    });
+
+    for (const sessionDoc of allSessions.docs) {
+      const session = sessionDoc.data();
+      if (session.family !== family || session.dateKey < todayKey) continue;
+      const reservedCount = Math.max(
+        Number(session.reservedCount || 0),
+        activeBookingCounts.get(sessionDoc.id) || 0
+      );
+      if (!reservedCount) continue;
+      const replacement = nextById.get(session.slotId);
+      if (!replacement) {
+        fail('failed-precondition', `No se puede eliminar «${session.dateKey} ${session.startTime}»: tiene ${reservedCount} reserva(s) activa(s). Cancela o reubica esas reservas primero.`);
+      }
+      const weekday = new Date(`${session.dateKey}T12:00:00Z`).getUTCDay();
+      if (replacement.startTime !== session.startTime || !replacement.daysOfWeek.includes(weekday)) {
+        fail('failed-precondition', `No se puede mover «${session.dateKey} ${session.startTime}»: tiene ${reservedCount} reserva(s) activa(s). Cambia el horario cuando ya no queden reservas futuras.`);
+      }
+      if (replacement.capacity < reservedCount) {
+        fail('failed-precondition', `El aforo no puede ser menor que las ${reservedCount} plazas ya reservadas para el ${session.dateKey}.`);
+      }
+    }
+
+    transaction.set(configRef, {
+      family,
+      slots: nextSlots,
+      version: previousVersion + 1,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedBy: uid,
+    });
+    return previousVersion + 1;
+  });
+  return { success: true, slots: nextSlots, version };
+});
+
+function validateAdminSlots(slots) {
+  if (!Array.isArray(slots) || slots.length > 40) {
+    fail('invalid-argument', 'El horario debe contener como máximo 40 clases semanales.');
+  }
+  const ids = new Set();
+  const occupiedTimes = new Set();
+  return slots.map((slot) => {
+    const id = String(slot?.id || '').trim();
+    const startTime = String(slot?.startTime || '').trim();
+    const daysOfWeek = Array.isArray(slot?.daysOfWeek)
+      ? Array.from(new Set(slot.daysOfWeek.map(Number)))
+      : [];
+    const capacity = Number(slot?.capacity);
+    if (!id || id.length > 80 || id.includes('__') || ids.has(id)) {
+      fail('invalid-argument', 'Cada clase necesita un identificador único válido.');
+    }
+    if (!/^(?:0\d|1\d|2[0-3]):00$/.test(startTime)) {
+      fail('invalid-argument', 'La hora debe estar en formato HH:00.');
+    }
+    if (!daysOfWeek.length || daysOfWeek.some((day) => !Number.isInteger(day) || day < 1 || day > 5)) {
+      fail('invalid-argument', 'Selecciona uno o varios días de lunes a viernes.');
+    }
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 30) {
+      fail('invalid-argument', 'El aforo debe estar entre 1 y 30 plazas.');
+    }
+    daysOfWeek.forEach((day) => {
+      const key = `${day}__${startTime}`;
+      if (occupiedTimes.has(key)) fail('already-exists', 'Ya existe una clase ese día y a esa hora.');
+      occupiedTimes.add(key);
+    });
+    ids.add(id);
+    return { id, daysOfWeek, startTime, capacity, active: true };
+  });
+}
+
 async function findScheduledSlot(family, dateKey, slotId) {
   const weekday = new Date(`${dateKey}T12:00:00Z`).getUTCDay();
-  const customSnap = await db.collection('nest_calendar').doc(`${family}__weekly-slots`).get();
-  const customSlots = customSnap.exists ? customSnap.data().slots || [] : [];
-  return scheduledSlots(family, customSlots).find((slot) =>
+  return (await getEffectiveSlots(family)).find((slot) =>
     slot.id === slotId && slot.daysOfWeek.includes(weekday)
   ) || null;
 }
@@ -389,9 +526,7 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
   const isStaff = STAFF_ROLES.has(profile.role);
   const isInstructor = profile.role === 'NEST_INSTRUCTOR';
   const athlete = profile.role === 'NEST_STUDENT' ? await getStudentAthlete(profile, uid) : null;
-  const customSnap = await db.collection('nest_calendar').doc(`${family}__weekly-slots`).get();
-  const customSlots = customSnap.exists ? customSnap.data().slots || [] : [];
-  const slots = scheduledSlots(family, customSlots);
+  const slots = await getEffectiveSlots(family);
   const sessionInputs = [];
   const start = new Date(`${startDate}T12:00:00Z`);
   const end = new Date(`${endDate}T12:00:00Z`);
@@ -401,7 +536,14 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
     for (const slot of slots) {
       if (!slot.daysOfWeek.includes(weekday)) continue;
       const id = sessionId(family, dateKey, slot.id);
-      sessionInputs.push({ id, dateKey, slotId: slot.id, startTime: slot.startTime, month: monthKey(dateKey) });
+      sessionInputs.push({
+        id,
+        dateKey,
+        slotId: slot.id,
+        startTime: slot.startTime,
+        capacity: Number(slot.capacity) || CAPACITY,
+        month: monthKey(dateKey),
+      });
     }
   }
   if (athlete) {
@@ -484,8 +626,11 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
       id: session.id, family, dateKey: session.dateKey, slotId: session.slotId,
       startTime: session.startTime,
       endTime: `${String((Number(session.startTime.slice(0, 2)) + 1) % 24).padStart(2, '0')}:00`,
-      capacity: CAPACITY,
-      reservedCount: sessionSnap.exists ? Number(sessionSnap.data().reservedCount || 0) : 0,
+      capacity: session.capacity || (sessionSnap.exists ? Number(sessionSnap.data().capacity || CAPACITY) : CAPACITY),
+      reservedCount: Math.max(
+        sessionSnap.exists ? Number(sessionSnap.data().reservedCount || 0) : 0,
+        (attendeesBySession.get(session.id) || []).length
+      ),
       isBooked: Boolean(bookingSnap?.exists && bookingSnap.data().status === 'BOOKED'),
       myBookingStatus: bookingSnap?.exists ? bookingSnap.data().status || null : null,
       myAttended: Boolean(bookingSnap?.exists && bookingSnap.data().attended),
@@ -551,6 +696,12 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
       transaction.get(sessionRef), transaction.get(bookingRef), transaction.get(usageRef),
       transaction.get(membership.ref), transaction.get(athlete.ref),
     ]);
+    const currentSlot = (await getEffectiveSlots(family, transaction)).find((slot) =>
+      slot.id === slotId && slot.daysOfWeek.includes(new Date(`${dateKey}T12:00:00Z`).getUTCDay())
+    );
+    if (!currentSlot || currentSlot.startTime !== data.startTime) {
+      fail('failed-precondition', 'El horario de la clase ha cambiado. Actualiza la agenda antes de reservar.');
+    }
     const activeMonthlyLimit = membershipSnap.exists
       ? tariffMonthlyLimit(membershipSnap.data())
       : null;
@@ -566,15 +717,16 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
     if (bookingSnap.exists && bookingSnap.data().status === 'BOOKED') {
       fail('already-exists', 'Ya tienes una plaza reservada en esta clase.');
     }
+    const activeCapacity = Number(currentSlot.capacity || CAPACITY);
     const reservedCount = sessionSnap.exists ? Number(sessionSnap.data().reservedCount || 0) : 0;
-    if (reservedCount >= CAPACITY) fail('resource-exhausted', 'La clase está completa.');
+    if (reservedCount >= activeCapacity) fail('resource-exhausted', 'La clase está completa.');
     const bookedCount = usageSnap.exists ? Number(usageSnap.data().bookedCount || 0) : 0;
     if (bookedCount >= activeMonthlyLimit) {
       fail('resource-exhausted', `Ya has usado las ${activeMonthlyLimit} reservas de tu tarifa este mes.`);
     }
     transaction.set(sessionRef, {
       family, dateKey, slotId, startTime: data.startTime,
-      capacity: CAPACITY, reservedCount: reservedCount + 1,
+      capacity: activeCapacity, reservedCount: reservedCount + 1,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
     transaction.set(bookingRef, {

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f3f0e8" />
     <meta name="description" content="Reserva tus clases de The Nest Pilates y Barre." />
     <title>Reservas The Nest</title>
-    <link rel="stylesheet" href="css/styles.css?v=20261110f" />
+    <link rel="stylesheet" href="css/styles.css?v=20261111b" />
     <link rel="stylesheet" href="css/booking.css?v=20261111a" />
   </head>
   <body>
@@ -16,6 +16,7 @@
         <span><strong>THE NEST</strong><small>RESERVAS</small></span>
       </a>
       <div id="accountBar" class="account-bar hidden">
+        <button id="scheduleAdminOpen" class="button button-secondary hidden" type="button"><span class="admin-button-full">Administración</span><span class="admin-button-short">Admin</span></button>
         <button id="profileSettingsBtn" class="profile-settings-trigger" type="button" aria-label="Configuración de perfil">
           <span id="accountAvatar" class="account-avatar"><span id="accountInitials">?</span></span>
         </button>
@@ -113,8 +114,48 @@
       </form>
     </div>
 
+    <div id="scheduleAdminModal" class="profile-settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="scheduleAdminTitle">
+      <section class="schedule-admin-card">
+        <div class="profile-settings-heading">
+          <div><span class="eyebrow">GESTIÓN DEL HORARIO</span><h2 id="scheduleAdminTitle">Administración de clases</h2></div>
+          <button id="scheduleAdminClose" class="button button-quiet" type="button" aria-label="Cerrar">×</button>
+        </div>
+        <p class="schedule-admin-help">Crea y modifica clases semanales y su aforo. Los cambios no eliminan reservas que ya estén confirmadas.</p>
+        <div id="scheduleAdminFamilies" class="schedule-admin-families" role="tablist" aria-label="Disciplina">
+          <button class="family-tab is-active" type="button" role="tab" data-admin-family="pilates" aria-selected="true">The Nest Pilates</button>
+          <button class="family-tab" type="button" role="tab" data-admin-family="barre" aria-selected="false">The Nest Barre</button>
+        </div>
+        <div class="schedule-admin-add">
+          <h3>Añadir clase semanal</h3>
+          <form id="scheduleAdminAddForm">
+            <fieldset class="schedule-admin-days">
+              <legend>Días</legend>
+              <label><input type="checkbox" name="dayOfWeek" value="1" /> Lun</label>
+              <label><input type="checkbox" name="dayOfWeek" value="2" /> Mar</label>
+              <label><input type="checkbox" name="dayOfWeek" value="3" /> Mié</label>
+              <label><input type="checkbox" name="dayOfWeek" value="4" /> Jue</label>
+              <label><input type="checkbox" name="dayOfWeek" value="5" /> Vie</label>
+            </fieldset>
+            <label>Hora<select id="scheduleAdminAddTime" required></select></label>
+            <label>Aforo<input id="scheduleAdminAddCapacity" type="number" min="1" max="30" value="6" required /></label>
+            <button class="button button-primary" type="submit">Añadir clase</button>
+          </form>
+        </div>
+        <div class="schedule-admin-list-header">
+          <h3>Clases semanales</h3>
+          <span id="scheduleAdminCount"></span>
+        </div>
+        <div id="scheduleAdminSlots" class="schedule-admin-slots"></div>
+        <p id="scheduleAdminMessage" class="form-message" aria-live="polite"></p>
+        <div class="profile-settings-actions">
+          <button id="scheduleAdminSave" class="button button-primary" type="button">Guardar cambios</button>
+          <button id="scheduleAdminCancel" class="button button-quiet" type="button">Cerrar</button>
+        </div>
+      </section>
+    </div>
+
     <footer class="site-footer"><span>THE NEST</span><span>Muévete a tu ritmo.</span></footer>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="js/app.js?v=20261111a"></script>
+    <script type="module" src="js/app.js?v=20261111b"></script>
   </body>
 </html>

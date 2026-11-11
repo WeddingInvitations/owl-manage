@@ -509,10 +509,11 @@ export function initializeBookingSchedule() {
   });
 }
 
-export async function showBookingFamily(family) {
+export async function showBookingFamily(family, { forceRefresh = false } = {}) {
   if (!views[family]) return;
+  if (forceRefresh) invalidateMonthCache(family);
   activeFamily = family;
-  document.querySelectorAll(".family-tab").forEach((button) => {
+  document.querySelectorAll(".family-tab[data-family]").forEach((button) => {
     const selected = button.dataset.family === family;
     button.classList.toggle("is-active", selected);
     button.setAttribute("aria-selected", String(selected));
