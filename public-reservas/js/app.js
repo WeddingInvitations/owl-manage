@@ -20,7 +20,7 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-import { showBookingFamily } from "./booking.js?v=20261111b";
+import { showBookingFamily } from "./booking.js?v=20261111perf1";
 import { showToast } from "./toast.js";
 
 const $ = (id) => document.getElementById(id);
@@ -231,8 +231,8 @@ async function resolveAccess(user) {
   }
   if (["NEST_STUDENT", "NEST_INSTRUCTOR"].includes(profile.data.role)) {
     try {
-      await refreshNestPortalAccess({});
-      profile = await getProfile(user);
+      const result = await refreshNestPortalAccess({});
+      profile = result.data.profile ? { ...profile, data: result.data.profile } : await getProfile(user);
     } catch (error) {
       return { ...profile, message: getCallableMessage(error) };
     }

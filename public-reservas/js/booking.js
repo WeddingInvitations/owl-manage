@@ -1,6 +1,7 @@
 import { auth, functions } from "./firebase.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-functions.js";
 import { showToast } from "./toast.js";
+import { createScheduleCache, applyBookingConfirmation } from "./schedule-cache.mjs";
 
 const views = { pilates: "pilates", barre: "barre" };
 const WEEKDAY_COUNT = 5;
@@ -15,7 +16,12 @@ let initialized = false;
 let activeFamily = "pilates";
 const selectedDateKey = { pilates: dateKey(normalizeWorkday(dayAtNoon(0))), barre: dateKey(normalizeWorkday(dayAtNoon(0))) };
 const requestNumber = { pilates: 0, barre: 0 };
-const monthScheduleCache = new Map();
+const monthScheduleCache = createScheduleCache();
+const pendingActions = new Set();
+
+function cacheKey(family, month) {
+  return `${family}__${auth.currentUser?.uid || "guest"}__${month}`;
+}
 
 function dateKey(date) {
   const year = date.getFullYear();
@@ -60,19 +66,17 @@ function normalizeWorkday(date) {
 
 function invalidateMonthCache(family, key) {
   if (key) {
-    monthScheduleCache.delete(`${family}__${auth.currentUser?.uid || "guest"}__${key.slice(0, 7)}`);
+    monthScheduleCache.invalidate(cacheKey(family, key.slice(0, 7)));
     return;
   }
-  for (const cacheKey of monthScheduleCache.keys()) {
-    if (cacheKey.startsWith(`${family}__${auth.currentUser?.uid || "guest"}__`)) monthScheduleCache.delete(cacheKey);
-  }
+  monthScheduleCache.invalidate(cacheKey(family, ""));
 }
 
 async function getMonthSessions(family, date) {
-  const key = `${family}__${auth.currentUser?.uid || "guest"}__${monthKey(date)}`;
-  if (!monthScheduleCache.has(key)) {
+  const key = cacheKey(family, monthKey(date));
+  return monthScheduleCache.get(key, () => {
     const { start, end } = monthBounds(date);
-    monthScheduleCache.set(key, callables.schedule({
+    return callables.schedule({
       family,
       startDate: dateKey(start),
       endDate: dateKey(end),
@@ -85,12 +89,43 @@ async function getMonthSessions(family, date) {
           photoUrl: photos[attendee.userId] || attendee.photoUrl || "",
         })),
       }));
-    }).catch((error) => {
-      monthScheduleCache.delete(key);
-      throw error;
-    }));
+    });
+  });
+}
+
+async function mutateBooking(session, family, button, { cancelled = false, athleteEmail } = {}) {
+  if (pendingActions.has(session.id)) return;
+  const actingUserId = auth.currentUser?.uid;
+  const monthCacheKey = cacheKey(family, session.dateKey.slice(0, 7));
+  pendingActions.add(session.id);
+  document.querySelectorAll(`[data-session-action="${session.id}"]`).forEach((control) => { control.disabled = true; });
+  button.textContent = cancelled ? "Cancelando…" : "Reservando…";
+  try {
+    const result = await (cancelled ? callables.cancel : callables.book)({
+      family, dateKey: session.dateKey, slotId: session.slotId, startTime: session.startTime,
+      ...(athleteEmail ? { athleteEmail } : {}),
+    });
+    if (auth.currentUser?.uid !== actingUserId) return;
+    const own = !athleteEmail;
+    const updated = Number.isInteger(result.data.reservedCount) && monthScheduleCache.update(
+      monthCacheKey,
+      (sessions) => applyBookingConfirmation(sessions, session.id, result.data, {
+        cancelled, own, photoUrl: own ? auth.currentUser?.photoURL || "" : "",
+      })
+    );
+    if (!updated) invalidateMonthCache(family, session.dateKey); // Compatible with older backend.
+    showToast(cancelled ? "Reserva cancelada" : "Plaza reservada", "success");
+    pendingActions.delete(session.id);
+    if (activeFamily === family) await refreshFamily(family);
+  } catch (error) {
+    if (auth.currentUser?.uid !== actingUserId) return;
+    invalidateMonthCache(family, session.dateKey);
+    showToast(error.message || "No se pudo completar la reserva", "error");
+    if (activeFamily === family) await refreshFamily(family);
+  } finally {
+    pendingActions.delete(session.id);
+    document.querySelectorAll(`[data-session-action="${session.id}"]`).forEach((control) => { control.disabled = false; });
   }
-  return monthScheduleCache.get(key);
 }
 
 function element(tag, className, text) {
@@ -175,54 +210,28 @@ function createClassCard(session, family) {
     card.append(element("p", "nest-booking-message", "Tu plaza está reservada"));
     const cancel = element("button", "button button-secondary nest-booking-action", "Cancelar");
     cancel.type = "button";
-    cancel.disabled = session.past;
-    cancel.addEventListener("click", async () => {
-      cancel.disabled = true;
-      try {
-        await callables.cancel({ family, dateKey: session.dateKey, slotId: session.slotId });
-        invalidateMonthCache(family, session.dateKey);
-        showToast("Reserva cancelada", "success");
-        await refreshFamily(family);
-      } catch (error) {
-        showToast(error.message || "No se pudo cancelar la reserva", "error");
-        cancel.disabled = false;
-      }
-    });
+    cancel.dataset.sessionAction = session.id;
+    cancel.disabled = session.past || pendingActions.has(session.id);
+    cancel.addEventListener("click", () => mutateBooking(session, family, cancel, { cancelled: true }));
     card.append(cancel);
   } else if (session.canBook && !full && !session.past && !isInstructor) {
     const remaining = Math.max(0, session.monthlyLimit - (session.monthlyUsed || 0));
     card.append(element("p", "nest-booking-message", `${remaining} sesiones disponibles este mes`));
     const book = element("button", "button button-primary nest-booking-action", "Reservar plaza");
     book.type = "button";
-    book.addEventListener("click", async () => {
-      book.disabled = true;
-      try {
-        await callables.book({ family, dateKey: session.dateKey, slotId: session.slotId, startTime: session.startTime });
-        invalidateMonthCache(family, session.dateKey);
-        showToast("Plaza reservada", "success");
-        await refreshFamily(family);
-      } catch (error) {
-        showToast(error.message || "No se pudo reservar la plaza", "error");
-        book.disabled = false;
-      }
-    });
+    book.dataset.sessionAction = session.id;
+    book.disabled = pendingActions.has(session.id);
+    book.addEventListener("click", () => mutateBooking(session, family, book));
     card.append(book);
   } else if (session.canBookForOthers && !full && !session.past) {
     const book = element("button", "button button-primary nest-booking-action", "Reservar para alumna");
     book.type = "button";
+    book.dataset.sessionAction = session.id;
+    book.disabled = pendingActions.has(session.id);
     book.addEventListener("click", async () => {
       const email = prompt("Correo de la ficha de la alumna:");
       if (!email) return;
-      book.disabled = true;
-      try {
-        await callables.book({ family, dateKey: session.dateKey, slotId: session.slotId, startTime: session.startTime, athleteEmail: email.trim().toLowerCase() });
-        invalidateMonthCache(family, session.dateKey);
-        showToast("Plaza reservada para la alumna", "success");
-        await refreshFamily(family);
-      } catch (error) {
-        showToast(error.message || "No se pudo reservar la plaza", "error");
-        book.disabled = false;
-      }
+      await mutateBooking(session, family, book, { athleteEmail: email.trim().toLowerCase() });
     });
     card.append(book);
   } else if (session.past) {
@@ -403,18 +412,22 @@ async function refreshFamily(family, { focusSelectedDay = false } = {}) {
     dayClasses.replaceChildren(element("p", "nest-booking-empty-day-detail is-loading", "Cargando las clases de este día…"));
   }
   try {
-    const monthSessions = await getMonthSessions(family, selectedDate);
     const weekMonthKeys = new Set(Array.from({ length: WEEKDAY_COUNT }, (_, index) => {
       const date = new Date(start);
       date.setDate(start.getDate() + index);
       return monthKey(date);
     }));
+    weekMonthKeys.add(monthKey(selectedDate));
     const weekSessionsByMonth = await Promise.all(Array.from(weekMonthKeys, async (key) => {
       const [year, month] = key.split("-").map(Number);
       return getMonthSessions(family, new Date(year, month - 1, 1, 12));
     }));
     if (currentRequest !== requestNumber[family]) return;
-    const sessions = weekSessionsByMonth.flat();
+    const monthSessions = weekSessionsByMonth[Array.from(weekMonthKeys).indexOf(monthKey(selectedDate))];
+    const sessions = weekSessionsByMonth.flat().map((session) => {
+      const past = new Date(session.startTimestamp).getTime() <= Date.now();
+      return { ...session, past, canBook: session.canBook && !past };
+    });
     renderMiniMonth(family, monthSessions, selectedDate);
     renderWeekDaySelector(family, selectedDate, sessions);
     renderMobileDay(family, selectedDate, sessions);
@@ -444,7 +457,7 @@ async function refreshFamily(family, { focusSelectedDay = false } = {}) {
     grid.replaceChildren(...days);
     if (status) {
       const bookedCount = monthSessions.filter((session) => session.isBooked).length;
-      status.textContent = `${sessions.length} clases esta semana · ${bookedCount} reservas este mes`;
+      status.textContent = `${sessions.filter((session) => session.dateKey >= dateKey(start) && session.dateKey <= dateKey(end)).length} clases esta semana · ${bookedCount} reservas este mes`;
     }
   } catch (error) {
     if (currentRequest !== requestNumber[family]) return;
@@ -468,6 +481,7 @@ export function initializeBookingSchedule() {
   document.addEventListener("click", (event) => {
     const refresh = event.target.closest("[data-nest-booking-refresh]");
     if (refresh) {
+      invalidateMonthCache(refresh.dataset.nestBookingRefresh);
       refreshFamily(refresh.dataset.nestBookingRefresh);
       return;
     }
@@ -540,6 +554,7 @@ export async function showBookingFamily(family, { forceRefresh = false } = {}) {
       <div class="nest-mini-month-header">
         <button class="button button-secondary" type="button" data-nest-month-shift="-1" data-nest-month-family="${family}" aria-label="Mes anterior">‹</button>
         <strong data-mini-month-label></strong>
+        <button class="button button-secondary" type="button" data-nest-booking-refresh="${family}" aria-label="Actualizar clases">↻</button>
         <button class="button button-secondary" type="button" data-nest-month-shift="1" data-nest-month-family="${family}" aria-label="Mes siguiente">›</button>
       </div>
       <div class="nest-mini-month-grid" data-mini-month-grid></div>

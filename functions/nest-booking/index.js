@@ -110,6 +110,12 @@ function validDateKey(value) {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
+const madridTimeFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: TIME_ZONE,
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+});
+
 function localTimeToDate(dateKey, time) {
   // Convert a Europe/Madrid wall-clock time to a UTC Date, including DST changes.
   const [year, month, day] = dateKey.split('-').map(Number);
@@ -117,11 +123,7 @@ function localTimeToDate(dateKey, time) {
   const targetAsUtc = Date.UTC(year, month - 1, day, hour, minute);
   let guess = new Date(targetAsUtc);
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: TIME_ZONE,
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-    }).formatToParts(guess);
+    const parts = madridTimeFormatter.formatToParts(guess);
     const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
     const renderedAsUtc = Date.UTC(
       Number(values.year), Number(values.month) - 1, Number(values.day),
@@ -470,7 +472,7 @@ exports.refreshNestPortalAccess = functions.https.onCall(async (_data, context) 
   const profileSnap = await profileRef.get();
   if (!profileSnap.exists) fail('permission-denied', 'Tu cuenta todavía no tiene acceso autorizado a The Nest.');
   const profile = profileSnap.data() || {};
-  const email = normalizeEmail((await admin.auth().getUser(uid)).email);
+  const email = normalizeEmail(context.auth.token?.email || (await admin.auth().getUser(uid)).email);
 
   if (profile.role === 'NEST_STUDENT') {
     const athleteRef = profile.athleteId
@@ -490,8 +492,10 @@ exports.refreshNestPortalAccess = functions.https.onCall(async (_data, context) 
       await profileRef.update({ role: 'PENDING', nestFamilies: [] });
       return { role: 'PENDING', nestFamilies: [] };
     }
-    await profileRef.update({ email, displayName: athlete.name || '', nestFamilies: families });
-    return { role: 'NEST_STUDENT', nestFamilies: families };
+    const changes = { email, displayName: athlete.name || '', nestFamilies: families };
+    if (profile.email !== email || profile.displayName !== changes.displayName ||
+      JSON.stringify(profile.nestFamilies) !== JSON.stringify(families)) await profileRef.update(changes);
+    return { role: 'NEST_STUDENT', nestFamilies: families, profile: { ...profile, ...changes } };
   }
 
   if (profile.role === 'NEST_INSTRUCTOR') {
@@ -506,8 +510,10 @@ exports.refreshNestPortalAccess = functions.https.onCall(async (_data, context) 
       await profileRef.update({ role: 'PENDING', nestFamilies: [] });
       return { role: 'PENDING', nestFamilies: [] };
     }
-    await profileRef.update({ email, displayName: teacher.name || '', nestFamilies: families });
-    return { role: 'NEST_INSTRUCTOR', nestFamilies: families };
+    const changes = { email, displayName: teacher.name || '', nestFamilies: families };
+    if (profile.email !== email || profile.displayName !== changes.displayName ||
+      JSON.stringify(profile.nestFamilies) !== JSON.stringify(families)) await profileRef.update(changes);
+    return { role: 'NEST_INSTRUCTOR', nestFamilies: families, profile: { ...profile, ...changes } };
   }
 
   fail('permission-denied', 'Esta cuenta no es un perfil del portal The Nest.');
@@ -528,9 +534,12 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
   await assertFamilyAccess(profile, family);
   const isStaff = STAFF_ROLES.has(profile.role);
   const isInstructor = profile.role === 'NEST_INSTRUCTOR';
-  const athlete = profile.role === 'NEST_STUDENT' ? await getStudentAthlete(profile, uid) : null;
-  const slots = await getEffectiveSlots(family);
+  const [athlete, slots] = await Promise.all([
+    profile.role === 'NEST_STUDENT' ? getStudentAthlete(profile, uid) : null,
+    getEffectiveSlots(family),
+  ]);
   const sessionInputs = [];
+  const ownBookingsBySession = new Map();
   const start = new Date(`${startDate}T12:00:00Z`);
   const end = new Date(`${endDate}T12:00:00Z`);
   for (let date = new Date(start); date <= end; date.setUTCDate(date.getUTCDate() + 1)) {
@@ -552,6 +561,9 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
   if (athlete) {
     const ownBookings = await db.collection('nest_bookings')
       .where('athleteId', '==', athlete.ref.id)
+      .where('family', '==', family)
+      .where('dateKey', '>=', startDate)
+      .where('dateKey', '<=', endDate)
       .get();
     const sessionInputIds = new Set(sessionInputs.map((session) => session.id));
     ownBookings.docs.forEach((booking) => {
@@ -560,6 +572,7 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
           record.dateKey < startDate || record.dateKey > endDate ||
           !['BOOKED', 'CANCELLED'].includes(record.status)) return;
       const id = record.sessionId || sessionId(family, record.dateKey, record.slotId);
+      ownBookingsBySession.set(id, booking);
       if (sessionInputIds.has(id) || !record.slotId || !record.startTime) return;
       sessionInputs.push({
         id,
@@ -571,27 +584,34 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
       sessionInputIds.add(id);
     });
   }
-  const refs = sessionInputs.flatMap((session) => [
-    db.collection('nest_class_sessions').doc(session.id),
-    ...(athlete ? [db.collection('nest_bookings').doc(`${session.id}__${athlete.ref.id}`)] : []),
-  ]);
-  const snapshots = refs.length ? await db.getAll(...refs) : [];
+  const refs = sessionInputs.map((session) => db.collection('nest_class_sessions').doc(session.id));
+  const snapshotsPromise = refs.length ? db.getAll(...refs) : Promise.resolve([]);
+  const monthKeys = athlete ? Array.from(new Set(sessionInputs.map((session) => session.month))) : [];
+  const membershipsPromise = athlete ? Promise.all(monthKeys.map(async (month) =>
+    [month, await findMonthlyMembership(athlete.ref.id, family, month)])) : Promise.resolve([]);
+  const usagePromise = athlete ? Promise.all(monthKeys.map(async (month) => {
+    const snap = await db.collection('nest_monthly_usage').doc(`${athlete.ref.id}__${family}__${month}`).get();
+    return [month, snap.exists ? Number(snap.data().bookedCount || 0) : 0];
+  })) : Promise.resolve([]);
   const sessionIds = sessionInputs.map((session) => session.id);
-  const activeBookingDocs = [];
+  const bookingQueries = [];
   for (let index = 0; index < sessionIds.length; index += 30) {
     const chunk = sessionIds.slice(index, index + 30);
     if (!chunk.length) continue;
-    const bookingSnap = await db.collection('nest_bookings')
+    bookingQueries.push(db.collection('nest_bookings')
       .where('sessionId', 'in', chunk)
       .where('status', '==', 'BOOKED')
-      .get();
-    activeBookingDocs.push(...bookingSnap.docs);
+      .get());
   }
+  const [snapshots, membershipPairs, usagePairs, bookingSnapshots] = await Promise.all([
+    snapshotsPromise, membershipsPromise, usagePromise, Promise.all(bookingQueries),
+  ]);
+  const activeBookingDocs = bookingSnapshots.flatMap((snap) => snap.docs);
   const attendeeUids = Array.from(new Set(activeBookingDocs
     .map((booking) => booking.data().userId)
     .filter(Boolean)));
   const attendeeProfiles = attendeeUids.length
-    ? await db.getAll(...attendeeUids.map((attendeeUid) => db.collection('users').doc(attendeeUid)))
+    ? await db.getAll(...attendeeUids.map((attendeeUid) => db.collection('users').doc(attendeeUid)), { fieldMask: ['photoUrl'] })
     : [];
   const profileByUid = new Map(attendeeProfiles.map((profile) => [profile.id, profile.exists ? profile.data() || {} : {}]));
   const attendeesBySession = new Map();
@@ -608,20 +628,11 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
     });
     attendeesBySession.set(bookingData.sessionId, attendees);
   });
-  const monthKeys = athlete ? Array.from(new Set(sessionInputs.map((session) => session.month))) : [];
-  const [membershipPairs, usagePairs] = athlete ? await Promise.all([
-    Promise.all(monthKeys.map(async (month) => [month, await findMonthlyMembership(athlete.ref.id, family, month)])),
-    Promise.all(monthKeys.map(async (month) => {
-      const snap = await db.collection('nest_monthly_usage').doc(`${athlete.ref.id}__${family}__${month}`).get();
-      return [month, snap.exists ? Number(snap.data().bookedCount || 0) : 0];
-    })),
-  ]) : [[], []];
   const memberships = new Map(membershipPairs);
   const usageCounts = new Map(usagePairs);
   const sessions = sessionInputs.map((session, index) => {
-    const snapshotIndex = index * (athlete ? 2 : 1);
-    const sessionSnap = snapshots[snapshotIndex];
-    const bookingSnap = athlete ? snapshots[snapshotIndex + 1] : null;
+    const sessionSnap = snapshots[index];
+    const bookingSnap = ownBookingsBySession.get(session.id) || null;
     const membership = memberships.get(session.month) || null;
     const monthlyUsed = membership ? usageCounts.get(session.month) || 0 : 0;
     const startAt = localTimeToDate(session.dateKey, session.startTime);
@@ -664,11 +675,12 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
   if (!validDateKey(dateKey) || typeof slotId !== 'string' || !slotId || slotId.includes('__')) {
     fail('invalid-argument', 'Clase no válida.');
   }
-  const scheduledSlot = await findScheduledSlot(family, dateKey, slotId);
+  const [scheduledSlot, profile] = await Promise.all([
+    findScheduledSlot(family, dateKey, slotId), getProfile(uid),
+  ]);
   if (!scheduledSlot || scheduledSlot.startTime !== data.startTime) {
     fail('invalid-argument', 'El horario solicitado no está programado.');
   }
-  const profile = await getProfile(uid);
   const staffBooking = STAFF_ROLES.has(profile.role);
   let athlete;
   if (profile.role === 'NEST_STUDENT') {
@@ -694,7 +706,7 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
   const sessionRef = db.collection('nest_class_sessions').doc(id);
   const bookingRef = db.collection('nest_bookings').doc(`${id}__${athlete.ref.id}`);
   const usageRef = db.collection('nest_monthly_usage').doc(`${athlete.ref.id}__${family}__${month}`);
-  await db.runTransaction(async (transaction) => {
+  const confirmed = await db.runTransaction(async (transaction) => {
     const [sessionSnap, bookingSnap, usageSnap, membershipSnap, athleteSnap] = await Promise.all([
       transaction.get(sessionRef), transaction.get(bookingRef), transaction.get(usageRef),
       transaction.get(membership.ref), transaction.get(athlete.ref),
@@ -746,8 +758,14 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
       bookedCount: bookedCount + 1, monthlyLimit: activeMonthlyLimit,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
+    return {
+      reservedCount: reservedCount + 1, capacity: activeCapacity,
+      monthlyUsed: bookedCount + 1, monthlyLimit: activeMonthlyLimit,
+      attendee: { id: bookingRef.id, athleteId: athlete.ref.id, userId: athleteSnap.data().authUid || null,
+        name: athlete.data.name || profile.displayName || '', isCurrentUser: !staffBooking },
+    };
   });
-  return { success: true, sessionId: id };
+  return { success: true, sessionId: id, ...confirmed };
 });
 
 exports.cancelNestBooking = functions.https.onCall(async (data, context) => {
@@ -769,7 +787,7 @@ exports.cancelNestBooking = functions.https.onCall(async (data, context) => {
   if (startAt.getTime() - Date.now() < CANCELLATION_CUTOFF_HOURS * 60 * 60 * 1000) {
     fail('failed-precondition', 'La cancelación debe realizarse al menos 2 horas antes de la clase.');
   }
-  await db.runTransaction(async (transaction) => {
+  const confirmed = await db.runTransaction(async (transaction) => {
     const [currentBooking, sessionSnap, usageSnap] = await Promise.all([
       transaction.get(bookingRef), transaction.get(sessionRef), transaction.get(usageRef),
     ]);
@@ -783,8 +801,13 @@ exports.cancelNestBooking = functions.https.onCall(async (data, context) => {
     if (usageSnap.exists) {
       transaction.update(usageRef, { bookedCount: Math.max(0, Number(usageSnap.data().bookedCount || 0) - 1) });
     }
+    return {
+      reservedCount: Math.max(0, Number(sessionSnap.data()?.reservedCount || 0) - 1),
+      monthlyUsed: Math.max(0, Number(usageSnap.data()?.bookedCount || 0) - 1),
+      athleteId: athlete.ref.id,
+    };
   });
-  return { success: true };
+  return { success: true, sessionId: id, ...confirmed };
 });
 
 exports.getNestClassRoster = functions.https.onCall(async (data, context) => {

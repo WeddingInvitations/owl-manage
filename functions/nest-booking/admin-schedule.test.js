@@ -9,36 +9,54 @@ const vm = require('node:vm');
 function setup(role = 'OWNER', entries = {}) {
   const records = new Map(Object.entries({ 'users/staff': { role }, ...entries }));
   const reads = [];
+  let transactionQueue = Promise.resolve();
   function snapshot(key) {
-    return { id: key.split('/').pop(), exists: records.has(key), data: () => records.get(key) };
+    return { id: key.split('/').pop(), ref: reference(key), exists: records.has(key), data: () => records.get(key) };
+  }
+  function reference(key) {
+    return { key, id: key.split('/').pop(), get: async () => snapshot(key) };
+  }
+  function query(name, filters = []) {
+    return {
+      name, filters,
+      doc(id) { return reference(`${name}/${id}`); },
+      where(field, operator, value) { return query(name, [...filters, { field, operator, value }]); },
+      async get() {
+        reads.push(name);
+        return { docs: [...records.keys()].filter((key) => key.startsWith(`${name}/`) && filters.every(({ field, operator, value }) => {
+          const actual = records.get(key)[field];
+          if (operator === '==') return actual === value;
+          if (operator === '>=') return actual >= value;
+          if (operator === '<=') return actual <= value;
+          if (operator === 'in') return value.includes(actual);
+          throw new Error(`Unexpected operator: ${operator}`);
+        })).map(snapshot) };
+      },
+    };
   }
   const db = {
-    collection(name) {
-      return {
-        doc(id) {
-          const key = `${name}/${id}`;
-          return { key, get: async () => snapshot(key) };
-        },
-        where(field, operator, value) {
-          assert.equal(operator, '==');
-          return { name, field, value };
-        },
-      };
-    },
+    collection: query,
+    async getAll(...refs) { return refs.filter((ref) => ref.key).map((ref) => snapshot(ref.key)); },
     async runTransaction(callback) {
+      // Model Firestore's serializable transaction isolation, not real network latency.
+      const previous = transactionQueue;
+      let release;
+      transactionQueue = new Promise((resolve) => { release = resolve; });
+      await previous;
+      try {
       const writes = [];
       const result = await callback({
         async get(ref) {
           reads.push(ref.key || ref.name);
           if (ref.key) return snapshot(ref.key);
-          return { docs: [...records.keys()]
-            .filter((key) => key.startsWith(`${ref.name}/`) && records.get(key)[ref.field] === ref.value)
-            .map(snapshot) };
+          return ref.get();
         },
-        set(ref, value) { writes.push([ref.key, value]); },
+        set(ref, value, options) { writes.push([ref.key, options?.merge ? { ...records.get(ref.key), ...value } : value]); },
+        update(ref, value) { writes.push([ref.key, { ...records.get(ref.key), ...value }]); },
       });
       writes.forEach(([key, value]) => records.set(key, value));
       return result;
+      } finally { release(); }
     },
   };
   class HttpsError extends Error {
@@ -194,4 +212,67 @@ test('editing Barre leaves Pilates configuration unchanged', async () => {
   await handlers.saveNestAdminSchedule({ family: 'barre', slots: [slot], version: 0 }, context);
   assert.equal(records.get(configKey).version, 1);
   assert.equal(records.get('nest_calendar/barre__booking-slots').version, 1);
+});
+
+function studentEntries(count) {
+  const entries = { [configKey]: { slots: [slot], version: 1 } };
+  for (let i = 0; i < count; i += 1) {
+    entries[`users/user${i}`] = { role: 'NEST_STUDENT', athleteId: `athlete${i}`, email: `user${i}@example.com`, nestFamilies: ['pilates'] };
+    entries[`athletes_pilates/athlete${i}`] = { authUid: `user${i}`, email: `user${i}@example.com`, name: `Student ${i}` };
+    entries[`athlete_pilates_months/month${i}`] = { athleteId: `athlete${i}`, month: '2099-01', paid: true, tariff: 'Reformer 4' };
+  }
+  return entries;
+}
+const bookingInput = { family: 'pilates', dateKey: futureMonday, slotId: slot.id, startTime: slot.startTime };
+
+test('20 simultaneous students compete for 6 seats without overbooking (transaction simulator)', async () => {
+  const { handlers, records } = setup('OWNER', studentEntries(20));
+  const results = await Promise.allSettled(Array.from({ length: 20 }, (_, i) =>
+    handlers.bookNestClass(bookingInput, { auth: { uid: `user${i}` } })));
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 6);
+  assert.equal(results.filter((result) => result.status === 'rejected' && result.reason.code === 'resource-exhausted').length, 14);
+  const id = `pilates__${futureMonday}__${slot.id}`;
+  assert.equal(records.get(`nest_class_sessions/${id}`).reservedCount, 6);
+  assert.equal([...records.keys()].filter((key) => key.startsWith('nest_bookings/')).length, 6);
+});
+
+test('20 duplicate requests book exactly one seat and use one session', async () => {
+  const { handlers, records } = setup('OWNER', studentEntries(1));
+  const results = await Promise.allSettled(Array.from({ length: 20 }, () => handlers.bookNestClass(bookingInput, { auth: { uid: 'user0' } })));
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(records.get('nest_monthly_usage/athlete0__pilates__2099-01').bookedCount, 1);
+});
+
+test('20 simultaneous schedule loads preserve booked status and counters', async () => {
+  const { handlers } = setup('OWNER', studentEntries(20));
+  await handlers.bookNestClass(bookingInput, { auth: { uid: 'user0' } });
+  const results = await Promise.all(Array.from({ length: 20 }, (_, i) => handlers.getNestBookingSchedule({
+    family: 'pilates', startDate: '2099-01-01', endDate: '2099-01-31',
+  }, { auth: { uid: `user${i}` } })));
+  for (let i = 0; i < 20; i += 1) {
+    const session = results[i].sessions.find((item) => item.dateKey === futureMonday);
+    assert.equal(session.reservedCount, 1);
+    assert.equal(session.isBooked, i === 0);
+    assert.equal(session.monthlyUsed, i === 0 ? 1 : 0);
+  }
+});
+
+test('confirmed cancellation returns counters and frees a seat', async () => {
+  const { handlers, records } = setup('OWNER', studentEntries(1));
+  const context = { auth: { uid: 'user0' } };
+  const booked = await handlers.bookNestClass(bookingInput, context);
+  assert.equal(booked.monthlyUsed, 1);
+  assert.equal(booked.reservedCount, 1);
+  const cancelled = await handlers.cancelNestBooking(bookingInput, context);
+  assert.equal(cancelled.monthlyUsed, 0);
+  assert.equal(cancelled.reservedCount, 0);
+  assert.equal(records.get('nest_monthly_usage/athlete0__pilates__2099-01').bookedCount, 0);
+});
+
+test('simultaneous bookings for different dates cannot exceed the monthly four-session quota', async () => {
+  const { handlers, records } = setup('OWNER', studentEntries(1));
+  const dates = ['2099-01-05', '2099-01-07', '2099-01-12', '2099-01-14', '2099-01-19', '2099-01-21'];
+  const results = await Promise.allSettled(dates.map((dateKey) => handlers.bookNestClass({ ...bookingInput, dateKey }, { auth: { uid: 'user0' } })));
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 4);
+  assert.equal(records.get('nest_monthly_usage/athlete0__pilates__2099-01').bookedCount, 4);
 });

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prueba local de reservas</title><link rel="stylesheet" href="/public-reservas/css/styles.css"><link rel="stylesheet" href="/public-reservas/css/booking.css"></head>
+<body>
+<p>Prueba local con datos ficticios y llamadas simuladas. No conecta a Firebase.</p>
+<div id="familyTabs"><button class="family-tab" data-family="pilates">Pilates</button><button class="family-tab" data-family="barre">Barre</button></div>
+<section id="bookingContent"></section><div id="toast"></div>
+<script>
+window.testCalls = { schedule: 0, book: 0, cancel: 0 };
+window.testAuth = { currentUser: { uid: 'local-test-user' } };
+window.testFixtures = new Map();
+window.testCall = async (name, data) => {
+  const delay = () => new Promise(resolve => setTimeout(resolve, 60));
+  if (name === 'getNestBookingSchedule') {
+    window.testCalls.schedule++;
+    await delay();
+    const sessions = [];
+    for (let date = new Date(data.startDate + 'T12:00:00'); date <= new Date(data.endDate + 'T12:00:00'); date.setDate(date.getDate()+1)) {
+      if (date.getDay() === 0 || date.getDay() === 6) continue;
+      const dateKey = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+      for (const hour of [18, 19]) {
+        const id = `${data.family}__${dateKey}__slot-${hour}`;
+        const start = new Date(date); start.setHours(hour, 0, 0, 0);
+        const session = { id, dateKey, slotId: `slot-${hour}`, startTime: `${hour}:00`, endTime: `${hour+1}:00`, startTimestamp: start.toISOString(), capacity: 6, reservedCount: 0, attendees: [], monthlyUsed: 0, monthlyLimit: 4, activeForMonth: true, canBook: start > new Date(), past: start <= new Date() };
+        sessions.push(session); window.testFixtures.set(id, session);
+      }
+    }
+    return { data: { sessions, memberPhotos: {} } };
+  }
+  const id = `${data.family}__${data.dateKey}__${data.slotId}`;
+  if (name === 'bookNestClass') {
+    window.testCalls.book++; await delay();
+    return { data: { success: true, sessionId: id, reservedCount: 1, capacity: 6, monthlyUsed: 1, monthlyLimit: 4, attendee: { athleteId: 'local-athlete', name: 'Alumna ficticia', isCurrentUser: true } } };
+  }
+  if (name === 'cancelNestBooking') {
+    window.testCalls.cancel++; await delay();
+    return { data: { success: true, sessionId: id, reservedCount: 0, monthlyUsed: 0, athleteId: 'local-athlete' } };
+  }
+  throw new Error('Unexpected callable: ' + name);
+};
+</script>
+<script type="module">
+import { showBookingFamily } from '/public-reservas/js/booking.js';
+window.testShowFamily = showBookingFamily;
+await showBookingFamily('pilates');
+window.testReady = true;
+</script>
+</body></html>

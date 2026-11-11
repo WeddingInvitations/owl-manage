@@ -1,6 +1,15 @@
 {
   "indexes": [
     {
+      "collectionGroup": "nest_bookings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "athleteId", "order": "ASCENDING" },
+        { "fieldPath": "family", "order": "ASCENDING" },
+        { "fieldPath": "dateKey", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "class_assignments",
       "queryScope": "COLLECTION",
       "fields": [

@@ -49,6 +49,7 @@
 
 @media (max-width:760px) {
   .booking-content .nest-mobile-calendar {
+    display:block;
     max-width:360px;
     padding:.8rem .9rem .65rem;
     margin:0 auto .8rem;

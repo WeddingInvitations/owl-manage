@@ -44,6 +44,17 @@ Cada persona puede abrir **Mi perfil** y añadir o quitar su foto. La imagen se 
 
 ## Activación y puesta en marcha
 
+### Rendimiento de reservas
+
+- La navegación reutiliza el mes cargado durante **30 segundos**, con un máximo de seis entradas por navegador y claves separadas por cuenta, disciplina y mes. Peticiones simultáneas del mismo mes comparten una carga. El botón **Actualizar** fuerza una consulta nueva, también en móvil.
+- Tras reservar o cancelar, el servidor devuelve los contadores confirmados de aforo y bono. La interfaz actualiza el mes ya cargado sin otra consulta completa. Si se usa una versión antigua del backend, se mantiene la recarga como alternativa compatible.
+- Las lecturas independientes del calendario se ejecutan en paralelo. El historial propio se consulta solo para la disciplina y el periodo visible, y se reutiliza sin releer cada reserva individual. Los perfiles de compañeras se solicitan solo con su foto.
+- No se cachean en el backend permisos, pagos, bonos ni aforos para autorizar reservas: las transacciones siguen comprobando los datos vigentes. Las plazas mostradas pueden variar por acciones de otras usuarias durante los 30 segundos de caché; el servidor siempre decide si hay plaza real.
+- Para activar estas optimizaciones deben publicarse primero los índices de Firestore y esperar a que estén listos, después **getNestBookingSchedule**, **bookNestClass**, **cancelNestBooking**, **refreshNestPortalAccess**, y finalmente el Hosting **nest-reservas**. Los pushes siguen publicando solo App Engine.
+- Las regresiones locales cubren 20 lecturas simultáneas, competición por seis plazas, peticiones duplicadas, límites mensuales, cancelaciones, caducidad y navegación. Usan Firestore simulado con aislamiento transaccional: no equivalen a una prueba de carga real ni miden latencia de producción. La interfaz se prueba con [tests/serve-booking-performance.mjs](tests/serve-booking-performance.mjs), que sustituye Firebase por datos ficticios.
+
+Las funciones actuales están en **us-central1**. La latencia de red y los arranques en frío pueden seguir afectando a la primera petición. Mantener instancias calientes reduciría esa demora, pero supone coste recurrente y no se ha activado automáticamente.
+
 El código ya contempla las funciones de servidor, las vistas y las reglas de acceso; para utilizarlas en producción hay que desplegar Functions, reglas e índices de Firestore y Hosting. Además, hay que rellenar los emails de las alumnas existentes y dar acceso de disciplina a las profesoras en sus fichas.
 
 ### Publicación automática al hacer push
