@@ -37,3 +37,9 @@ test('portal links the manifest, iPhone touch icon and browser favicon', async (
   await assertPng('icons/the-nest-180.png', 180);
   await assertPng('icons/the-nest-32.png', 32);
 });
+
+test('website header uses the new The Nest logo', async () => {
+  const html = await readFile(new URL('index.html', portal), 'utf8');
+  assert.match(html, /class="brand-mark-image" src="icons\/the-nest-192.png"/);
+  await assertPng('icons/the-nest-192.png', 192);
+});
