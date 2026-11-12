@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest?v=20261112logo1" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/the-nest-180.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="icons/the-nest-32.png" />
-    <link rel="stylesheet" href="css/styles.css?v=20261112guide1" />
+    <link rel="stylesheet" href="css/styles.css?v=20261112guide2" />
     <link rel="stylesheet" href="css/booking.css?v=20261112grace1" />
   </head>
   <body>
@@ -43,9 +43,9 @@
             <span><i>02</i> Elige tu clase</span>
             <span><i>03</i> Confirma tu plaza</span>
           </div>
-          <a class="button button-secondary booking-guide-link welcome-guide-link" href="docs/guia_the_nest_estilo_web.pdf" target="_blank" rel="noopener noreferrer" type="application/pdf">
-            Guía de uso <span class="booking-guide-format">PDF · 70 KB</span><span aria-hidden="true">↗</span><span class="sr-only"> (se abre en una pestaña nueva)</span>
-          </a>
+          <button class="button button-secondary booking-guide-link welcome-guide-link" type="button" data-guide-open aria-haspopup="dialog" aria-controls="bookingGuideDialog">
+            Guía de uso <span class="booking-guide-format">PDF · 70 KB</span>
+          </button>
         </div>
 
         <div class="auth-card">
@@ -90,13 +90,13 @@
         <div class="booking-intro">
           <div>
             <span class="eyebrow">BIENVENIDA, <span id="memberName">ALUMNA</span></span>
-            <h1>Elige tu <em>clase.</em></h1>
+            <h1>Reserva tu <em>clase.</em></h1>
             <p>Reserva tu plaza en el horario semanal. Consulta las plazas disponibles en cada clase.</p>
           </div>
           <div class="booking-intro-actions">
-            <a class="button button-secondary booking-guide-link" href="docs/guia_the_nest_estilo_web.pdf" target="_blank" rel="noopener noreferrer" type="application/pdf">
-              Guía de uso <span class="booking-guide-format">PDF · 70 KB</span><span aria-hidden="true">↗</span><span class="sr-only"> (se abre en una pestaña nueva)</span>
-            </a>
+            <button class="button button-secondary booking-guide-link" type="button" data-guide-open aria-haspopup="dialog" aria-controls="bookingGuideDialog">
+              Guía de uso <span class="booking-guide-format">PDF · 70 KB</span>
+            </button>
             <div class="capacity-note"><span class="capacity-dot"></span> Aforo indicado en cada clase</div>
           </div>
         </div>
@@ -104,6 +104,14 @@
         <section id="bookingContent" class="booking-content"></section>
       </section>
     </main>
+
+    <dialog id="bookingGuideDialog" class="booking-guide-dialog" aria-labelledby="bookingGuideTitle">
+      <div class="booking-guide-toolbar">
+        <h2 id="bookingGuideTitle">Guía de uso</h2>
+        <button id="bookingGuideClose" class="button button-secondary" type="button" autofocus>Cerrar guía ×</button>
+      </div>
+      <iframe id="bookingGuideFrame" class="booking-guide-frame" title="Guía de uso de The Nest" data-guide-src="docs/guia_the_nest_estilo_web.pdf"></iframe>
+    </dialog>
 
     <div id="profileSettingsModal" class="profile-settings-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="profileSettingsTitle">
       <form id="profileSettingsForm" class="profile-settings-card">
@@ -171,6 +179,7 @@
 
     <footer class="site-footer"><span>THE NEST</span><span>Muévete a tu ritmo.</span></footer>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="js/guide.js?v=20261112guide2"></script>
     <script type="module" src="js/app.js?v=20261112grace1"></script>
   </body>
 </html>
