@@ -20,6 +20,15 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { functions } from "./firebase.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-functions.js";
+import { programIncomeTotals } from "./program-income.mjs";
+
+async function loadProgramIncomeTotals() {
+  const [acroKids, nest] = await Promise.all([
+    getDocs(collection(db, "athlete_acrokids_months")),
+    getDocs(collection(db, "athlete_pilates_months")),
+  ]);
+  return programIncomeTotals(acroKids.docs.map((doc) => doc.data()), nest.docs.map((doc) => doc.data()));
+}
 
 // --- Pagos empleados ---
 export async function addEmployeePayment({ name, amount, method, date, userId }) {
@@ -837,6 +846,8 @@ export async function getPaymentMonthsWithAthletes() {
     months.add(key);
   });
 
+  (await loadProgramIncomeTotals()).forEach((item) => months.add(item.month));
+
   return Array.from(months).sort((a, b) => (a < b ? 1 : -1));
 }
 
@@ -990,6 +1001,16 @@ export async function loadPaymentsWithAthleteTotals(
         date: key === "sin-fecha" ? "" : `${key}-01`,
         amount: total,
       },
+      date,
+      editable: false,
+    });
+  });
+
+  (await loadProgramIncomeTotals()).forEach(({ concept, month, amount }) => {
+    const date = month === "sin-fecha" ? null : new Date(`${month}-01T00:00:00`);
+    items.push({
+      id: null,
+      data: { concept, date: month === "sin-fecha" ? "" : `${month}-01`, amount },
       date,
       editable: false,
     });
@@ -1419,6 +1440,16 @@ export async function loadSummary(ui, formatCurrency) {
       amount: total,
     });
     details.set(key, bucket);
+  });
+
+  (await loadProgramIncomeTotals()).forEach(({ concept, month, amount }) => {
+    income += amount;
+    const current = monthly.get(month) || { income: 0, expenses: 0 };
+    current.income += amount;
+    monthly.set(month, current);
+    const bucket = details.get(month) || { payments: [], expenses: [] };
+    bucket.payments.push({ date: month === "sin-fecha" ? "" : `${month}-01`, concept, amount });
+    details.set(month, bucket);
   });
 
   const years = Array.from(monthly.keys())
