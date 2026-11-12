@@ -705,7 +705,8 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
   return { family, sessions, memberPhotos };
 });
 
-exports.getNestBookingAthletes = functions.https.onCall(async (data, context) => {
+// Allow browser preflight at the HTTP layer; requireAuth/requireNestStaff protect the directory.
+exports.getNestBookingAthletes = functions.runWith({ invoker: 'public' }).https.onCall(async (data, context) => {
   const uid = requireAuth(context);
   const family = validateFamily(data.family);
   await requireNestStaff(uid);
