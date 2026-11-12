@@ -140,6 +140,11 @@ h1 em { color: var(--accent); font-weight: 500; }
 .booking-intro { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 2rem; }
 .booking-intro h1 { margin-bottom: 0.7rem; font-size: clamp(2.5rem, 5vw, 4rem); }
 .booking-intro > div > p { margin: 0; }
+.booking-intro-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.75rem; flex: 0 0 auto; }
+.booking-guide-link { max-width: 100%; text-decoration: none; }
+.booking-guide-link:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 4px; }
+.booking-guide-format { color: var(--muted); font-size: 0.68rem; font-weight: 500; white-space: nowrap; }
+.welcome-guide-link { margin-top: 1.5rem; }
 .capacity-note { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 0.55rem; padding: 0.7rem 0.9rem; border: 1px solid var(--border); border-radius: 99px; color: var(--muted); font-size: 0.75rem; }
 .capacity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .family-tabs { display: flex; width: fit-content; gap: 0.35rem; padding: 0.3rem; margin-bottom: 1rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
@@ -168,6 +173,7 @@ h1 em { color: var(--accent); font-weight: 500; }
   .welcome-copy h1 { font-size: clamp(2.65rem, 13vw, 4rem); }
   .welcome-points { grid-template-columns: 1fr; gap: 0.7rem; margin-top: 1.4rem; }
   .booking-intro { align-items: flex-start; flex-direction: column; gap: 1rem; margin-bottom: 1.3rem; }
+  .booking-intro-actions { align-items: flex-start; flex-wrap: wrap; flex-direction: row; }
   .capacity-note { font-size: 0.71rem; }
   .family-tabs { width: 100%; }
   .family-tab { flex: 1; padding-inline: 0.5rem; }

@@ -1,6 +1,22 @@
 steps:
   - name: gcr.io/cloud-builders/gcloud
+    id: deploy-app-engine
     args: ["app", "deploy", "app.yaml", "--quiet"]
+    waitFor: ["-"]
+
+  # Firebase uses the Cloud Build service account through ADC, not a stored token.
+  - name: node:22-bookworm
+    id: deploy-nest-reservas
+    entrypoint: bash
+    args: ["scripts/deploy-firebase.sh", "hosting:nest-reservas"]
+    waitFor: ["-"]
+
+  - name: node:22-bookworm
+    id: verify-nest-reservas
+    entrypoint: node
+    args: ["scripts/verify-hosting.mjs", "nest-reservas"]
+    waitFor: ["deploy-nest-reservas"]
+    env: ["BUILD_ID=$BUILD_ID"]
 
 timeout: "1200s"
 options:

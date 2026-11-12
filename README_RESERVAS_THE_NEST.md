@@ -50,7 +50,7 @@ Cada persona puede abrir **Mi perfil** y añadir o quitar su foto. La imagen se 
 - Tras reservar o cancelar, el servidor devuelve los contadores confirmados de aforo y bono. La interfaz actualiza el mes ya cargado sin otra consulta completa. Si se usa una versión antigua del backend, se mantiene la recarga como alternativa compatible.
 - Las lecturas independientes del calendario se ejecutan en paralelo. El historial propio se consulta solo para la disciplina y el periodo visible, y se reutiliza sin releer cada reserva individual. Los perfiles de compañeras se solicitan solo con su foto.
 - No se cachean en el backend permisos, pagos, bonos ni aforos para autorizar reservas: las transacciones siguen comprobando los datos vigentes. Las plazas mostradas pueden variar por acciones de otras usuarias durante los 30 segundos de caché; el servidor siempre decide si hay plaza real.
-- Para activar estas optimizaciones deben publicarse primero los índices de Firestore y esperar a que estén listos, después **getNestBookingSchedule**, **bookNestClass**, **cancelNestBooking**, **refreshNestPortalAccess**, y finalmente el Hosting **nest-reservas**. Los pushes siguen publicando solo App Engine.
+- Para activar estas optimizaciones deben publicarse primero los índices de Firestore y esperar a que estén listos, después **getNestBookingSchedule**, **bookNestClass**, **cancelNestBooking**, **refreshNestPortalAccess**, y finalmente el Hosting **nest-reservas**. Los pushes publican App Engine y el Hosting de reservas; los cambios de backend y Firestore siguen siendo independientes.
 - Las regresiones locales cubren 20 lecturas simultáneas, competición por seis plazas, peticiones duplicadas, límites mensuales, cancelaciones, caducidad y navegación. Usan Firestore simulado con aislamiento transaccional: no equivalen a una prueba de carga real ni miden latencia de producción. La interfaz se prueba con [tests/serve-booking-performance.mjs](tests/serve-booking-performance.mjs), que sustituye Firebase por datos ficticios.
 
 Las funciones actuales están en **us-central1**. La latencia de red y los arranques en frío pueden seguir afectando a la primera petición. Mantener instancias calientes reduciría esa demora, pero supone coste recurrente y no se ha activado automáticamente.
@@ -59,13 +59,17 @@ El código ya contempla las funciones de servidor, las vistas y las reglas de ac
 
 ### Publicación automática al hacer push
 
-El trigger **webapp** de Cloud Build, en **europe-west1**, se activa con pushes a **main** y usa [cloudbuild.yaml](cloudbuild.yaml). Se ha restaurado el proceso original: **solo publica OwlManage en App Engine**, usando [app.yaml](app.yaml).
+El trigger **webapp** de Cloud Build, en **europe-west1**, se activa con pushes a **main** y detecta [cloudbuild.yaml](cloudbuild.yaml). Cada push ejecuta:
 
-El push ya no instala dependencias ni ejecuta pruebas de Functions, ni despliega Cloud Functions, Firebase Hosting, reglas o índices de Firestore. Tampoco ejecuta las comprobaciones de Hosting añadidas anteriormente. Así se evita el tiempo adicional de esos pasos.
+1. **OwlManage en App Engine**, usando [app.yaml](app.yaml), como hasta ahora.
+2. **The Nest Reservas (https://the-nest-reservas.web.app)**, publicando el target **hosting:nest-reservas** desde la carpeta [public-reservas](public-reservas/index.html). Incluye HTML, JavaScript, CSS, imágenes y la guía PDF. Se ejecuta en paralelo con App Engine.
+3. **Verificación del Hosting de reservas**, comparando por SHA-256 todos los archivos publicados con los del commit. Si el despliegue no confirma éxito o algún archivo no coincide, el build falla.
 
-**The Nest Reservas (https://the-nest-reservas.web.app) no se actualiza con este push.** Sus cambios de frontend requieren un despliegue independiente del target **nest-reservas**. Las Functions y los cambios de Firestore también se publican por separado cuando sea necesario.
+El despliegue de reservas ejecuta [scripts/deploy-firebase.sh](scripts/deploy-firebase.sh) en Node 22 con Firebase CLI **14.22.0**, usando las credenciales ADC de la cuenta de servicio de Cloud Build. No necesita iniciar sesión manualmente ni configurar `FIREBASE_TOKEN`. La cuenta del trigger debe tener permisos de Firebase Hosting en **owl-manage**; actualmente usa **owl-manage@appspot.gserviceaccount.com** con el rol existente **Editor**, sin cambios de IAM.
 
-Los scripts [scripts/deploy-firebase.sh](scripts/deploy-firebase.sh) y [scripts/verify-hosting.mjs](scripts/verify-hosting.mjs) se conservan como herramientas opcionales, pero no se ejecutan automáticamente.
+La comprobación ejecuta [scripts/verify-hosting.mjs](scripts/verify-hosting.mjs) con el argumento **nest-reservas**, para no comprobar el sitio independiente de Firebase Hosting de OwlManage que este pipeline no publica. Sin argumento, el script conserva la comprobación de ambos sitios.
+
+**No se despliegan automáticamente Cloud Functions, reglas ni índices de Firestore, ni el target de Firebase Hosting owlmanage.** Los cambios de backend y Firestore se publican por separado antes del push del frontend que dependa de ellos. Tampoco se instalan dependencias ni se ejecutan pruebas de Functions en el push.
 
 Incluye la configuración actualizada en el commit y haz push a **main**. Comprueba que el build termine con estado **Correcto**; los builds que ya estén en ejecución no cambian sus pasos por esta modificación.
 

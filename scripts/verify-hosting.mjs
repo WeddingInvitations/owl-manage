@@ -2,10 +2,15 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 
-const sites = [
-  { directory: 'public', origin: 'https://owl-manage.web.app' },
-  { directory: 'public-reservas', origin: 'https://the-nest-reservas.web.app' },
+const configuredSites = [
+  { target: 'owlmanage', directory: 'public', origin: 'https://owl-manage.web.app' },
+  { target: 'nest-reservas', directory: 'public-reservas', origin: 'https://the-nest-reservas.web.app' },
 ];
+const target = process.argv[2];
+const sites = target ? configuredSites.filter((site) => site.target === target) : configuredSites;
+if (process.argv.length > 3 || !sites.length) {
+  throw new Error('Usage: node scripts/verify-hosting.mjs [owlmanage|nest-reservas]');
+}
 
 async function* files(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
