@@ -1,7 +1,7 @@
 import { auth, functions } from "./firebase.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-functions.js";
 import { showToast } from "./toast.js";
-import { createScheduleCache, applyBookingConfirmation } from "./schedule-cache.mjs";
+import { createScheduleCache, applyBookingConfirmation, hasBookingAccess } from "./schedule-cache.mjs?v=20261112grace1";
 
 const views = { pilates: "pilates", barre: "barre" };
 const WEEKDAY_COUNT = 5;
@@ -217,6 +217,9 @@ function createClassCard(session, family) {
   } else if (session.canBook && !full && !session.past && !isInstructor) {
     const remaining = Math.max(0, session.monthlyLimit - (session.monthlyUsed || 0));
     card.append(element("p", "nest-booking-message", `${remaining} sesiones disponibles este mes`));
+    if (session.paymentGrace) {
+      card.append(element("p", "nest-booking-message", "Pago pendiente: puedes reservar hasta el día 5 incluido. Desde el día 6 debes tener el mes pagado."));
+    }
     const book = element("button", "button button-primary nest-booking-action", "Reservar plaza");
     book.type = "button";
     book.dataset.sessionAction = session.id;
@@ -237,7 +240,7 @@ function createClassCard(session, family) {
   } else if (session.past) {
     card.append(element("p", "nest-booking-message nest-booking-history-status", "No tenías una reserva para esta clase"));
   } else if (!session.activeForMonth && !session.canManageRoster) {
-    card.append(element("p", "nest-booking-message", "Necesitas una mensualidad pagada este mes."));
+    card.append(element("p", "nest-booking-message", "Necesitas una mensualidad pagada. Sin pagar, solo puedes reservar del día 1 al 5 del mes en curso con una tarifa registrada."));
   } else if (full) {
     card.append(element("p", "nest-booking-message", "Clase completa"));
   }
@@ -426,7 +429,8 @@ async function refreshFamily(family, { focusSelectedDay = false } = {}) {
     const monthSessions = weekSessionsByMonth[Array.from(weekMonthKeys).indexOf(monthKey(selectedDate))];
     const sessions = weekSessionsByMonth.flat().map((session) => {
       const past = new Date(session.startTimestamp).getTime() <= Date.now();
-      return { ...session, past, canBook: session.canBook && !past };
+      const activeForMonth = hasBookingAccess(session);
+      return { ...session, activeForMonth, past, canBook: session.canBook && activeForMonth && !past };
     });
     renderMiniMonth(family, monthSessions, selectedDate);
     renderWeekDaySelector(family, selectedDate, sessions);
@@ -550,17 +554,17 @@ export async function showBookingFamily(family, { forceRefresh = false } = {}) {
       <strong class="nest-booking-week-label" data-nest-booking-week="${family}"></strong>
       <span class="nest-booking-status" data-nest-booking-status="${family}"></span>
     </div>
-    <div class="nest-mobile-calendar" data-nest-mini-month="${family}">
+    <div class="nest-mobile-day-selector" data-nest-week-days="${family}" aria-label="Seleccionar día de la semana"></div>
+    <details class="nest-mobile-calendar" data-nest-mini-month="${family}">
+      <summary class="nest-mini-month-toggle"><span>Calendario mensual</span><strong data-mini-month-label></strong></summary>
       <div class="nest-mini-month-header">
         <button class="button button-secondary" type="button" data-nest-month-shift="-1" data-nest-month-family="${family}" aria-label="Mes anterior">‹</button>
-        <strong data-mini-month-label></strong>
         <button class="button button-secondary" type="button" data-nest-booking-refresh="${family}" aria-label="Actualizar clases">↻</button>
         <button class="button button-secondary" type="button" data-nest-month-shift="1" data-nest-month-family="${family}" aria-label="Mes siguiente">›</button>
       </div>
       <div class="nest-mini-month-grid" data-mini-month-grid></div>
       <p class="nest-mini-month-legend"><i></i> Tienes una clase reservada</p>
-    </div>
-    <div class="nest-mobile-day-selector" data-nest-week-days="${family}" aria-label="Seleccionar día de la semana"></div>
+    </details>
     <div class="nest-mobile-day-view" data-nest-day-view="${family}">
       <h2 data-nest-day-title></h2>
       <div data-nest-day-classes></div>
@@ -568,5 +572,5 @@ export async function showBookingFamily(family, { forceRefresh = false } = {}) {
     <div class="nest-booking-sessions" data-nest-booking-sessions="${family}"></div>`;
   panel.append(title, section);
   initializeBookingSchedule();
-  await refreshFamily(family, { focusSelectedDay: true });
+  await refreshFamily(family);
 }

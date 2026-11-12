@@ -38,7 +38,7 @@
   .booking-content .nest-mobile-day-view { display:block; }
   .booking-content .nest-mobile-calendar { display:block; }
   .booking-content .nest-mobile-day-selector { display:flex; }
-  .booking-content .booking-week-toolbar { display:none; }
+  .booking-content .booking-week-toolbar { display:flex; flex-direction:column; gap:.2rem; margin-bottom:.5rem; }
   .booking-content .nest-booking-session { padding:.85rem; }
   .booking-content .nest-booking-avatar { width:min(100%,42px); }
 }
@@ -58,6 +58,13 @@
     background:var(--surface);
   }
   .nest-mini-month-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:.45rem; }
+  .nest-mini-month-toggle { display:flex; align-items:center; justify-content:space-between; gap:.5rem; cursor:pointer; list-style:none; color:var(--muted); font-size:.75rem; }
+  .nest-mini-month-toggle::-webkit-details-marker { display:none; }
+  .nest-mini-month-toggle strong { color:var(--text); font-size:.8rem; text-transform:capitalize; }
+  .nest-mini-month-toggle::after { content:"⌄"; color:var(--accent-strong); }
+  .nest-mobile-calendar[open] .nest-mini-month-toggle { margin-bottom:.7rem; }
+  .nest-mobile-calendar[open] .nest-mini-month-toggle::after { content:"⌃"; }
+  .nest-mini-month-toggle:focus-visible { outline:2px solid var(--accent-strong); outline-offset:4px; border-radius:4px; }
   .nest-mini-month-header strong { color:var(--text); font-size:.9rem; text-transform:capitalize; }
   .nest-mini-month-header .button { width:32px; min-height:30px; padding:.2rem; border-radius:8px; }
   .nest-mini-month-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px; }

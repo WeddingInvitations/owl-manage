@@ -31,6 +31,11 @@ export function createScheduleCache({ ttl = 30_000, maxEntries = 6, now = Date.n
   return { get, invalidate, update, size: () => entries.size };
 }
 
+export function hasBookingAccess(session, now = Date.now()) {
+  return Boolean(session.activeForMonth && (!session.bookingAccessExpiresAt ||
+    new Date(session.bookingAccessExpiresAt).getTime() > now));
+}
+
 export function applyBookingConfirmation(sessions, sessionId, result, { cancelled = false, own = true, photoUrl = '' } = {}) {
   const target = sessions.find((session) => session.id === sessionId);
   if (!target) return sessions;
@@ -40,7 +45,7 @@ export function applyBookingConfirmation(sessions, sessionId, result, { cancelle
     if (own && session.dateKey.slice(0, 7) === month) {
       updated.monthlyUsed = result.monthlyUsed;
       if (result.monthlyLimit) updated.monthlyLimit = result.monthlyLimit;
-      updated.canBook = Boolean(updated.activeForMonth && !updated.past && updated.monthlyUsed < updated.monthlyLimit);
+      updated.canBook = Boolean(hasBookingAccess(updated) && !updated.past && updated.monthlyUsed < updated.monthlyLimit);
     }
     if (session.id !== sessionId) return updated;
     updated.reservedCount = result.reservedCount;

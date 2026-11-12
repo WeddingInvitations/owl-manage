@@ -134,17 +134,52 @@ function localTimeToDate(dateKey, time) {
   return guess;
 }
 
-async function findMonthlyMembership(athleteId, family, month) {
-  const snap = await db.collection('athlete_pilates_months')
+function isPaymentGraceOpen(month, now = new Date()) {
+  const parts = Object.fromEntries(madridTimeFormatter.formatToParts(now).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}` === month && Number(parts.day) <= 5;
+}
+
+function membershipBookingAccess(record, family, month, now = new Date()) {
+  const monthlyLimit = tariffMonthlyLimit(record);
+  if (record?.month !== month || tariffFamily(record) !== family || !monthlyLimit) return null;
+  const paymentGrace = record.paid !== true && isPaymentGraceOpen(month, now);
+  if (record.paid !== true && !paymentGrace) return null;
+  return {
+    monthlyLimit,
+    paymentGrace,
+    bookingAccessExpiresAt: paymentGrace ? localTimeToDate(`${month}-06`, '00:00').toISOString() : null,
+  };
+}
+
+async function findMonthlyMembership(athleteId, family, month, transaction = null) {
+  const query = db.collection('athlete_pilates_months')
     .where('athleteId', '==', athleteId)
-    .where('month', '==', month)
-    .get();
-  const memberships = snap.docs
+    .where('month', '==', month);
+  const snap = await (transaction ? transaction.get(query) : query.get());
+  const currentMemberships = snap.docs
     .map((doc) => ({ ref: doc.ref, data: doc.data() }))
-    .filter(({ data }) => data.paid === true && tariffFamily(data) === family)
-    .map((membership) => ({ ...membership, monthlyLimit: tariffMonthlyLimit(membership.data) }))
-    .filter((membership) => membership.monthlyLimit)
+    .filter(({ data }) => tariffFamily(data) === family);
+  // The staff payment list carries forward the latest tariff when no month record exists.
+  // Mirror that behavior during grace only; never carry forward the paid flag.
+  let candidates = currentMemberships;
+  if (!candidates.length && isPaymentGraceOpen(month)) {
+    const historyQuery = db.collection('athlete_pilates_months')
+      .where('athleteId', '==', athleteId).where('month', '<', month);
+    const history = await (transaction ? transaction.get(historyQuery) : historyQuery.get());
+    candidates = history.docs.map((doc) => ({ ref: doc.ref, data: doc.data() }))
+      .filter(({ data }) => tariffFamily(data) === family)
+      .sort((first, second) => second.data.month.localeCompare(first.data.month) ||
+        (second.data.updatedAt?.toMillis?.() || second.data.createdAt?.toMillis?.() || 0) -
+        (first.data.updatedAt?.toMillis?.() || first.data.createdAt?.toMillis?.() || 0))
+      .slice(0, 1)
+      .map((membership) => ({ ...membership, data: { ...membership.data, month, paid: false } }));
+  }
+  const memberships = candidates
+    .map((membership) => ({ ...membership, access: membershipBookingAccess(membership.data, family, month) }))
+    .filter((membership) => membership.access)
+    .map(({ access, ...membership }) => ({ ...membership, ...access }))
     .sort((first, second) => {
+      if (first.data.paid !== second.data.paid) return Number(second.data.paid === true) - Number(first.data.paid === true);
       const firstUpdated = first.data.updatedAt?.toMillis?.() || first.data.createdAt?.toMillis?.() || 0;
       const secondUpdated = second.data.updatedAt?.toMillis?.() || second.data.createdAt?.toMillis?.() || 0;
       return secondUpdated - firstUpdated;
@@ -654,6 +689,8 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
         .sort((first, second) => first.name.localeCompare(second.name, 'es')),
       canBook: Boolean(membership && startAt.getTime() > Date.now() && monthlyUsed < membership.monthlyLimit),
       activeForMonth: Boolean(membership),
+      paymentGrace: Boolean(membership?.paymentGrace),
+      bookingAccessExpiresAt: membership?.bookingAccessExpiresAt || null,
       monthlyLimit: membership?.monthlyLimit || 0,
       monthlyUsed,
       startTimestamp: startAt.toISOString(),
@@ -697,7 +734,7 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
   }
   const month = monthKey(dateKey);
   const membership = await findMonthlyMembership(athlete.ref.id, family, month);
-  if (!membership) fail('failed-precondition', `No tienes una mensualidad pagada de ${family === 'barre' ? 'Barre' : 'Pilates'} para ${month}.`);
+  if (!membership) fail('failed-precondition', `Necesitas una mensualidad pagada de ${family === 'barre' ? 'Barre' : 'Pilates'} para ${month}. Solo se permite reservar sin pagar del día 1 al 5 del mes en curso, con una tarifa registrada.`);
   const startAt = localTimeToDate(dateKey, scheduledSlot.startTime);
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(data.startTime || '') || startAt.getTime() <= Date.now()) {
     fail('failed-precondition', 'No se pueden reservar clases pasadas o con un horario no válido.');
@@ -707,9 +744,9 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
   const bookingRef = db.collection('nest_bookings').doc(`${id}__${athlete.ref.id}`);
   const usageRef = db.collection('nest_monthly_usage').doc(`${athlete.ref.id}__${family}__${month}`);
   const confirmed = await db.runTransaction(async (transaction) => {
-    const [sessionSnap, bookingSnap, usageSnap, membershipSnap, athleteSnap] = await Promise.all([
+    const [sessionSnap, bookingSnap, usageSnap, currentMembership, athleteSnap] = await Promise.all([
       transaction.get(sessionRef), transaction.get(bookingRef), transaction.get(usageRef),
-      transaction.get(membership.ref), transaction.get(athlete.ref),
+      findMonthlyMembership(athlete.ref.id, family, month, transaction), transaction.get(athlete.ref),
     ]);
     const currentSlot = (await getEffectiveSlots(family, transaction)).find((slot) =>
       slot.id === slotId && slot.daysOfWeek.includes(new Date(`${dateKey}T12:00:00Z`).getUTCDay())
@@ -717,13 +754,10 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
     if (!currentSlot || currentSlot.startTime !== data.startTime) {
       fail('failed-precondition', 'El horario de la clase ha cambiado. Actualiza la agenda antes de reservar.');
     }
-    const activeMonthlyLimit = membershipSnap.exists
-      ? tariffMonthlyLimit(membershipSnap.data())
-      : null;
-    if (!membershipSnap.exists || membershipSnap.data().paid !== true ||
-        tariffFamily(membershipSnap.data()) !== family || !activeMonthlyLimit) {
+    if (!currentMembership || currentMembership.data.athleteId !== athlete.ref.id) {
       fail('failed-precondition', 'La mensualidad ya no está activa para este mes.');
     }
+    const activeMonthlyLimit = currentMembership.monthlyLimit;
     if (!athleteSnap.exists || (staffBooking
       ? normalizeEmail(athleteSnap.data().email) !== normalizeEmail(data.athleteEmail)
       : athleteSnap.data().authUid !== uid || normalizeEmail(athleteSnap.data().email) !== normalizeEmail(profile.email))) {

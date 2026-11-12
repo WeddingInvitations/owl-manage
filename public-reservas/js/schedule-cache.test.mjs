@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createScheduleCache, applyBookingConfirmation } from './schedule-cache.mjs';
+import { createScheduleCache, applyBookingConfirmation, hasBookingAccess } from './schedule-cache.mjs';
 
 test('20 simultaneous reads of one month use a single request', async () => {
   const cache = createScheduleCache();
@@ -95,4 +95,20 @@ test('cancellation frees quota and seat; staff booking does not alter staff quot
     attendee: { athleteId: 'other' } }, { own: false });
   assert.equal(staff[0].monthlyUsed, 3);
   assert.equal(staff[0].isBooked, undefined);
+});
+
+test('cached unpaid access expires exactly at midnight Madrid on day 6', () => {
+  const session = { activeForMonth: true, bookingAccessExpiresAt: '2099-01-05T23:00:00.000Z' };
+  assert.equal(hasBookingAccess(session, Date.parse('2099-01-05T22:59:59.999Z')), true);
+  assert.equal(hasBookingAccess(session, Date.parse('2099-01-05T23:00:00.000Z')), false);
+  assert.equal(hasBookingAccess({ activeForMonth: true }, Date.parse('2099-01-06T12:00:00Z')), true);
+  assert.equal(hasBookingAccess({ activeForMonth: false }), false);
+});
+
+test('cancelling after grace expiration cannot restore cached booking access', () => {
+  const expiredSessions = sessions.map((session) => ({ ...session, bookingAccessExpiresAt: '2000-01-05T23:00:00Z' }));
+  const result = applyBookingConfirmation(expiredSessions, 'one', { reservedCount: 0, monthlyUsed: 0,
+    athleteId: 'athlete' }, { cancelled: true });
+  assert.equal(result[0].canBook, false);
+  assert.equal(result[1].canBook, false);
 });
