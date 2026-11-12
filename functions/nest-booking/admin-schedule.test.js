@@ -232,6 +232,78 @@ function studentEntries(count) {
 }
 const bookingInput = { family: 'pilates', dateKey: futureMonday, slotId: slot.id, startTime: slot.startTime };
 
+for (const role of ['OWNER', 'RECEPTION', 'COACH', 'TEAM_LEADER']) {
+  test(`${role} can search students and reserve by ID without an email`, async () => {
+    const entries = studentEntries(1);
+    delete entries['athletes_pilates/athlete0'].email;
+    const { handlers, records } = setup(role, entries);
+    const list = await handlers.getNestBookingAthletes({ family: 'pilates' }, context);
+    assert.equal(list.athletes[0].id, 'athlete0');
+    const result = await handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete0' }, context);
+    assert.equal(result.attendee.athleteId, 'athlete0');
+    assert.equal(result.attendee.isCurrentUser, false);
+    assert.equal(records.get('nest_monthly_usage/athlete0__pilates__2099-01').bookedCount, 1);
+  });
+}
+
+for (const role of ['NEST_STUDENT', 'NEST_INSTRUCTOR', 'PENDING']) {
+  test(`${role} cannot read the staff student directory`, async () => {
+    const { handlers, reads } = setup(role, studentEntries(1));
+    await assert.rejects(handlers.getNestBookingAthletes({ family: 'pilates' }, context), { code: 'permission-denied' });
+    assert.ok(!reads.includes('athletes_pilates'));
+  });
+}
+
+test('student directory requires auth, filters disciplines and returns only minimal fields', async () => {
+  const entries = studentEntries(1);
+  entries['athletes_pilates/athlete0'].privateNotes = 'Must not leave backend';
+  entries['athletes_pilates/barre-only'] = { name: 'Ana', email: 'ANA@example.com', nestFamilies: ['barre'] };
+  entries['athletes_pilates/both'] = { name: 'Bea', nestFamilies: ['pilates', 'barre'] };
+  const { handlers } = setup('OWNER', entries);
+  await assert.rejects(handlers.getNestBookingAthletes({ family: 'pilates' }, {}), { code: 'unauthenticated' });
+  await assert.rejects(handlers.getNestBookingAthletes({ family: 'other' }, context), { code: 'invalid-argument' });
+  const pilates = await handlers.getNestBookingAthletes({ family: 'pilates' }, context);
+  assert.equal(pilates.athletes.length, 2);
+  assert.ok(!pilates.athletes.some((athlete) => athlete.id === 'barre-only'));
+  assert.deepEqual(Object.keys(pilates.athletes[0]).sort(), ['email', 'id', 'name']);
+  const barre = await handlers.getNestBookingAthletes({ family: 'barre' }, context);
+  assert.equal(barre.athletes[0].email, 'ana@example.com');
+});
+
+test('staff reservation by ID distinguishes identical names and preserves old email flow', async () => {
+  const entries = studentEntries(2);
+  entries['athletes_pilates/athlete0'].name = 'Ana';
+  entries['athletes_pilates/athlete1'].name = 'Ana';
+  const { handlers } = setup('OWNER', entries);
+  assert.equal((await handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete1' }, context)).attendee.athleteId, 'athlete1');
+  assert.equal((await handlers.bookNestClass({ ...bookingInput, athleteEmail: 'user0@example.com' }, context)).attendee.athleteId, 'athlete0');
+  await assert.rejects(handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete1' }, context), { code: 'already-exists' });
+});
+
+test('students cannot use another athlete ID to impersonate a classmate', async () => {
+  const { handlers } = setup('OWNER', studentEntries(2));
+  const result = await handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete1' }, { auth: { uid: 'user0' } });
+  assert.equal(result.attendee.athleteId, 'athlete0');
+});
+
+test('staff ID booking rejects invalid IDs, absent records and unpaid memberships', async () => {
+  const entries = studentEntries(1);
+  entries['athlete_pilates_months/month0'].paid = false;
+  const { handlers } = setup('OWNER', entries, { now: '2099-01-06T12:00:00Z' });
+  for (const athleteId of ['', '../athlete0', 123]) {
+    await assert.rejects(handlers.bookNestClass({ ...bookingInput, athleteId }, context), { code: 'invalid-argument' });
+  }
+  await assert.rejects(handlers.bookNestClass({ ...bookingInput, athleteId: 'missing' }, context), { code: 'not-found' });
+  await assert.rejects(handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete0' }, context), { code: 'failed-precondition' });
+});
+
+test('staff ID booking rechecks the student still exists inside the transaction', async () => {
+  const { handlers } = setup('OWNER', studentEntries(1), {
+    beforeTransaction: (_, records) => records.delete('athletes_pilates/athlete0'),
+  });
+  await assert.rejects(handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete0' }, context), { code: 'permission-denied' });
+});
+
 test('20 simultaneous students compete for 6 seats without overbooking (transaction simulator)', async () => {
   const { handlers, records } = setup('OWNER', studentEntries(20));
   const results = await Promise.allSettled(Array.from({ length: 20 }, (_, i) =>

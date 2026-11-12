@@ -705,6 +705,24 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
   return { family, sessions, memberPhotos };
 });
 
+exports.getNestBookingAthletes = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const family = validateFamily(data.family);
+  await requireNestStaff(uid);
+  const [athletes, history] = await Promise.all([
+    db.collection('athletes_pilates').get(), db.collection('athlete_pilates_months').get(),
+  ]);
+  const familyIds = new Set(history.docs.filter((doc) => tariffFamily(doc.data()) === family)
+    .map((doc) => doc.data().athleteId));
+  return {
+    athletes: athletes.docs.filter((doc) => familyIds.has(doc.id) ||
+      familiesFromHistory([], doc.data()).includes(family))
+      .map((doc) => ({ id: doc.id, name: String(doc.data().name || 'Sin nombre'),
+        email: normalizeEmail(doc.data().email) }))
+      .sort((first, second) => first.name.localeCompare(second.name, 'es')),
+  };
+});
+
 exports.bookNestClass = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
   const family = validateFamily(data.family);
@@ -723,12 +741,22 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
   if (profile.role === 'NEST_STUDENT') {
     athlete = await getStudentAthlete(profile, uid);
   } else if (staffBooking) {
-    const athleteEmail = normalizeEmail(data.athleteEmail);
-    if (!athleteEmail) fail('invalid-argument', 'Indica el correo de la alumna.');
-    const athletesSnap = await db.collection('athletes_pilates').get();
-    const matches = athletesSnap.docs.filter((doc) => normalizeEmail(doc.data().email) === athleteEmail);
-    if (matches.length !== 1) fail('not-found', 'No se encontró una única ficha con ese correo.');
-    athlete = { ref: matches[0].ref, data: matches[0].data() };
+    if (data.athleteId !== undefined) {
+      if (typeof data.athleteId !== 'string' || !data.athleteId || data.athleteId.includes('/') || data.athleteId.length > 1500) {
+        fail('invalid-argument', 'Selecciona una ficha válida.');
+      }
+      const snap = await db.collection('athletes_pilates').doc(data.athleteId).get();
+      if (!snap.exists) fail('not-found', 'La ficha seleccionada ya no existe.');
+      athlete = { ref: snap.ref, data: snap.data() };
+    } else {
+      // Preserve compatibility with the older staff portal.
+      const athleteEmail = normalizeEmail(data.athleteEmail);
+      if (!athleteEmail) fail('invalid-argument', 'Selecciona una alumna.');
+      const athletesSnap = await db.collection('athletes_pilates').get();
+      const matches = athletesSnap.docs.filter((doc) => normalizeEmail(doc.data().email) === athleteEmail);
+      if (matches.length !== 1) fail('not-found', 'No se encontró una única ficha con ese correo.');
+      athlete = { ref: matches[0].ref, data: matches[0].data() };
+    }
   } else {
     fail('permission-denied', 'No tienes permiso para reservar clases.');
   }
@@ -759,7 +787,8 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
     }
     const activeMonthlyLimit = currentMembership.monthlyLimit;
     if (!athleteSnap.exists || (staffBooking
-      ? normalizeEmail(athleteSnap.data().email) !== normalizeEmail(data.athleteEmail)
+      ? (data.athleteId !== undefined ? athleteSnap.id !== data.athleteId :
+        normalizeEmail(athleteSnap.data().email) !== normalizeEmail(data.athleteEmail))
       : athleteSnap.data().authUid !== uid || normalizeEmail(athleteSnap.data().email) !== normalizeEmail(profile.email))) {
       fail('permission-denied', 'La ficha de alumna no está vinculada a tu cuenta.');
     }

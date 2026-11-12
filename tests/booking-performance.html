@@ -9,6 +9,7 @@
 window.testCalls = { schedule: 0, book: 0, cancel: 0 };
 window.testAuth = { currentUser: { uid: 'local-test-user' } };
 window.testFixtures = new Map();
+window.testAdmin = new URLSearchParams(location.search).has('admin');
 window.testCall = async (name, data) => {
   const delay = () => new Promise(resolve => setTimeout(resolve, 60));
   if (name === 'getNestBookingSchedule') {
@@ -22,15 +23,29 @@ window.testCall = async (name, data) => {
         const id = `${data.family}__${dateKey}__slot-${hour}`;
         const start = new Date(date); start.setHours(hour, 0, 0, 0);
         const session = { id, dateKey, slotId: `slot-${hour}`, startTime: `${hour}:00`, endTime: `${hour+1}:00`, startTimestamp: start.toISOString(), capacity: 6, reservedCount: 0, attendees: [], monthlyUsed: 0, monthlyLimit: 4, activeForMonth: true, canBook: start > new Date(), past: start <= new Date() };
+        if (window.testAdmin) {
+          session.canManageRoster = true;
+          session.canBookForOthers = true;
+          session.attendees = [{ athleteId: 'already-booked', name: 'Alumna con plaza' }];
+          session.reservedCount = 1;
+        }
         sessions.push(session); window.testFixtures.set(id, session);
       }
     }
     return { data: { sessions, memberPhotos: {} } };
   }
+  if (name === 'getNestBookingAthletes') {
+    return { data: { athletes: [
+      { id: 'already-booked', name: 'Alumna con plaza', email: 'reserved@example.com' },
+      { id: 'ana', name: 'Ana García', email: 'ana@example.com' },
+      { id: 'bea', name: 'Beatriz López', email: 'bea@example.com' },
+    ] } };
+  }
   const id = `${data.family}__${data.dateKey}__${data.slotId}`;
   if (name === 'bookNestClass') {
+    window.testLastBooking = data;
     window.testCalls.book++; await delay();
-    return { data: { success: true, sessionId: id, reservedCount: 1, capacity: 6, monthlyUsed: 1, monthlyLimit: 4, attendee: { athleteId: 'local-athlete', name: 'Alumna ficticia', isCurrentUser: true } } };
+    return { data: { success: true, sessionId: id, reservedCount: window.testAdmin ? 2 : 1, capacity: 6, monthlyUsed: 1, monthlyLimit: 4, attendee: { athleteId: data.athleteId || 'local-athlete', name: 'Alumna ficticia', isCurrentUser: !window.testAdmin } } };
   }
   if (name === 'cancelNestBooking') {
     window.testCalls.cancel++; await delay();

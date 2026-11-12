@@ -145,6 +145,20 @@ h1 em { color: var(--accent); font-weight: 500; }
 .booking-guide-link:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 4px; }
 .booking-guide-format { color: var(--muted); font-size: 0.68rem; font-weight: 500; white-space: nowrap; }
 .welcome-guide-link { margin-top: 1.5rem; }
+.booking-athlete-dialog { width: min(560px, calc(100% - 1.25rem)); max-height: 85vh; max-height: 85dvh; padding: 1.1rem; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); }
+.booking-athlete-dialog::backdrop { background: rgba(63,54,43,.55); }
+.booking-athlete-heading { display: flex; align-items: center; justify-content: space-between; gap: .65rem; }
+.booking-athlete-heading h2 { margin: 0; font-size: 1.15rem; }
+.booking-athlete-detail { margin: .7rem 0; color: var(--muted); font-size: .8rem; line-height: 1.5; }
+.booking-athlete-search { display: grid; gap: .45rem; margin: 1rem 0; font-size: .8rem; }
+.booking-athlete-search input { width: 100%; min-height: 44px; padding: .65rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.booking-athlete-results { max-height: 48vh; max-height: 48dvh; overflow-y: auto; }
+.booking-athlete-row { display: flex; align-items: center; justify-content: space-between; gap: .65rem; padding: .7rem 0; border-top: 1px solid var(--border); }
+.booking-athlete-row > div { min-width: 0; }
+.booking-athlete-row strong, .booking-athlete-row small { display: block; overflow-wrap: anywhere; }
+.booking-athlete-row strong { font-size: .85rem; }
+.booking-athlete-row small { margin-top: .2rem; color: var(--muted); font-size: .7rem; }
+.booking-athlete-row .button { flex-shrink: 0; }
 .booking-guide-dialog { width: min(100%, 1000px); height: 92vh; height: 92dvh; max-width: 100%; max-height: 100%; padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); overflow: hidden; }
 .booking-guide-dialog[open] { display: flex; flex-direction: column; }
 .booking-guide-dialog::backdrop { background: rgba(63,54,43,.55); }

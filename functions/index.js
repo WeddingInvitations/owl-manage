@@ -193,6 +193,7 @@ exports.saveNestAdminSchedule = nestBooking.saveNestAdminSchedule;
 exports.registerNestPortalAccount = nestBooking.registerNestPortalAccount;
 exports.refreshNestPortalAccess = nestBooking.refreshNestPortalAccess;
 exports.getNestBookingSchedule = nestBooking.getNestBookingSchedule;
+exports.getNestBookingAthletes = nestBooking.getNestBookingAthletes;
 exports.bookNestClass = nestBooking.bookNestClass;
 exports.cancelNestBooking = nestBooking.cancelNestBooking;
 exports.getNestClassRoster = nestBooking.getNestClassRoster;

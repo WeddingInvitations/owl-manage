@@ -39,7 +39,8 @@ Cada persona puede abrir **Mi perfil** y añadir o quitar su foto. La imagen se 
 
 - Las clases usan los horarios semanales ya configurados para Pilates y Barre, incluidas las franjas personalizadas existentes.
 - Una profesora abre **Ver lista y asistencia** para consultar las reservas y marcar quién asistió.
-- Para reservar en nombre de una alumna, el personal usa **Reservar para alumna** y escribe el email que aparece en su ficha. Se aplican las mismas reglas de pago, tarifa y aforo.
+- Para reservar en nombre de una alumna, el personal usa **Reservar para alumna**, busca su nombre y pulsa **Reservar** en su ficha. El correo se muestra solo para distinguir nombres iguales; no hay que escribirlo y también se pueden elegir fichas sin correo. Las alumnas ya inscritas aparecen como **Ya reservada**. Se aplican las mismas reglas de pago, tarifa y aforo.
+- Este selector requiere publicar **getNestBookingAthletes** y actualizar **bookNestClass** antes del push del frontend. El listado completo solo se entrega al personal interno; alumnas y profesoras externas no tienen acceso. No requiere cambiar reglas ni índices de Firestore.
 - Cambiar el email de una ficha desvincula el acceso del correo anterior. La alumna debe volver a entrar con el correo actualizado.
 
 ## Activación y puesta en marcha

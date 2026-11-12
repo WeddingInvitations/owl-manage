@@ -7,6 +7,7 @@ const views = { pilates: "pilates", barre: "barre" };
 const WEEKDAY_COUNT = 5;
 const callables = {
   schedule: httpsCallable(functions, "getNestBookingSchedule"),
+  athletes: httpsCallable(functions, "getNestBookingAthletes"),
   book: httpsCallable(functions, "bookNestClass"),
   cancel: httpsCallable(functions, "cancelNestBooking"),
   roster: httpsCallable(functions, "getNestClassRoster"),
@@ -93,7 +94,7 @@ async function getMonthSessions(family, date) {
   });
 }
 
-async function mutateBooking(session, family, button, { cancelled = false, athleteEmail } = {}) {
+async function mutateBooking(session, family, button, { cancelled = false, athleteId } = {}) {
   if (pendingActions.has(session.id)) return;
   const actingUserId = auth.currentUser?.uid;
   const monthCacheKey = cacheKey(family, session.dateKey.slice(0, 7));
@@ -103,10 +104,10 @@ async function mutateBooking(session, family, button, { cancelled = false, athle
   try {
     const result = await (cancelled ? callables.cancel : callables.book)({
       family, dateKey: session.dateKey, slotId: session.slotId, startTime: session.startTime,
-      ...(athleteEmail ? { athleteEmail } : {}),
+      ...(athleteId ? { athleteId } : {}),
     });
     if (auth.currentUser?.uid !== actingUserId) return;
-    const own = !athleteEmail;
+    const own = !athleteId;
     const updated = Number.isInteger(result.data.reservedCount) && monthScheduleCache.update(
       monthCacheKey,
       (sessions) => applyBookingConfirmation(sessions, session.id, result.data, {
@@ -133,6 +134,80 @@ function element(tag, className, text) {
   if (className) node.className = className;
   if (text != null) node.textContent = text;
   return node;
+}
+
+let athletePicker = null;
+
+async function chooseBookingAthlete(session, family, bookingButton) {
+  if (athletePicker?.open) return;
+  const uid = auth.currentUser?.uid;
+  const dialog = element('dialog', 'booking-athlete-dialog');
+  athletePicker = dialog;
+  dialog.setAttribute('aria-labelledby', 'bookingAthleteTitle');
+  const heading = element('div', 'booking-athlete-heading');
+  const title = element('h2', '', 'Reservar para una alumna');
+  title.id = 'bookingAthleteTitle';
+  const close = element('button', 'button button-quiet', 'Cerrar ×');
+  close.type = 'button';
+  close.addEventListener('click', () => dialog.close());
+  heading.append(title, close);
+  const detail = element('p', 'booking-athlete-detail',
+    `${family === 'barre' ? 'Barre' : 'Pilates'} · ${dateFromKey(session.dateKey).toLocaleDateString('es-ES')} · ${session.startTime}`);
+  const label = element('label', 'booking-athlete-search', 'Buscar alumna por nombre');
+  const search = element('input');
+  search.type = 'search';
+  search.placeholder = 'Escribe un nombre…';
+  label.append(search);
+  const list = element('div', 'booking-athlete-results');
+  list.setAttribute('aria-live', 'polite');
+  list.append(element('p', 'booking-athlete-detail', 'Cargando alumnas…'));
+  dialog.append(heading, detail, label, list);
+  const previousOverflow = document.body.style.overflow;
+  dialog.addEventListener('close', () => {
+    document.body.style.overflow = previousOverflow;
+    dialog.remove();
+    if (athletePicker === dialog) athletePicker = null;
+    bookingButton.focus();
+  });
+  document.body.append(dialog);
+  dialog.showModal();
+  document.body.style.overflow = 'hidden';
+  search.focus();
+  try {
+    const result = await callables.athletes({ family });
+    if (!dialog.open) return;
+    if (auth.currentUser?.uid !== uid) { dialog.close(); return; }
+    const athletes = result.data.athletes || [];
+    const assignedIds = new Set((session.attendees || []).map((attendee) => attendee.athleteId));
+    const normalize = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const render = () => {
+      list.replaceChildren();
+      const matches = athletes.filter((athlete) => normalize(`${athlete.name} ${athlete.email}`).includes(normalize(search.value.trim())));
+      if (!matches.length) list.append(element('p', 'booking-athlete-detail', athletes.length ? 'No hay alumnas con ese nombre.' : 'No hay alumnas registradas en esta disciplina.'));
+      matches.forEach((athlete) => {
+        const row = element('div', 'booking-athlete-row');
+        const info = element('div');
+        info.append(element('strong', '', athlete.name), element('small', '', athlete.email || 'Sin correo registrado'));
+        const assigned = assignedIds.has(athlete.id);
+        const reserve = element('button', 'button button-primary', assigned ? 'Ya reservada' : 'Reservar');
+        reserve.type = 'button';
+        reserve.disabled = assigned;
+        reserve.setAttribute('aria-label', `${assigned ? 'Ya reservada' : 'Reservar para'} ${athlete.name}`);
+        reserve.addEventListener('click', () => {
+          if (auth.currentUser?.uid !== uid) { dialog.close(); return; }
+          dialog.close();
+          mutateBooking(session, family, bookingButton, { athleteId: athlete.id });
+        });
+        row.append(info, reserve);
+        list.append(row);
+      });
+    };
+    search.addEventListener('input', render);
+    render();
+  } catch (error) {
+    if (!dialog.open) return;
+    list.replaceChildren(element('p', 'booking-athlete-detail', error.message || 'No se pudieron cargar las alumnas. Cierra y vuelve a intentarlo.'));
+  }
 }
 
 function weekdayLabel(date) {
@@ -231,11 +306,7 @@ function createClassCard(session, family) {
     book.type = "button";
     book.dataset.sessionAction = session.id;
     book.disabled = pendingActions.has(session.id);
-    book.addEventListener("click", async () => {
-      const email = prompt("Correo de la ficha de la alumna:");
-      if (!email) return;
-      await mutateBooking(session, family, book, { athleteEmail: email.trim().toLowerCase() });
-    });
+    book.addEventListener("click", () => chooseBookingAthlete(session, family, book));
     card.append(book);
   } else if (session.past) {
     card.append(element("p", "nest-booking-message nest-booking-history-status", "No tenías una reserva para esta clase"));
