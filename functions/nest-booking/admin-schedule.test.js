@@ -67,7 +67,7 @@ function setup(role = 'OWNER', entries = {}, { now, beforeTransaction } = {}) {
     },
   };
   class HttpsError extends Error {
-    constructor(code, message) { super(message); this.code = code; }
+    constructor(code, message, details) { super(message); this.code = code; this.details = details; }
   }
   const exported = {};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8'), {
@@ -485,4 +485,121 @@ test('transaction rechecks tariff when a current month is registered during hist
     records.set('athlete_pilates_months/current', { athleteId: 'athlete0', month: '2099-01', paid: false, tariff: 'Reformer 4' });
   } });
   assert.equal((await handlers.bookNestClass(graceBooking, studentContext)).monthlyLimit, 4);
+});
+
+function removableSchedule() {
+  const entries = { [configKey]: { slots: [slot], version: 1 } };
+  for (const [id, dateKey] of [['monday', '2099-01-05'], ['wednesday', '2099-01-07'], ['past', '2098-12-29']]) {
+    entries[`nest_class_sessions/${id}`] = { family: 'pilates', slotId: slot.id, dateKey, startTime: '18:00', reservedCount: 1 };
+    entries[`nest_bookings/${id}`] = { family: 'pilates', slotId: slot.id, sessionId: id, athleteId: 'student', dateKey,
+      startTime: '18:00', status: 'BOOKED' };
+  }
+  entries['nest_monthly_usage/student__pilates__2099-01'] = { bookedCount: 2 };
+  return entries;
+}
+
+test('individual weekday deletion requires explicit confirmation with reserved classes', async () => {
+  const { handlers, records } = setup('OWNER', removableSchedule(), { now: '2099-01-01T10:00:00Z' });
+  let warning;
+  await assert.rejects(handlers.saveNestAdminSchedule({ family: 'pilates', slots: [{ ...slot, daysOfWeek: [3] }], version: 1 }, context), (error) => {
+    warning = error.details;
+    return error.code === 'failed-precondition' && warning.requiresDeletionConfirmation;
+  });
+  assert.equal(warning.affectedClasses.length, 1);
+  assert.equal(warning.affectedClasses[0].dayOfWeek, 1);
+  assert.equal(warning.affectedClasses[0].reservationCount, 1);
+  assert.equal(records.get(configKey).version, 1);
+  assert.equal(records.get('nest_bookings/monday').status, 'BOOKED');
+  const result = await handlers.saveNestAdminSchedule({ family: 'pilates', slots: [{ ...slot, daysOfWeek: [3] }], version: 1,
+    confirmDeletedClasses: warning.affectedClasses }, context);
+  assert.equal(result.cancelledBookings, 1);
+  assert.equal(result.version, 2);
+  assert.equal(records.get(configKey).slots[0].daysOfWeek[0], 3);
+  assert.equal(records.get('nest_bookings/monday').status, 'CANCELLED');
+  assert.equal(records.get('nest_bookings/monday').cancellationReason, 'CLASS_REMOVED');
+  assert.equal(records.get('nest_bookings/wednesday').status, 'BOOKED');
+  assert.equal(records.get('nest_bookings/past').status, 'BOOKED');
+  assert.equal(records.get('nest_class_sessions/monday').reservedCount, 0);
+  assert.equal(records.get('nest_class_sessions/wednesday').reservedCount, 1);
+  assert.equal(records.get('nest_monthly_usage/student__pilates__2099-01').bookedCount, 1);
+});
+
+test('confirmed complete removal cancels future bookings, preserves past and refunds once', async () => {
+  const { handlers, records } = setup('OWNER', removableSchedule(), { now: '2099-01-01T10:00:00Z' });
+  const result = await handlers.saveNestAdminSchedule({ family: 'pilates', slots: [], version: 1, confirmDeletedClasses: [
+    { slotId: slot.id, dayOfWeek: 1, reservationCount: 1 }, { slotId: slot.id, dayOfWeek: 3, reservationCount: 1 },
+  ] }, context);
+  assert.equal(result.cancelledBookings, 2);
+  assert.equal(records.get('nest_monthly_usage/student__pilates__2099-01').bookedCount, 0);
+  assert.equal(records.get('nest_bookings/past').status, 'BOOKED');
+  await handlers.saveNestAdminSchedule({ family: 'pilates', slots: [], version: 2 }, context);
+  assert.equal(records.get('nest_monthly_usage/student__pilates__2099-01').bookedCount, 0);
+});
+
+test('confirmation for another day or too few reservations cannot authorize deletion', async () => {
+  for (const confirmation of [{ slotId: slot.id, dayOfWeek: 3, reservationCount: 10 },
+    { slotId: slot.id, dayOfWeek: 1, reservationCount: 0 }]) {
+    const { handlers, records } = setup('OWNER', removableSchedule(), { now: '2099-01-01T10:00:00Z' });
+    await assert.rejects(handlers.saveNestAdminSchedule({ family: 'pilates', slots: [{ ...slot, daysOfWeek: [3] }], version: 1,
+      confirmDeletedClasses: [confirmation] }, context), { code: 'failed-precondition' });
+    assert.equal(records.get('nest_bookings/monday').status, 'BOOKED');
+  }
+});
+
+test('deletion checks new reservations inside transaction and requests a fresh confirmation', async () => {
+  const { handlers, records } = setup('OWNER', removableSchedule(), { now: '2099-01-01T10:00:00Z', beforeTransaction: (_, records) => {
+    records.set('nest_bookings/new', { ...records.get('nest_bookings/monday'), athleteId: 'another' });
+  } });
+  await assert.rejects(handlers.saveNestAdminSchedule({ family: 'pilates', slots: [{ ...slot, daysOfWeek: [3] }], version: 1,
+    confirmDeletedClasses: [{ slotId: slot.id, dayOfWeek: 1, reservationCount: 1 }] }, context), (error) =>
+    error.details.affectedClasses[0].reservationCount === 2);
+  assert.equal(records.get(configKey).version, 1);
+});
+
+test('confirmed deletion cancels bookings with missing sessions and clamps stale usage', async () => {
+  const entries = removableSchedule();
+  delete entries['nest_class_sessions/monday'];
+  entries['nest_monthly_usage/student__pilates__2099-01'].bookedCount = 0;
+  const { handlers, records } = setup('OWNER', entries, { now: '2099-01-01T10:00:00Z' });
+  await handlers.saveNestAdminSchedule({ family: 'pilates', slots: [{ ...slot, daysOfWeek: [3] }], version: 1,
+    confirmDeletedClasses: [{ slotId: slot.id, dayOfWeek: 1, reservationCount: 1 }] }, context);
+  assert.equal(records.get('nest_bookings/monday').status, 'CANCELLED');
+  assert.equal(records.get('nest_monthly_usage/student__pilates__2099-01').bookedCount, 0);
+});
+
+test('deletion keeps earlier classes on the current date in the history', async () => {
+  const entries = removableSchedule();
+  const { handlers, records } = setup('OWNER', entries, { now: '2099-01-05T18:00:00Z' });
+  await handlers.saveNestAdminSchedule({ family: 'pilates', slots: [{ ...slot, daysOfWeek: [3] }], version: 1 }, context);
+  assert.equal(records.get('nest_bookings/monday').status, 'BOOKED');
+  assert.equal(records.get('nest_class_sessions/monday').reservedCount, 1);
+});
+
+test('removed future classes do not reappear in the student schedule from cancelled bookings', async () => {
+  const entries = studentEntries(1);
+  const { handlers } = setup('OWNER', entries, { now: '2099-01-01T10:00:00Z' });
+  await handlers.bookNestClass(bookingInput, { auth: { uid: 'user0' } });
+  await handlers.saveNestAdminSchedule({ family: 'pilates', slots: [{ ...slot, daysOfWeek: [3] }], version: 1,
+    confirmDeletedClasses: [{ slotId: slot.id, dayOfWeek: 1, reservationCount: 1 }] }, context);
+  const schedule = await handlers.getNestBookingSchedule({ family: 'pilates', startDate: '2099-01-01', endDate: '2099-01-31' }, { auth: { uid: 'user0' } });
+  assert.ok(!schedule.sessions.some((session) => session.dateKey === futureMonday));
+  assert.ok(schedule.sessions.some((session) => session.dateKey === '2099-01-07'));
+});
+
+test('Barre weekday removal cancels all matching weeks and leaves Pilates untouched', async () => {
+  const entries = removableSchedule();
+  entries['nest_calendar/barre__booking-slots'] = { slots: [slot], version: 1 };
+  for (const [id, dateKey] of [['barre-1', '2099-01-05'], ['barre-2', '2099-01-12']]) {
+    entries[`nest_bookings/${id}`] = { family: 'barre', slotId: slot.id, dateKey, startTime: '18:00', athleteId: 'student', status: 'BOOKED' };
+  }
+  entries['nest_monthly_usage/student__barre__2099-01'] = { bookedCount: 2 };
+  const { handlers, records } = setup('OWNER', entries, { now: '2099-01-01T10:00:00Z' });
+  const result = await handlers.saveNestAdminSchedule({ family: 'barre', slots: [{ ...slot, daysOfWeek: [3] }], version: 1,
+    confirmDeletedClasses: [{ slotId: slot.id, dayOfWeek: 1, reservationCount: 2 }] }, context);
+  assert.equal(result.cancelledBookings, 2);
+  assert.equal(records.get('nest_bookings/barre-1').status, 'CANCELLED');
+  assert.equal(records.get('nest_bookings/barre-2').status, 'CANCELLED');
+  assert.equal(records.get('nest_bookings/monday').status, 'BOOKED');
+  assert.equal(records.get('nest_monthly_usage/student__barre__2099-01').bookedCount, 0);
+  assert.equal(records.get(configKey).version, 1);
 });

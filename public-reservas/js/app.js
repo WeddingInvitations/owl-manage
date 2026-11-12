@@ -21,6 +21,7 @@ import {
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { showBookingFamily } from "./booking.js?v=20261112picker1";
+import { expandAdminSlots, mergeAdminRows } from "./admin-schedule-draft.mjs?v=20261112delete1";
 import { showToast } from "./toast.js";
 
 const $ = (id) => document.getElementById(id);
@@ -288,13 +289,13 @@ const adminWeekdays = [
 ];
 
 function readAdminDraft() {
-  return Array.from(ui.scheduleAdminSlots.querySelectorAll(".schedule-admin-slot")).map((card) => ({
+  return mergeAdminRows(Array.from(ui.scheduleAdminSlots.querySelectorAll(".schedule-admin-slot")).map((card) => ({
     id: card.dataset.slotId,
-    daysOfWeek: Array.from(card.querySelectorAll("[data-slot-day]:checked")).map((checkbox) => Number(checkbox.value)),
+    daysOfWeek: [Number(card.querySelector("[data-slot-day]").value)],
     startTime: card.querySelector("[data-slot-time]").value,
     capacity: Number(card.querySelector("[data-slot-capacity]").value),
     active: true,
-  }));
+  })));
 }
 
 function validateAdminDraft(slots) {
@@ -329,7 +330,7 @@ function setAdminBusy(busy) {
 
 function renderAdminSlots() {
   ui.scheduleAdminSlots.replaceChildren();
-  ui.scheduleAdminCount.textContent = `${adminSlots.length} clase(s)`;
+  ui.scheduleAdminCount.textContent = `${expandAdminSlots(adminSlots).length} clase(s)`;
   if (!adminSlots.length) {
     const empty = document.createElement("p");
     empty.className = "schedule-admin-empty";
@@ -338,10 +339,11 @@ function renderAdminSlots() {
     return;
   }
 
-  adminSlots.forEach((slot) => {
+  expandAdminSlots(adminSlots).forEach((slot) => {
     const card = document.createElement("article");
     card.className = "schedule-admin-slot";
     card.dataset.slotId = slot.id;
+    card.dataset.slotDay = String(slot.daysOfWeek[0]);
 
     const heading = document.createElement("div");
     heading.className = "schedule-admin-slot-heading";
@@ -354,27 +356,22 @@ function renderAdminSlots() {
     remove.type = "button";
     remove.className = "button button-danger-quiet";
     remove.dataset.removeSlot = slot.id;
+    remove.dataset.removeDay = String(slot.daysOfWeek[0]);
     remove.textContent = "Eliminar";
     heading.append(title, remove);
     card.append(heading);
 
     const settings = document.createElement("div");
     settings.className = "schedule-admin-slot-settings";
-    const days = document.createElement("fieldset");
-    days.className = "schedule-admin-days";
-    const legend = document.createElement("legend");
-    legend.textContent = "Días";
-    days.append(legend);
+    const days = document.createElement("label");
+    days.textContent = "Día";
+    const daySelect = document.createElement("select");
+    daySelect.dataset.slotDay = "true";
     adminWeekdays.forEach((weekday) => {
-      const label = document.createElement("label");
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.value = String(weekday.value);
-      checkbox.dataset.slotDay = "true";
-      checkbox.checked = slot.daysOfWeek.includes(weekday.value);
-      label.append(checkbox, document.createTextNode(weekday.short));
-      days.append(label);
+      daySelect.add(new Option(weekday.long, String(weekday.value)));
     });
+    daySelect.value = String(slot.daysOfWeek[0]);
+    days.append(daySelect);
 
     const timeLabel = document.createElement("label");
     timeLabel.textContent = "Hora";
@@ -490,7 +487,9 @@ ui.scheduleAdminFamilies.addEventListener("click", (event) => {
 ui.scheduleAdminSlots.addEventListener("click", (event) => {
   const remove = event.target.closest("[data-remove-slot]");
   if (!remove || adminScheduleBusy || !adminScheduleLoaded) return;
-  adminSlots = readAdminDraft().filter((slot) => slot.id !== remove.dataset.removeSlot);
+  const card = remove.closest(".schedule-admin-slot");
+  card.remove();
+  adminSlots = readAdminDraft();
   adminScheduleDirty = true;
   renderAdminSlots();
   ui.scheduleAdminMessage.textContent = "Clase marcada para eliminar. Guarda los cambios para aplicar.";
@@ -547,12 +546,27 @@ ui.scheduleAdminSave.addEventListener("click", async () => {
   ui.scheduleAdminMessage.textContent = "Guardando horario…";
   ui.scheduleAdminMessage.classList.remove("is-error");
   try {
-    const result = await saveNestAdminSchedule({ family: adminFamily, slots, version: adminScheduleVersion });
+    const request = { family: adminFamily, slots, version: adminScheduleVersion };
+    let result;
+    try {
+      result = await saveNestAdminSchedule(request);
+    } catch (error) {
+      if (!error.details?.requiresDeletionConfirmation) throw error;
+      const affected = error.details.affectedClasses;
+      const descriptions = affected.map((entry) => `${adminWeekdays.find((day) => day.value === entry.dayOfWeek)?.long} ${entry.startTime}: ${entry.reservationCount} reserva(s)`);
+      if (!window.confirm(`ATENCIÓN: estas clases tienen reservas futuras:\n\n${descriptions.join("\n")}\n\nSe eliminarán de todas las semanas y se cancelarán sus reservas, devolviendo las sesiones al bono. El resto de días y el historial pasado se conservarán.\n\n¿Aceptar y eliminar?`)) {
+        ui.scheduleAdminMessage.textContent = "Eliminación no confirmada. No se ha guardado ningún cambio.";
+        return;
+      }
+      result = await saveNestAdminSchedule({ ...request, confirmDeletedClasses: affected });
+    }
     adminScheduleVersion = result.data.version;
     adminSlots = result.data.slots;
     adminScheduleDirty = false;
     renderAdminSlots();
-    ui.scheduleAdminMessage.textContent = "Horario guardado. Las reservas existentes se han conservado.";
+    ui.scheduleAdminMessage.textContent = result.data.cancelledBookings
+      ? `Horario guardado. ${result.data.cancelledBookings} reserva(s) cancelada(s) y sesiones devueltas al bono.`
+      : "Horario guardado. Las reservas existentes se han conservado.";
     showToast("Horario actualizado", "success");
     await showBookingFamily(adminFamily, { forceRefresh: true });
   } catch (error) {

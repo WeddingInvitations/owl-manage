@@ -37,6 +37,10 @@ Cada persona puede abrir **Mi perfil** y añadir o quitar su foto. La imagen se 
 
 ## Para el personal y las profesoras
 
+- En **Administración**, cada día y hora aparece como una clase individual. Eliminar los lunes a las 19:00 conserva los miércoles a las 19:00, aunque antes compartieran una franja. Pulsa **Guardar cambios** para aplicar el borrado semanal.
+- Si las clases eliminadas tienen reservas futuras, al guardar aparece un aviso con los días y el número de reservas. Solo al aceptar se cancelan esas reservas y se devuelven las sesiones al bono. Rechazar el aviso no guarda ningún cambio. Las reservas de otros días y el historial pasado se conservan; no se permite mover clases con reservas ni reducir su aforo por debajo de las plazas ocupadas.
+- Para activar este cambio hay que actualizar **saveNestAdminSchedule** y **getNestBookingSchedule** antes del push del frontend; el pipeline automático solo publica Hosting.
+
 - Las clases usan los horarios semanales ya configurados para Pilates y Barre, incluidas las franjas personalizadas existentes.
 - Una profesora abre **Ver lista y asistencia** para consultar las reservas y marcar quién asistió.
 - Para reservar en nombre de una alumna, el personal usa **Reservar para alumna**, busca su nombre y pulsa **Reservar** en su ficha. El correo se muestra solo para distinguir nombres iguales; no hay que escribirlo y también se pueden elegir fichas sin correo. Las alumnas ya inscritas aparecen como **Ya reservada**. Se aplican las mismas reglas de pago, tarifa y aforo.

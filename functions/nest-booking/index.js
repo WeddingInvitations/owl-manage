@@ -20,8 +20,8 @@ const SCHEDULES = {
   ],
 };
 
-function fail(code, message) {
-  throw new functions.https.HttpsError(code, message);
+function fail(code, message, details) {
+  throw new functions.https.HttpsError(code, message, details);
 }
 
 function requireAuth(context) {
@@ -249,6 +249,9 @@ exports.saveNestAdminSchedule = functions.runWith({ invoker: 'public' }).https.o
     month: '2-digit',
     day: '2-digit',
   }).format(new Date());
+  const isFutureClass = (record) => record.dateKey >= todayKey &&
+    (!/^(?:0\d|1\d|2[0-3]):[0-5]\d$/.test(record.startTime || '') ||
+      localTimeToDate(record.dateKey, record.startTime).getTime() > Date.now());
   const configRef = db.collection('nest_calendar').doc(`${family}__booking-slots`);
   const version = await db.runTransaction(async (transaction) => {
     const currentConfig = await transaction.get(configRef);
@@ -260,28 +263,41 @@ exports.saveNestAdminSchedule = functions.runWith({ invoker: 'public' }).https.o
       transaction.get(db.collection('nest_class_sessions').where('family', '==', family)),
       transaction.get(db.collection('nest_bookings').where('family', '==', family)),
     ]);
+    const currentSlots = await getEffectiveSlots(family, transaction);
+    const removedClasses = currentSlots.flatMap((slot) => slot.daysOfWeek
+      .filter((day) => !nextById.get(slot.id)?.daysOfWeek.includes(day))
+      .map((dayOfWeek) => ({ slotId: slot.id, dayOfWeek, startTime: slot.startTime, reservationCount: 0 })));
+    const removedByKey = new Map(removedClasses.map((entry) => [`${entry.slotId}__${entry.dayOfWeek}`, entry]));
     const activeBookingCounts = new Map();
     const protectedSessions = new Map(allSessions.docs.map((sessionDoc) => [sessionDoc.id, sessionDoc.data()]));
     allBookings.docs.forEach((bookingDoc) => {
       const booking = bookingDoc.data();
-      if (booking.family !== family || booking.status !== 'BOOKED' || booking.dateKey < todayKey) return;
+      if (booking.family !== family || booking.status !== 'BOOKED' || !isFutureClass(booking)) return;
       const id = booking.sessionId || sessionId(family, booking.dateKey, booking.slotId);
       activeBookingCounts.set(id, (activeBookingCounts.get(id) || 0) + 1);
       if (!protectedSessions.has(id)) protectedSessions.set(id, { ...booking, reservedCount: 0 });
     });
 
     for (const [id, session] of protectedSessions) {
-      if (session.family !== family || session.dateKey < todayKey) continue;
+      if (session.family !== family || !isFutureClass(session)) continue;
       const reservedCount = Math.max(
         Number(session.reservedCount || 0),
         activeBookingCounts.get(id) || 0
       );
       if (!reservedCount) continue;
       const replacement = nextById.get(session.slotId);
-      if (!replacement) {
-        fail('failed-precondition', `No se puede eliminar «${session.dateKey} ${session.startTime}»: tiene ${reservedCount} reserva(s) activa(s). Cancela o reubica esas reservas primero.`);
-      }
       const weekday = new Date(`${session.dateKey}T12:00:00Z`).getUTCDay();
+      const removed = removedByKey.get(`${session.slotId}__${weekday}`);
+      if (removed) {
+        if (nextSlots.some((slot) => slot.daysOfWeek.includes(weekday) && slot.startTime === session.startTime)) {
+          fail('failed-precondition', `No se puede sustituir el identificador de la clase del ${session.dateKey} mientras tenga reservas. Conserva su día, hora y configuración antes de guardar.`);
+        }
+        removed.reservationCount += reservedCount;
+        continue;
+      }
+      if (!replacement) {
+        fail('failed-precondition', `La clase del ${session.dateKey} tiene reservas y no pertenece al horario que estás eliminando. Recarga el horario.`);
+      }
       if (replacement.startTime !== session.startTime || !replacement.daysOfWeek.includes(weekday)) {
         fail('failed-precondition', `No se puede mover «${session.dateKey} ${session.startTime}»: tiene ${reservedCount} reserva(s) activa(s). Cambia el horario cuando ya no queden reservas futuras.`);
       }
@@ -290,6 +306,46 @@ exports.saveNestAdminSchedule = functions.runWith({ invoker: 'public' }).https.o
       }
     }
 
+    const affectedClasses = removedClasses.filter((entry) => entry.reservationCount > 0);
+    const confirmations = Array.isArray(data.confirmDeletedClasses) ? data.confirmDeletedClasses : [];
+    if (affectedClasses.some((entry) => !confirmations.some((confirmation) =>
+      confirmation.slotId === entry.slotId && confirmation.dayOfWeek === entry.dayOfWeek &&
+      Number.isInteger(confirmation.reservationCount) && confirmation.reservationCount >= entry.reservationCount))) {
+      fail('failed-precondition', 'Las clases que vas a eliminar tienen reservas. Confirma su cancelación para continuar.', {
+        requiresDeletionConfirmation: true, affectedClasses,
+      });
+    }
+    const cancelledBookings = allBookings.docs.filter((doc) => {
+      const booking = doc.data();
+      return booking.status === 'BOOKED' && isFutureClass(booking) &&
+        removedByKey.has(`${booking.slotId}__${new Date(`${booking.dateKey}T12:00:00Z`).getUTCDay()}`);
+    });
+    const refunds = new Map();
+    cancelledBookings.forEach((doc) => {
+      const booking = doc.data();
+      const key = `${booking.athleteId}__${family}__${monthKey(booking.dateKey)}`;
+      refunds.set(key, (refunds.get(key) || 0) + 1);
+    });
+    const usageSnapshots = await Promise.all(Array.from(refunds.keys(), (key) =>
+      transaction.get(db.collection('nest_monthly_usage').doc(key))));
+    cancelledBookings.forEach((doc) => transaction.update(doc.ref, {
+      status: 'CANCELLED', cancellationReason: 'CLASS_REMOVED', cancelledBy: uid,
+      cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+    }));
+    allSessions.docs.forEach((doc) => {
+      const session = doc.data();
+      if (isFutureClass(session) && removedByKey.has(
+        `${session.slotId}__${new Date(`${session.dateKey}T12:00:00Z`).getUTCDay()}`)) {
+        transaction.update(doc.ref, { reservedCount: 0, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      }
+    });
+    usageSnapshots.forEach((snap) => {
+      if (snap.exists) transaction.update(snap.ref, {
+        bookedCount: Math.max(0, Number(snap.data().bookedCount || 0) - refunds.get(snap.id)),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
     transaction.set(configRef, {
       family,
       slots: nextSlots,
@@ -297,9 +353,9 @@ exports.saveNestAdminSchedule = functions.runWith({ invoker: 'public' }).https.o
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedBy: uid,
     });
-    return previousVersion + 1;
+    return { version: previousVersion + 1, cancelledBookings: cancelledBookings.length };
   });
-  return { success: true, slots: nextSlots, version };
+  return { success: true, slots: nextSlots, ...version };
 });
 
 function validateAdminSlots(slots) {
@@ -607,6 +663,8 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
           record.dateKey < startDate || record.dateKey > endDate ||
           !['BOOKED', 'CANCELLED'].includes(record.status)) return;
       const id = record.sessionId || sessionId(family, record.dateKey, record.slotId);
+        if (record.cancellationReason === 'CLASS_REMOVED' && record.startTime &&
+          localTimeToDate(record.dateKey, record.startTime).getTime() > Date.now()) return;
       ownBookingsBySession.set(id, booking);
       if (sessionInputIds.has(id) || !record.slotId || !record.startTime) return;
       sessionInputs.push({
