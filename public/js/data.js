@@ -858,7 +858,7 @@ export async function loadPaymentsWithAthleteTotals(
   onEdit = null,
   onDelete = null
 ) {
-  if (!target) return;
+  if (!target) return 0;
   const paymentSnap = await getDocs(collection(db, "payments"));
   const athleteSnap = await getDocs(collection(db, "athlete_months"));
   const acroSnap = await getDocs(collection(db, "athlete_acrobacias_months"));
@@ -1019,6 +1019,10 @@ export async function loadPaymentsWithAthleteTotals(
   const filtered = monthKey
     ? items.filter((item) => getMonthKey(item.date) === monthKey)
     : items;
+  const total = filtered.reduce(
+    (sum, item) => sum + Number(item.data.amount || 0),
+    0
+  );
 
   filtered.sort((a, b) => {
     const aTime = a.date ? a.date.getTime() : 0;
@@ -1065,6 +1069,7 @@ export async function loadPaymentsWithAthleteTotals(
     
     target.appendChild(li);
   });
+  return total;
 }
 
 export async function getExpenseMonths() {

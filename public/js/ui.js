@@ -53,6 +53,7 @@ export const ui = {
   paymentMonthSelect: $("paymentMonthSelect"),
   paymentMonthTitle: $("paymentMonthTitle"),
   paymentList: $("paymentList"),
+  paymentMonthTotal: $("paymentMonthTotal"),
   paymentEditModal: $("paymentEditModal"),
   paymentEditClose: $("paymentEditClose"),
   paymentEditForm: $("paymentEditForm"),

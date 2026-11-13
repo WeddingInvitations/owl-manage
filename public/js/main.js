@@ -801,13 +801,16 @@ async function refreshPaymentList() {
   if (ui.paymentMonthTitle) {
     ui.paymentMonthTitle.textContent = getMonthLabel(selectedPaymentMonth);
   }
-  await loadPaymentsWithAthleteTotals(
+  const paymentTotal = await loadPaymentsWithAthleteTotals(
     ui.paymentList,
     formatCurrency,
     selectedPaymentMonth,
     handleEditPayment,
     handleDeletePayment
   );
+  if (ui.paymentMonthTotal) {
+    ui.paymentMonthTotal.textContent = formatCurrency(paymentTotal);
+  }
 }
 
 async function refreshExpenseList() {
@@ -3949,13 +3952,11 @@ function updateMobileNavActive(viewId) {
   ui.mobileNavButtons.forEach((btn) => {
     const isMore = btn.dataset.view === "moreView";
     const moreViews = [
-      "checkinsView", 
       "trainingsView", 
       "rolesView", 
       "profileView",
       "cajaView",
       "inventoryView",
-      "employeePaymentsView",
       "ordersView",
       "singleClassesView",
       "halteView",
@@ -5456,7 +5457,7 @@ bindAuth(
             ? "nestBarreBookingView"
             : "nestPilatesBookingView";
         } else if (currentRole !== "OWNER") {
-          initialView = "checkinsView";
+          initialView = "vacationsView";
         }
 
         setActiveView(initialView, ui);
