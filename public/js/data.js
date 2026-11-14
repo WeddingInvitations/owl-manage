@@ -21,6 +21,7 @@ import {
 import { functions } from "./firebase.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-functions.js";
 import { programIncomeTotals } from "./program-income.mjs";
+import { incomeRowPresentation } from "./income-presentation.mjs";
 
 async function loadProgramIncomeTotals() {
   const [acroKids, nest] = await Promise.all([
@@ -856,7 +857,8 @@ export async function loadPaymentsWithAthleteTotals(
   formatCurrency,
   monthKey = "",
   onEdit = null,
-  onDelete = null
+  onDelete = null,
+  onNavigate = null
 ) {
   if (!target) return 0;
   const paymentSnap = await getDocs(collection(db, "payments"));
@@ -1031,19 +1033,18 @@ export async function loadPaymentsWithAthleteTotals(
   });
 
   target.innerHTML = "";
-  let currentKey = null;
   filtered.forEach((item) => {
-    const key = getMonthKey(item.date);
-    if (key !== currentKey) {
-      currentKey = key;
-      const header = document.createElement("li");
-      header.className = "list-header";
-      header.textContent = getMonthLabel(key);
-      target.appendChild(header);
-    }
+    const { label, viewId } = incomeRowPresentation(item.data.concept);
     const li = document.createElement("li");
-    const textSpan = document.createElement("span");
-    textSpan.textContent = `${item.data.concept || ""} · ${item.data.date || (item.date ? item.date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(item.data.amount || 0))}`;
+    li.className = "income-row";
+    const textSpan = document.createElement(viewId && onNavigate ? "button" : "span");
+    textSpan.textContent = `${label} · ${formatCurrency(Number(item.data.amount || 0))}`;
+    if (viewId && onNavigate) {
+      textSpan.type = "button";
+      textSpan.className = "income-link";
+      textSpan.title = `Ir a ${label}`;
+      textSpan.onclick = () => onNavigate(viewId);
+    }
     li.appendChild(textSpan);
     
     if (item.editable && item.id) {
@@ -1120,7 +1121,7 @@ export async function loadExpensesForMonth(target, formatCurrency, monthKey = ""
     }
     const li = document.createElement("li");
     const textSpan = document.createElement("span");
-    textSpan.textContent = `${item.data.concept || ""} · ${item.data.date || (item.date ? item.date.toLocaleDateString("es-ES") : "")} · ${formatCurrency(Number(item.data.amount || 0))}`;
+    textSpan.textContent = `${item.data.concept || ""} · ${formatCurrency(Number(item.data.amount || 0))}`;
     li.appendChild(textSpan);
     
     if (item.id) {

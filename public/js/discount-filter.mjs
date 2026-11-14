@@ -1,5 +1,5 @@
 export const discountReasonOptions = [
-  ['ALL', 'Todos los motivos de descuento'],
+  ['ALL', 'Todos'],
   ['Ninguno', 'Ninguno'],
   ['promoApertura', 'Promo apertura'],
   ['Familiar', 'Familiar'],
@@ -26,6 +26,7 @@ export function initializeDiscountFilters(renderers) {
     const select = document.getElementById(`${list}DiscountReasonFilter`);
     if (!select) continue;
     select.replaceChildren(...discountReasonOptions.map(([value, label]) => new Option(label, value)));
+    select.value = 'ALL';
     select.addEventListener('change', () => {
       Promise.resolve().then(render).catch((error) => console.error(`Error filtering ${list} by discount reason:`, error));
     });

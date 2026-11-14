@@ -1,0 +1,16 @@
+{
+  "id": "/",
+  "name": "OwlManage",
+  "short_name": "OwlManage",
+  "description": "Gestión de OWL Functional Fitness: tu centro, tu equipo y tus cuentas.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#141615",
+  "theme_color": "#141615",
+  "icons": [
+    { "src": "icons/owl-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/owl-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

@@ -74,6 +74,7 @@ export const ui = {
   expenseDate: $("expenseDate"),
   expenseAmount: $("expenseAmount"),
   expenseMonthSelect: $("expenseMonthSelect"),
+  expenseMonthTitle: $("expenseMonthTitle"),
   expenseMonthTotal: $("expenseMonthTotal"),
   expenseList: $("expenseList"),
   processInvoicesBtn: $("processInvoicesBtn"),
@@ -929,13 +930,34 @@ export function updateMenuVisibility(currentUi, role, profile = {}) {
     }
   });
 
-  currentUi.mobileNavButtons.forEach((button) => {
-    if (["nestPilatesBookingView", "nestBarreBookingView"].includes(button.dataset.view)) {
-      button.classList.add("hidden");
+  // Mobile shortcuts must obey the same section/role restrictions as desktop.
+  // Nested booking families are handled separately below, as before.
+  const mobileViewSections = {
+    summaryView: "contabilidad", monthlyDetailView: "contabilidad",
+    paymentsView: "contabilidad", expensesView: "contabilidad",
+    cajaView: "contabilidad", inventoryView: "contabilidad",
+    ordersView: "contabilidad", employeePaymentsView: "contabilidad",
+    athletesView: "usuarios", acroView: "usuarios", acroKidsView: "usuarios",
+    halteView: "usuarios", telasView: "usuarios", singleClassesView: "usuarios",
+    pilatesView: "usuarios", wodBusterView: "usuarios",
+    checkinsView: "equipo", vacationsView: "equipo", trainingsView: "equipo",
+    classesView: "equipo", rolesView: "admin"
+  };
+  const mobileButtons = [
+    ...currentUi.mobileNavButtons,
+    ...document.querySelectorAll("#moreMenu [data-view]")
+  ];
+  mobileButtons.forEach((button) => {
+    const viewId = button.dataset.view;
+    if (viewId === "moreView" || viewId === "profileView") {
+      button.classList.remove("hidden");
+      return;
     }
-  });
-  document.querySelectorAll("#moreMenu [data-view]").forEach((button) => {
-    button.classList.remove("hidden");
+    const section = mobileViewSections[viewId];
+    const allowed = sectionsToShow.includes(section)
+      && (!ownerOnlyViews.includes(viewId) || role === "OWNER")
+      && (!teamLeaderViews.includes(viewId) || role === "OWNER" || role === "TEAM_LEADER");
+    button.classList.toggle("hidden", !allowed);
   });
 
   if (role === "NEST_STUDENT" || role === "NEST_INSTRUCTOR") {

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { programIncomeTotals } from '../public/js/program-income.mjs';
+import { incomeRowPresentation } from '../public/js/income-presentation.mjs';
 
 const kids = [
   { month: '2026-11', paid: true, price: 40 },
@@ -32,13 +33,14 @@ test('missing month and legacy Nest records are retained; stored discounted pric
   assert.equal(records[0].price, 45);
 });
 
-async function loadDataWithMocks() {
+async function loadDataWithMocks(extraFixtures = {}) {
   const fixtures = {
     payments: [{ date: '2026-11-01', concept: 'Otro ingreso', amount: 20 }],
     expenses: [{ date: '2026-11-01', concept: 'Gasto', amount: 10 }],
     athlete_months: [{ month: '2026-11', paid: true, price: 50 }],
     athlete_acrokids_months: kids,
     athlete_pilates_months: nest,
+    ...extraFixtures,
   };
   const original = await readFile(new URL('../public/js/data.js', import.meta.url), 'utf8');
   const source = original.replace(/import\s+[\s\S]*?\s+from\s+"[^"]+";/g, '');
@@ -52,6 +54,7 @@ async function loadDataWithMocks() {
     };
     const httpsCallable = () => () => {};
     const programIncomeTotals = ${programIncomeTotals.toString()};
+    const incomeRowPresentation = ${incomeRowPresentation.toString()};
   `;
   return import(`data:text/javascript;base64,${Buffer.from(prelude + source).toString('base64')}`);
 }
@@ -81,5 +84,48 @@ test('actual income list shows monthly category totals, excluding unpaid and con
     assert.ok(texts.some((text) => text.includes('The Nest Pilates') && text.includes('75 EUR')));
     assert.ok(texts.some((text) => text.includes('The Nest Barre') && text.includes('60 EUR')));
     assert.ok(!texts.some((text) => text.includes('100 EUR')));
+  } finally { globalThis.document = previous; }
+});
+
+test('income rows omit dates, total labels and redundant month headings without changing money', async () => {
+  const data = await loadDataWithMocks();
+  const previous = globalThis.document;
+  globalThis.document = { createElement: tag => ({ tag, children: [], appendChild(child) { this.children.push(child); } }) };
+  try {
+    const target = { children: [], appendChild(child) { this.children.push(child); } };
+    const total = await data.loadPaymentsWithAthleteTotals(target, amount => `${amount} EUR`, '2026-11');
+    assert.equal(total, 365);
+    assert.equal(target.children.length, 5);
+    assert.ok(target.children.every(row => row.className === 'income-row'));
+    const text = target.children.flatMap(row => row.children.map(child => child.textContent || '')).join(' ');
+    assert.doesNotMatch(text, /\btotal\b|2026-11|noviembre/i);
+    assert.match(text, /Otro ingreso · 20 EUR/);
+  } finally { globalThis.document = previous; }
+});
+
+test('category row clicks navigate to existing sections; manual edit and delete remain separate', async () => {
+  const data = await loadDataWithMocks({
+    payments: [{ date: '2026-11-05', concept: 'Ventas Caja', amount: 20 }, { date: '2026-11-02', concept: 'Otro ingreso', amount: 10 }],
+    athlete_acrobacias_months: [{ month: '2026-11', paid: true, price: 30 }],
+    athlete_halterofilia_months: [{ month: '2026-11', paid: true, price: 45 }],
+    athlete_telas_months: [{ month: '2026-11', paid: true, price: 50 }],
+  });
+  const previous = globalThis.document;
+  globalThis.document = { createElement: tag => ({ tag, children: [], appendChild(child) { this.children.push(child); } }) };
+  try {
+    const target = { children: [], appendChild(child) { this.children.push(child); } };
+    const navigation = [], edits = [], deletes = [];
+    await data.loadPaymentsWithAthleteTotals(target, String, '2026-11', (id, record) => edits.push([id, record]), (id, record) => deletes.push([id, record]), view => navigation.push(view));
+    const links = target.children.map(row => row.children[0]).filter(child => child.tag === 'button');
+    links.forEach(link => { assert.equal(link.type, 'button'); link.onclick(); });
+    assert.deepEqual(new Set(navigation), new Set(['cajaView', 'athletesView', 'acroView', 'acroKidsView', 'halteView', 'telasView', 'pilatesView']));
+    assert.equal(navigation.filter(view => view === 'pilatesView').length, 2);
+    const manual = target.children.find(row => row.children[0].textContent.startsWith('Otro ingreso'));
+    assert.equal(manual.children[0].tag, 'span');
+    manual.children[1].children[0].onclick();
+    manual.children[1].children[1].onclick();
+    assert.equal(edits[0][1].date, '2026-11-02');
+    assert.equal(deletes[0][1].concept, 'Otro ingreso');
+    assert.equal(navigation.length, links.length);
   } finally { globalThis.document = previous; }
 });

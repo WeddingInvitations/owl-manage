@@ -17,7 +17,7 @@ test('OWL uses the supplied logo from the published directory, including the fav
 test('the visual layer is loaded last and preserves the existing main entry point', () => {
   const sheets = [...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"/g)].map(match => match[1]);
   assert.match(sheets.at(-1), /^css\/owl-brand\.css\?v=/);
-  assert.match(html, /<script type="module" src="js\/main\.js\?v=20261111discount1" defer><\/script>/);
+  assert.match(html, /<script type="module" src="js\/main\.js\?v=[^"]+" defer><\/script>/);
   assert.doesNotMatch(css, /(?:^|\n)\s*\.hidden\b/);
   assert.doesNotMatch(css, /\.menu-section-content[^{}]*\{[^}]*display\s*:/);
 });

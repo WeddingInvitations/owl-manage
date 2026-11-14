@@ -4,10 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="OwlManage" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#141615" />
     <title>OwlManage</title>
     <link rel="icon" type="image/jpeg" href="css/images/logo_owl.jpeg" />
+    <link rel="manifest" href="manifest.webmanifest?v=20261114a" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/owl-180.png?v=20261114a" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
@@ -19,7 +23,7 @@
     <!-- FullCalendar CDN -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
     <!-- Capa visual OWL: no altera los estilos de visibilidad ni la lógica de las vistas. -->
-    <link rel="stylesheet" href="css/owl-brand.css?v=20261114a" />
+    <link rel="stylesheet" href="css/owl-brand.css?v=20261114f" />
   </head>
   <body>
     <header class="app-header">
@@ -457,13 +461,16 @@
         <section id="expensesView" class="view hidden">
           <div class="card">
             <div class="detail-header">
-              <h2>Contabilidad · Gastos</h2>
+              <div class="accounting-heading">
+                <h2>Contabilidad · Gastos</h2>
+                <span id="expenseMonthTitle" class="accounting-month-title"></span>
+              </div>
               <div class="filter-row">
                 <select id="expenseMonthSelect"></select>
                 <button id="expenseModalOpen" class="btn" type="button">Registrar gasto</button>
                 <button id="processInvoicesBtn" class="btn primary small" type="button" title="Procesar facturas de Drive">📄 Leer Facturas</button>
-                <button id="expenseCsvOpen" class="btn ghost small" type="button" title="Importar CSV">📄 CSV</button>
-                <button id="expenseTemplateDownload" class="btn ghost small" type="button" title="Descargar plantilla">⬇ Plantilla</button>
+                <button id="expenseCsvOpen" class="btn ghost small hidden" type="button" title="Importar CSV">📄 CSV</button>
+                <button id="expenseTemplateDownload" class="btn ghost small hidden" type="button" title="Descargar plantilla">⬇ Plantilla</button>
               </div>
             </div>
             <div class="summary" aria-live="polite">
@@ -1313,7 +1320,10 @@
           </div>
           <div class="card">
             <div class="detail-header">
-              <h3>Resumen mensual <span id="athleteSummaryMonthLabel" class="summary-month-label"></span></h3>
+              <div class="accounting-heading">
+                <h2>Atletas</h2>
+                <span id="athleteSummaryMonthLabel" class="accounting-month-title"></span>
+              </div>
               <select id="athleteMonthSelect"></select>
             </div>
             <div class="summary">
@@ -1492,7 +1502,10 @@
           </div>
           <div class="card">
             <div class="detail-header">
-              <h3>Resumen mensual <span id="acroSummaryMonthLabel" class="summary-month-label"></span></h3>
+              <div class="accounting-heading">
+                <h2>Acrobacias</h2>
+                <span id="acroSummaryMonthLabel" class="accounting-month-title"></span>
+              </div>
               <select id="acroMonthSelect"></select>
             </div>
             <div class="summary">
@@ -1666,7 +1679,10 @@
           </div>
           <div class="card">
             <div class="detail-header">
-              <h3>Resumen mensual <span id="acroKidsSummaryMonthLabel" class="summary-month-label"></span></h3>
+              <div class="accounting-heading">
+                <h2>AcroKids</h2>
+                <span id="acroKidsSummaryMonthLabel" class="accounting-month-title"></span>
+              </div>
               <select id="acroKidsMonthSelect"></select>
             </div>
             <div class="summary">
@@ -3601,10 +3617,15 @@
         <div class="stack" style="margin-top: 16px;">
           <button class="btn ghost" data-view="profileView" data-close-more>👤 Mi perfil</button>
           <button class="btn ghost" data-view="cajaView" data-close-more>💵 Caja</button>
+          <button class="btn ghost" data-view="inventoryView" data-close-more>📦 Inventario</button>
           <button class="btn ghost" data-view="ordersView" data-close-more>🛒 Pedidos</button>
+          <button class="btn ghost" data-view="employeePaymentsView" data-close-more>💳 Pagos a empleados</button>
+          <button class="btn ghost" data-view="pilatesView" data-close-more>🪺 The Nest · Pilates y Barre</button>
+          <button class="btn ghost" data-view="wodBusterView" data-close-more>📊 Usuarios WodBuster</button>
           <button class="btn ghost" data-view="singleClassesView" data-close-more>📋 Clases Sueltas</button>
           <button class="btn ghost" data-view="halteView" data-close-more>🏋️ Halterofilia</button>
           <button class="btn ghost" data-view="telasView" data-close-more>🎪 Telas</button>
+          <button class="btn ghost" data-view="checkinsView" data-close-more>⏱ Fichajes</button>
           <button class="btn ghost" data-view="trainingsView" data-close-more>🏃 Entrenamientos</button>
           <button class="btn ghost" data-view="classesView" data-close-more>🎓 Clases</button>
           <button class="btn ghost" data-view="rolesView" data-close-more>👥 Roles</button>
@@ -3638,7 +3659,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script type="module" src="js/main.js?v=20261111discount1" defer></script>
+    <script type="module" src="js/main.js?v=20261114athlete1" defer></script>
     
     <!-- Script de debugging simplificado -->
     <script>

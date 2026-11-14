@@ -32,7 +32,7 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js?v=20261014c";
+} from "./ui.js?v=20261114expense1";
 import { showToast } from "./toast.js";
 import { normalizeSearchText } from "./search.js";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
@@ -41,7 +41,7 @@ import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/fireb
 import { initializeCaja, initializeInventory } from "./caja.js?v=20260622a";
 import { initializeWodBuster, setCurrentUserId } from "./wodbuster.js?v=20261104a";
 import { initializeNestCalendar } from "./nest-calendar.js?v=20261111b";
-import { initializeDiscountFilters, matchesListDiscountReason } from "./discount-filter.mjs";
+import { initializeDiscountFilters, matchesListDiscountReason } from "./discount-filter.mjs?v=20261114a";
 import { initializeNestBookings, refreshNestBookings } from "./nest-booking.js?v=20261109b";
 import {
   initializePilates,
@@ -166,7 +166,7 @@ import {
   loadOrdersForMonth,
   addEmployeePayment,
   loadEmployeePayments,
-} from "./data.js?v=20261110c";
+} from "./data.js?v=20261114expense1";
 
 import { createUserWithRole } from "./admin.js";
 
@@ -799,14 +799,19 @@ async function refreshPaymentList() {
   }
   renderPaymentMonthOptions();
   if (ui.paymentMonthTitle) {
-    ui.paymentMonthTitle.textContent = getMonthLabel(selectedPaymentMonth);
+    ui.paymentMonthTitle.textContent = getMonthLabel(selectedPaymentMonth).toLocaleUpperCase("es-ES");
   }
   const paymentTotal = await loadPaymentsWithAthleteTotals(
     ui.paymentList,
     formatCurrency,
     selectedPaymentMonth,
     handleEditPayment,
-    handleDeletePayment
+    handleDeletePayment,
+    async (viewId) => {
+      setActiveView(viewId, ui);
+      updateMobileNavActive(viewId);
+      await initializeViewIfNeeded(viewId);
+    }
   );
   if (ui.paymentMonthTotal) {
     ui.paymentMonthTotal.textContent = formatCurrency(paymentTotal);
@@ -825,6 +830,9 @@ async function refreshExpenseList() {
       : (availableExpenseMonths[0] || "");
   }
   renderExpenseMonthOptions();
+  if (ui.expenseMonthTitle) {
+    ui.expenseMonthTitle.textContent = getMonthLabel(selectedExpenseMonth).toLocaleUpperCase("es-ES");
+  }
   const expenseTotal = await loadExpensesForMonth(
     ui.expenseList,
     formatCurrency,
@@ -891,7 +899,10 @@ function isMonthInRange(targetKey, startKey, durationMonths) {
 // Muestra el mes actualmente visualizado junto al título "Resumen mensual"
 function updateSummaryMonthLabel(labelEl, monthKey) {
   if (!labelEl) return;
-  labelEl.textContent = monthKey ? `· ${getMonthLabel(monthKey)}` : "";
+  const month = monthKey ? getMonthLabel(monthKey) : "";
+  labelEl.textContent = labelEl.classList.contains("accounting-month-title")
+    ? month.toLocaleUpperCase("es-ES")
+    : (month ? `· ${month}` : "");
 }
 
 // Pone "-" en los contadores del resumen mientras se cargan los datos del nuevo mes
@@ -3949,20 +3960,9 @@ function downloadMonthlyCSV(key) {
 // Mobile nav active state helper (defined early so it's available for bindAuth)
 function updateMobileNavActive(viewId) {
   if (!ui.mobileNavButtons) return;
+  const moreViews = Array.from(document.querySelectorAll('#moreMenu [data-view]'), button => button.dataset.view);
   ui.mobileNavButtons.forEach((btn) => {
     const isMore = btn.dataset.view === "moreView";
-    const moreViews = [
-      "trainingsView", 
-      "rolesView", 
-      "profileView",
-      "cajaView",
-      "inventoryView",
-      "ordersView",
-      "singleClassesView",
-      "halteView",
-      "telasView",
-      "classesView"
-    ];
     const isActive = btn.dataset.view === viewId || 
       (isMore && moreViews.includes(viewId));
     btn.classList.toggle("active", isActive);
