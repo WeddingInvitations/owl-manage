@@ -59,6 +59,8 @@ test('expense rows omit dates but keep filtering, ordering, totals and original 
   const target = { children: [], appendChild(child) { this.children.push(child); } };
   const total = await context.loadExpensesForMonth(target, value => `${value} €`, '2026-11', (id, record) => edits.push([id, record]), (id, record) => deletes.push([id, record]));
   assert.equal(total, 250);
+  assert.equal(target.children.length, 2, 'No redundant month heading should be rendered');
+  assert.ok(target.children.every(row => row.className !== 'list-header'));
   const rows = target.children.filter(row => row.className !== 'list-header');
   assert.deepEqual(rows.map(row => row.children[0].textContent), ['Material · 50 €', 'Alquiler · 200 €']);
   rows[0].children[1].children[0].onclick();

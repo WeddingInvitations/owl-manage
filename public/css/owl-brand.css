@@ -276,7 +276,14 @@ main.grid:not(:has(> .card:not(.hidden))) { padding: 0; }
 }
 
 @media (max-width: 767px) {
-  .app-header { min-height: 76px; padding: 10px 14px; gap: 8px; }
+  :root { --owl-mobile-header-height: calc(76px + env(safe-area-inset-top, 0px)); }
+  html { scroll-padding-top: calc(var(--owl-mobile-header-height) + 12px); }
+  body { padding-top: var(--owl-mobile-header-height); }
+  .app-header { position: fixed; top: 0; left: 0; right: 0; z-index: 10000; height: var(--owl-mobile-header-height); min-height: var(--owl-mobile-header-height); padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px; gap: 8px; background: var(--card); }
+  /* Keep dialogs and their backdrops below the persistent header, not over it. */
+  .modal { top: var(--owl-mobile-header-height); }
+  .modal .modal-content { max-height: min(92dvh, calc(100dvh - var(--owl-mobile-header-height) - 8px)) !important; }
+  .overlay { top: var(--owl-mobile-header-height); height: calc(100dvh - var(--owl-mobile-header-height)); }
   .header-left { gap: 9px; }
   .logo-img { width: 46px; height: 46px; }
   .title-section h1 { display: block; font-size: 18px; letter-spacing: -0.7px; margin: 0; }
@@ -288,7 +295,7 @@ main.grid:not(:has(> .card:not(.hidden))) { padding: 0; }
   #themeToggle { width: 34px; min-width: 34px; min-height: 36px; padding: 0; }
   .theme-icon { font-size: 17px; }
   #logoutBtn { width: auto; min-height: 36px; padding: 7px 8px; font-size: 10px; }
-  .main-shell { grid-template-columns: minmax(0, 1fr); min-height: calc(100dvh - 76px); }
+  .main-shell { grid-template-columns: minmax(0, 1fr); min-height: calc(100dvh - var(--owl-mobile-header-height)); }
   .content { padding: 20px 12px calc(94px + env(safe-area-inset-bottom)); gap: 16px; }
   .view { gap: 16px; }
   .dashboard-intro { padding: 0 4px; }
@@ -375,7 +382,7 @@ main.grid:not(:has(> .card:not(.hidden))) { padding: 0; }
   .main-shell { padding-bottom: 0; }
   .content { padding-bottom: calc(154px + env(safe-area-inset-bottom)); }
   main.grid { padding: 20px 12px; }
-  main.grid:has(> .card:not(.hidden)) { min-height: calc(100dvh - 76px); }
+  main.grid:has(> .card:not(.hidden)) { min-height: calc(100dvh - var(--owl-mobile-header-height)); }
   #loginView { grid-template-columns: minmax(0, 1fr); margin: 0 auto; border-radius: 20px; }
   .login-brand-panel { padding: 24px; gap: 22px; }
   .login-brand-top img { width: 56px; height: 56px; }

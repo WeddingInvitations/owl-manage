@@ -1109,16 +1109,7 @@ export async function loadExpensesForMonth(target, formatCurrency, monthKey = ""
   });
 
   target.innerHTML = "";
-  let currentKey = null;
   filtered.forEach((item) => {
-    const key = getMonthKey(item.date);
-    if (key !== currentKey) {
-      currentKey = key;
-      const header = document.createElement("li");
-      header.className = "list-header";
-      header.textContent = getMonthLabel(key);
-      target.appendChild(header);
-    }
     const li = document.createElement("li");
     const textSpan = document.createElement("span");
     textSpan.textContent = `${item.data.concept || ""} · ${formatCurrency(Number(item.data.amount || 0))}`;

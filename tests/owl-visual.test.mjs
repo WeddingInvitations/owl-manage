@@ -23,12 +23,12 @@ test('the visual layer is loaded last and preserves the existing main entry poin
 });
 
 test('authentication forms and initial visibility remain available to existing handlers', () => {
-  for (const id of ['loginForm', 'nestSignupForm', 'profileForm', 'paymentForm', 'expenseForm', 'passwordChangeForm']) {
+  for (const id of ['loginForm', 'profileForm', 'paymentForm', 'expenseForm', 'passwordChangeForm']) {
     assert.match(html, new RegExp(`<form[^>]*id="${id}"`));
   }
   assert.match(html, /id="loginEmail" type="email"[^>]*required/);
   assert.match(html, /id="loginPassword" type="password"[^>]*required/);
-  assert.match(html, /id="nestSignupPassword" type="password" minlength="6"[^>]*required/);
+  assert.doesNotMatch(html, /id="nestSignup(?:Form|Email|Password|Status)"/);
   assert.match(html, /id="mainShell" class="main-shell hidden"/);
   assert.match(html, /id="summaryView" class="view hidden"/);
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);

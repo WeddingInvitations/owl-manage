@@ -9,6 +9,8 @@ const current = readFileSync(new URL('../public/index.html', import.meta.url), '
 const functionalAttributes = new Set(['id', 'type', 'name', 'min', 'max', 'step', 'minlength', 'maxlength', 'value', 'action', 'method', 'pattern', 'disabled', 'checked', 'selected', 'multiple', 'required']);
 const previousMoreViews = new Set([...previous.matchAll(/<button[^>]*data-view="([^"]+)"[^>]*data-close-more/g)].map(match => match[1]));
 function contract(html) {
+  // Explicit user request: remove the standalone Nest signup from this login.
+  html = html.replace(/<form id="nestSignupForm"[^]*?<\/form>/, '');
   return [...html.matchAll(/<[a-z][\w-]*\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi)]
     .filter(([tag]) => !/^<(?:meta|link)\b/i.test(tag))
     .filter(([tag]) => !tag.includes('id="expenseMonthTitle"'))
@@ -29,7 +31,7 @@ assert.deepEqual(scripts(current), scripts(previous), 'Script content or loading
 for (const [path, helpers] of [['public/js/main.js', ['updateMobileNavActive', 'refreshPaymentList', 'refreshExpenseList', 'updateSummaryMonthLabel']], ['public/js/ui.js', ['updateMenuVisibility']]]) {
   const before = execFileSync('git', ['show', `HEAD:${path}`], { encoding: 'utf8' });
   const after = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-  const strip = source => helpers.reduce((text, helper) => text.replace(new RegExp(`(?:export )?(?:async )?function ${helper}\\([^]*?\\n\\}`, 'g'), `/* ${helper}: navigation presentation */`), source.replace(/\r\n/g, '\n').replace(/from "\.\/(data|ui)\.js\?v=[^"]+"/g, 'from "./$1.js"').replace(/from "\.\/discount-filter\.mjs(?:\?v=[^"]+)?"/, 'from "./discount-filter.mjs"').replace(/  expenseMonthTitle: \$\("expenseMonthTitle"\),\n/, ''));
+  const strip = source => helpers.reduce((text, helper) => text.replace(new RegExp(`(?:export )?(?:async )?function ${helper}\\([^]*?\\n\\}`, 'g'), `/* ${helper}: navigation presentation */`), source.replace(/\r\n/g, '\n').replace(/from "\.\/(data|ui)\.js\?v=[^"]+"/g, 'from "./$1.js"').replace(/from "\.\/discount-filter\.mjs(?:\?v=[^"]+)?"/, 'from "./discount-filter.mjs"').replace(/  expenseMonthTitle: \$\("expenseMonthTitle"\),\n/, '').replace(/          <button class="btn small" type="button" data-action="csv" data-key="\$\{key\}">CSV<\/button>\n/, ''));
   assert.deepEqual(strip(after), strip(before), `Non-navigation logic changed in ${path}`);
 }
 // Verify the aggregation/filtering/sorting code is unchanged while permitting
@@ -39,7 +41,10 @@ const normalizeData = source => source.replace(/\r\n/g, '\n')
   .replace(/export async function loadPaymentsWithAthleteTotals\([^]*?\n\}/, fn => fn
     .replace(/onDelete = null,\n  onNavigate = null/, 'onDelete = null')
     .replace(/  target.innerHTML = "";[^]*?  return total;/, '  /* Income row presentation */\n  return total;'))
-  .replace(/export async function loadExpensesForMonth\([^]*?\n\}/, fn => fn.replace(/    textSpan.textContent = [^\n]+;/, '    /* Expense row text */'));
+  .replace(/export async function loadExpensesForMonth\([^]*?\n\}/, fn => fn
+    .replace(/    textSpan.textContent = [^\n]+;/, '    /* Expense row text */')
+    .replace(/  let currentKey = null;\n/, '')
+    .replace(/    const key = getMonthKey\(item.date\);\n    if \(key !== currentKey\) \{[^]*?    \}\n/, ''));
 assert.equal(normalizeData(readFileSync(new URL('../public/js/data.js', import.meta.url), 'utf8')),
   normalizeData(execFileSync('git', ['show', 'HEAD:public/js/data.js'], { encoding: 'utf8' })), 'Income aggregation or other data logic changed');
 const normalizeDiscount = source => source.replace(/\r\n/g, '\n').replace(/\['ALL', '[^']+'\]/, "['ALL', 'Todos']").replace(/    select.value = 'ALL';\n/, '');

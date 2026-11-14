@@ -166,7 +166,7 @@ import {
   loadOrdersForMonth,
   addEmployeePayment,
   loadEmployeePayments,
-} from "./data.js?v=20261114expense1";
+} from "./data.js?v=20261114summary1";
 
 import { createUserWithRole } from "./admin.js";
 
@@ -3817,7 +3817,6 @@ function renderMonthlySummary() {
       <td>
         <div class="table-actions">
           <button class="btn small ghost" type="button" data-action="detail" data-key="${key}">Ver detalle</button>
-          <button class="btn small" type="button" data-action="csv" data-key="${key}">CSV</button>
         </div>
       </td>
     `;
