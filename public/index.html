@@ -5,33 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#151824" />
+    <meta name="theme-color" content="#141615" />
     <title>OwlManage</title>
+    <link rel="icon" type="image/jpeg" href="css/images/logo_owl.jpeg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="stylesheet" href="css/styles.css?v=20261109c" />
     <link rel="stylesheet" href="css/nest-booking.css?v=20261109b" />
     <link rel="stylesheet" href="css/fullcalendar-dark-override.css?v=20250225" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
     <!-- FullCalendar CDN -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
+    <!-- Capa visual OWL: no altera los estilos de visibilidad ni la lógica de las vistas. -->
+    <link rel="stylesheet" href="css/owl-brand.css?v=20261114a" />
   </head>
   <body>
     <header class="app-header">
       <div class="header-left">
         <div class="logo">
-          <img src="css/images/owl.png" alt="Owl logo" class="logo-img" />
+          <img src="css/images/logo_owl.jpeg" alt="OWL Functional Fitness" class="logo-img" width="64" height="64" />
         </div>
         <div class="title-section">
-          <h1>OwlManage</h1>
-          <p class="muted">Contabilidad · Pagos · Control de Atletas</p>
+          <h1>Owl<span class="brand-manage">Manage</span><span class="brand-dot" aria-hidden="true">.</span></h1>
+          <p class="muted">Tu centro. Tu equipo. Todo conectado.</p>
         </div>
       </div>
       <div class="header-right">
         <div class="header-controls">
-          <button id="themeToggle" class="btn ghost theme-btn" title="Cambiar tema">
+          <button id="themeToggle" class="btn ghost theme-btn" title="Cambiar tema" aria-label="Cambiar tema">
             <span class="theme-icon">🌙</span>
           </button>
         </div>
@@ -48,8 +51,8 @@
     <div class="overlay" id="menuOverlay"></div>
 
     <section id="mainShell" class="main-shell hidden">
-      <nav class="side-menu">
-        <h2>Menú</h2>
+      <nav class="side-menu" aria-label="Navegación principal">
+        <h2>Espacio de trabajo</h2>
         <button class="menu-btn" data-view="profileView">
           <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
@@ -201,6 +204,10 @@
             </button>
           </div>
         </div>
+        <div class="sidebar-brand" aria-hidden="true">
+          <span class="sidebar-brand-mark">OWL</span>
+          <span>Functional fitness<br /><strong>La energía de tu centro.</strong></span>
+        </div>
       </nav>
       <section class="content">
 
@@ -261,6 +268,14 @@
                   </div>
                 </section>
         <section id="summaryView" class="view hidden">
+          <div class="dashboard-intro">
+            <div>
+              <p class="brand-eyebrow">OWL · PANEL DE GESTIÓN</p>
+              <h2>Todo bajo control<span class="brand-dot" aria-hidden="true">.</span></h2>
+              <p class="muted">Una visión clara de los números de tu centro.</p>
+            </div>
+            <span class="dashboard-intro-tag">Contabilidad & equipo</span>
+          </div>
           <div class="card">
             <div class="detail-header">
               <h3>Balance anual</h3>
@@ -3468,15 +3483,30 @@
 
     <main class="grid">
       <section class="card" id="loginView">
-        <h2>Acceso</h2>
+        <div class="login-brand-panel">
+          <div class="login-brand-top">
+            <img src="css/images/logo_owl.jpeg" alt="OWL Functional Fitness" width="96" height="96" />
+            <span>FUNCTIONAL FITNESS<br /><strong>MANAGEMENT SPACE</strong></span>
+          </div>
+          <div class="login-brand-message">
+            <p class="brand-eyebrow">MENOS GESTIÓN. MÁS ACCIÓN.</p>
+            <h2>La energía<br /> de tu centro.<br /><span>En un solo<br /> lugar.</span></h2>
+            <p>Personas, cuentas y equipo. Un espacio para que todo encaje y puedas centrarte en lo importante.</p>
+          </div>
+          <div class="login-brand-bottom"><span>OWL / MANAGE</span><span aria-hidden="true">↗</span></div>
+        </div>
+        <div class="login-form-panel">
+        <p class="brand-eyebrow">BIENVENIDO A OWLMANAGE</p>
+        <h2>Tu próximo gran día<br />empieza aquí.</h2>
+        <p class="login-subtitle muted">Accede a tu espacio de trabajo.</p>
         <form id="loginForm" class="stack">
           <label>
             Email
-            <input id="loginEmail" type="email" required />
+            <input id="loginEmail" type="email" autocomplete="email" placeholder="tu@email.com" required />
           </label>
           <label>
             Contraseña
-            <input id="loginPassword" type="password" required />
+            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Tu contraseña" required />
           </label>
           <button class="btn" type="submit">Entrar</button>
           <button id="googleLoginBtn" class="btn ghost" type="button">
@@ -3492,6 +3522,7 @@
           <button class="btn ghost" type="submit">Crear cuenta de The Nest</button>
           <p id="nestSignupStatus" class="muted" aria-live="polite"></p>
         </form>
+        </div>
       </section>
 
       <section class="card hidden" id="pendingAccessView">
@@ -3527,35 +3558,35 @@
     <!-- Mobile Bottom Navigation -->
     <nav id="mobileNav" class="mobile-nav hidden">
       <button class="mobile-nav-btn active" data-view="summaryView">
-        <span class="icon">📊</span>
+        <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M7 16v-5m5 5V7m5 9V4" /></svg></span>
         <span>Resumen</span>
       </button>
       <button class="mobile-nav-btn" data-view="paymentsView">
-        <span class="icon">💰</span>
+        <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M3 9h18m-5 6h2" /></svg></span>
         <span>Ingresos</span>
       </button>
       <button class="mobile-nav-btn" data-view="expensesView">
-        <span class="icon">💸</span>
+        <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 5h6m-6 4h6m-6 4h3" /></svg></span>
         <span>Gastos</span>
       </button>
       <button class="mobile-nav-btn" data-view="athletesView">
-        <span class="icon">🏋️</span>
+        <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" /></svg></span>
         <span>Atletas</span>
       </button>
       <button class="mobile-nav-btn" data-view="acroView">
-        <span class="icon">🤸</span>
+        <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="4" r="2" /><path d="m5 7 6 4 6-2m-6 2-3 5-5 2m8-7 4 5 4 2" /></svg></span>
         <span>Acro</span>
       </button>
       <button class="mobile-nav-btn" data-view="acroKidsView">
-        <span class="icon">👶</span>
+        <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><path d="M8 10h.01M16 10h.01M8 15c2 2 6 2 8 0M12 3c3 0 3 4 0 4" /></svg></span>
         <span>AcroKids</span>
       </button>
       <button class="mobile-nav-btn" data-view="vacationsView">
-        <span class="icon">🏖️</span>
+        <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M7 3v4m10-4v4M3 11h18m-11 5 2 2 4-4" /></svg></span>
         <span>Vacaciones</span>
       </button>
       <button class="mobile-nav-btn" data-view="moreView">
-        <span class="icon">☰</span>
+        <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg></span>
         <span>Más</span>
       </button>
     </nav>
