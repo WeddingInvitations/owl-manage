@@ -4687,6 +4687,9 @@ function updatePendingSaveButtons() {
   const pilatesPending = ui.pilatesList
     ? ui.pilatesList.querySelectorAll("tr[data-dirty='true']").length
     : 0;
+  const singleClassesPending = ui.singleClassesList
+    ? ui.singleClassesList.querySelectorAll("tr[data-dirty='true']").length
+    : 0;
 
   if (ui.athleteSaveAllBtn) {
     ui.athleteSaveAllBtn.disabled = athletePending === 0;
@@ -4711,6 +4714,10 @@ function updatePendingSaveButtons() {
   if (ui.pilatesSaveAllBtn) {
     ui.pilatesSaveAllBtn.disabled = pilatesPending === 0;
     ui.pilatesSaveAllBtn.textContent = `Guardar cambios (${pilatesPending})`;
+  }
+  if (ui.singleClassesSaveAllBtn) {
+    ui.singleClassesSaveAllBtn.disabled = singleClassesPending === 0;
+    ui.singleClassesSaveAllBtn.textContent = `Guardar cambios (${singleClassesPending})`;
   }
 }
 
@@ -5389,7 +5396,6 @@ if (ui.singleClassesSaveAllBtn) {
       : [];
     if (!dirtyRows.length) return;
 
-    const originalText = ui.singleClassesSaveAllBtn.textContent;
     ui.singleClassesSaveAllBtn.textContent = "Guardando...";
     ui.singleClassesSaveAllBtn.disabled = true;
 
@@ -5407,7 +5413,6 @@ if (ui.singleClassesSaveAllBtn) {
 
     await refreshSingleClassesMonthly();
     updatePendingSaveButtons();
-    ui.singleClassesSaveAllBtn.textContent = originalText;
 
     if (failedNames.length) {
       alert(`Guardados ${saved} cambios. Fallaron ${failedNames.length}: ${failedNames.join(", ")}`);
