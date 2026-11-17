@@ -25,4 +25,4 @@ test('actual monthly summary renders detail without CSV and preserves monthly/ye
   assert.match(body.children[1].innerHTML, /data-action="detail" data-key="2026-11"[^]*300 EUR[^]*100 EUR[^]*200 EUR/);
   assert.match(body.children[2].innerHTML, /data-action="detail" data-key="2026-10"[^]*200 EUR[^]*50 EUR[^]*150 EUR/);
   for (const row of body.children.slice(1)) assert.match(row.innerHTML, />Ver detalle<\/button>/);
-});
+}); 
