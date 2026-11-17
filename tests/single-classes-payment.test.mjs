@@ -90,6 +90,26 @@ test('all seven lists independently enable their save button and reset the pendi
 });
 
 const tariffs = vm.runInNewContext(`${plans}\nsingleClassesTariffPlans`);
+test('Open Crossfit 1h is available at 10 EUR in registration, list and WodBuster', async () => {
+  const plan = tariffs.find(plan => plan.key === 'Open Crossfit 1h');
+  assert.ok(plan);
+  assert.equal(plan.priceTotal, 10);
+  assert.equal(plan.durationMonths, 1);
+  const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+  for (const id of ['singleClassesTariff', 'wodBusterUserClassType']) {
+    const select = html.match(new RegExp(`<select id="${id}">([^]*?)</select>`));
+    assert.ok(select);
+    assert.match(select[1], /<option value="Open Crossfit 1h">Open Crossfit 1h - 10€<\/option>/);
+  }
+  assert.match(source, /const tariffOptions = \["", \.\.\.singleClassesTariffPlans\.map\(plan => plan\.key\)\]/);
+  const wodbuster = await readFile(new URL('../public/js/wodbuster.js', import.meta.url), 'utf8');
+  assert.match(wodbuster, /"Open Crossfit 1h": 10/);
+  const harness = setup();
+  harness.change('tariff', 'Open Crossfit 1h');
+  assert.equal(harness.fields['singleclasses-final-price'].textContent, '10.00');
+  assert.equal(harness.button.disabled, false);
+});
+
 for (const plan of tariffs) {
   test(`marking paid enables saving and persists payment for ${plan.key}`, async () => {
     const harness = setup();

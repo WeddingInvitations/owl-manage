@@ -676,6 +676,7 @@ const telasTariffPlanMap = new Map(
 // Tarifas específicas para Clases Sueltas
 const singleClassesTariffPlans = [
   { key: "Clase Crossfit", durationMonths: 1, priceTotal: 15 },
+  { key: "Open Crossfit 1h", durationMonths: 1, priceTotal: 10 },
   { key: "Bono 10 Clases Crossfit", durationMonths: 1, priceTotal: 135 },
   { key: "Clase Acrobacias", durationMonths: 1, priceTotal: 15 },
   { key: "Bono 10 Clases Acrobacias", durationMonths: 1, priceTotal: 135 },
@@ -3654,7 +3655,7 @@ function filterAndRenderSingleClassesList() {
     const athleteName = e.athlete.name || "Sin nombre";
     const paymentMethod = e.paymentMethod || "Efectivo";
     const row = document.createElement("tr");
-    const tariffOptions = ["", "Clase Crossfit", "Bono 10 Clases Crossfit", "Clase Acrobacias", "Bono 10 Clases Acrobacias", "Clase Telas", "Bono 10 Clases Telas", "Open Acrobacias 1h", "Open Acrobacias 2h", "Open Telas 1h", "Open Telas 2h"];
+    const tariffOptions = ["", ...singleClassesTariffPlans.map(plan => plan.key)];
     const tariffOptionsHtml = tariffOptions
       .map((opt) => {
         const sel = opt === e.tariff ? "selected" : "";

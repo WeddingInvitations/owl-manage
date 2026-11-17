@@ -80,6 +80,7 @@ const tariffPrices = {
   "Telas Ilimitado": 105,
   // Clases Sueltas
   "Clase Crossfit": 15,
+  "Open Crossfit 1h": 10,
   "Bono 10 Clases Crossfit": 135,
   "Clase Acrobacias": 15,
   "Bono 10 Clases Acrobacias": 135,
