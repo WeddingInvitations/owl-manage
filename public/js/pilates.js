@@ -1,6 +1,7 @@
 import { ui, formatCurrency } from "./ui.js";
 import { normalizeSearchText } from "./search.js";
 import { matchesListDiscountReason } from "./discount-filter.mjs";
+import { setNewAthleteNames } from "./new-athlete-modal.mjs?v=20261119newnamesall";
 import {
   getPilatesAthletes,
   getPilatesAthleteMonthsForMonth,
@@ -774,6 +775,8 @@ export async function refreshPilatesMonthly(
 
   const totalActive = activeNow.size;
   const totalNew = newAthletes.size;
+  const familyLabel = getPilatesFamilyConfig().label;
+  setNewAthleteNames("pilates", familyLabel, getMonthLabel(summaryMonth), athletes, newAthletes);
   if (ui.pilatesSummaryActive) ui.pilatesSummaryActive.textContent = String(totalActive);
   if (ui.pilatesSummaryNew) ui.pilatesSummaryNew.textContent = String(totalNew);
   if (ui.pilatesSummaryTotal) ui.pilatesSummaryTotal.textContent = String(familyAthletes.size);

@@ -32,9 +32,10 @@ import {
   setAuthUI,
   setActiveView,
   updateMenuVisibility,
-} from "./ui.js?v=20261114expense1";
+} from "./ui.js?v=20261119athletenew";
 import { showToast } from "./toast.js";
 import { normalizeSearchText } from "./search.js";
+import { initializeNewAthleteModal, setNewAthleteNames } from "./new-athlete-modal.mjs?v=20261119newnamesall";
 import { bindAuth, updateUserProfile } from "./auth.js?v=20250219b";
 import { auth, db } from "./firebase.js?v=20250309a";
 import { updatePassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -53,7 +54,7 @@ import {
   renderPilatesCsvMonthOptions,
   importPilatesAthletesFromCsv,
   renderFilteredPilatesList,
-} from "./pilates.js?v=20261111discount1";
+} from "./pilates.js?v=20261119newnamesall";
 import {
   addPayment,
   addExpense,
@@ -171,6 +172,8 @@ import {
 import { createUserWithRole } from "./admin.js";
 
 // Exponer Firebase globalmente para debugging
+initializeNewAthleteModal();
+
 window.firebase = {
   auth: () => auth,
   firestore: () => db
@@ -1251,6 +1254,8 @@ async function refreshAthleteMonthly() {
     }
   });
 
+  setNewAthleteNames("athletes", "Atletas", getMonthLabel(selectedAthleteMonth), athletes, newAthletes);
+
   // Cachear datos y delegar render (sin re-fetch a Firestore при buscar/filtrar)
   const athletesFallback = Array.from(
     new Map(listMonthRecords.map((record) => [
@@ -1960,6 +1965,8 @@ async function refreshAcroMonthly() {
     }
   });
 
+  setNewAthleteNames("acro", "Acrobacias", getMonthLabel(selectedAcroMonth), athletes, newAthletes);
+
   // Cachear datos y delegar render (sin re-fetch a Firestore al buscar/filtrar)
   const athletesFallback = Array.from(
     new Map(listMonthRecords.map((record) => [
@@ -2074,6 +2081,8 @@ async function refreshAcroKidsMonthly() {
       }
     }
   });
+
+  setNewAthleteNames("acroKids", "AcroKids", getMonthLabel(selectedAcroKidsMonth), athletes, newAthletes);
 
   // Cachear datos y delegar render (sin re-fetch a Firestore al buscar/filtrar)
   const athletesFallback = Array.from(
@@ -2987,6 +2996,8 @@ async function refreshHalteMonthly() {
     }
   });
 
+  setNewAthleteNames("halte", "Halterofilia", getMonthLabel(selectedHalteMonth), athletes, newAthletes);
+
   // Cachear datos y delegar render (sin re-fetch a Firestore al buscar/filtrar)
   const athletesFallback = Array.from(
     new Map(listMonthRecords.map((record) => [
@@ -3402,6 +3413,8 @@ async function refreshTelasMonthly() {
     }
   }
 
+  setNewAthleteNames("telas", "Telas", getMonthLabel(monthKey), entries.map((entry) => entry.athlete), newAthletes);
+
   const totalActive = activeNow.size;
   const totalNew = newAthletes.size;
 
@@ -3651,6 +3664,7 @@ function filterAndRenderSingleClassesList() {
       }
     }
   }
+  setNewAthleteNames("singleClasses", "Clases sueltas", getMonthLabel(monthKey), entries.map((entry) => entry.athlete), newAthletes);
   filtered.forEach((e) => {
     const athleteName = e.athlete.name || "Sin nombre";
     const paymentMethod = e.paymentMethod || "Efectivo";

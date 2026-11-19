@@ -532,6 +532,25 @@ h2 {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.summary-new-count {
+  display: block;
+  width: 100%;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.summary-new-count:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
 .label {
   color: var(--muted);
   font-weight: 600;

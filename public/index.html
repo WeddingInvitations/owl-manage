@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="stylesheet" href="css/styles.css?v=20261109c" />
+    <link rel="stylesheet" href="css/styles.css?v=20261119newnamesall" />
     <link rel="stylesheet" href="css/nest-booking.css?v=20261109b" />
     <link rel="stylesheet" href="css/fullcalendar-dark-override.css?v=20250225" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -1333,7 +1333,15 @@
               </div>
               <div>
                 <p class="label">Altas nuevas</p>
-                <p id="athleteSummaryNew" class="value">0</p>
+                <button
+                  id="athleteSummaryNew"
+                  class="value summary-new-count"
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-controls="newAthletesModal"
+                  aria-label="Ver nombres de las altas nuevas"
+                  data-new-athletes-key="athletes"
+                >0</button>
               </div>
               <div>
                 <p class="label">Usuarios totales</p>
@@ -1515,7 +1523,7 @@
               </div>
               <div>
                 <p class="label">Altas nuevas</p>
-                <p id="acroSummaryNew" class="value">0</p>
+                <button id="acroSummaryNew" class="value summary-new-count" type="button" aria-haspopup="dialog" aria-controls="newAthletesModal" aria-label="Ver altas nuevas de Acrobacias" data-new-athletes-key="acro">0</button>
               </div>
               <div>
                 <p class="label">Usuarios totales</p>
@@ -1692,7 +1700,7 @@
               </div>
               <div>
                 <p class="label">Altas nuevas</p>
-                <p id="acroKidsSummaryNew" class="value">0</p>
+                <button id="acroKidsSummaryNew" class="value summary-new-count" type="button" aria-haspopup="dialog" aria-controls="newAthletesModal" aria-label="Ver altas nuevas de AcroKids" data-new-athletes-key="acroKids">0</button>
               </div>
               <div>
                 <p class="label">Usuarios totales</p>
@@ -1987,7 +1995,7 @@
               </div>
               <div>
                 <p class="label">Altas nuevas</p>
-                <p id="halteSummaryNew" class="value">0</p>
+                <button id="halteSummaryNew" class="value summary-new-count" type="button" aria-haspopup="dialog" aria-controls="newAthletesModal" aria-label="Ver altas nuevas de Halterofilia" data-new-athletes-key="halte">0</button>
               </div>
               <div>
                 <p class="label">Usuarios totales</p>
@@ -2155,7 +2163,7 @@
               </div>
               <div>
                 <p class="label">Altas nuevas</p>
-                <p id="telasSummaryNew" class="value">0</p>
+                <button id="telasSummaryNew" class="value summary-new-count" type="button" aria-haspopup="dialog" aria-controls="newAthletesModal" aria-label="Ver altas nuevas de Telas" data-new-athletes-key="telas">0</button>
               </div>
               <div>
                 <p class="label">Usuarios totales</p>
@@ -2329,7 +2337,7 @@
               </div>
               <div>
                 <p class="label">Altas nuevas</p>
-                <p id="singleClassesSummaryNew" class="value">0</p>
+                <button id="singleClassesSummaryNew" class="value summary-new-count" type="button" aria-haspopup="dialog" aria-controls="newAthletesModal" aria-label="Ver altas nuevas de Clases sueltas" data-new-athletes-key="singleClasses">0</button>
               </div>
               <div>
                 <p class="label">Usuarios totales</p>
@@ -2545,7 +2553,7 @@
               </div>
               <div>
                 <p class="label">Altas nuevas</p>
-                <p id="pilatesSummaryNew" class="value">0</p>
+                <button id="pilatesSummaryNew" class="value summary-new-count" type="button" aria-haspopup="dialog" aria-controls="newAthletesModal" aria-label="Ver altas nuevas de Pilates o Barre" data-new-athletes-key="pilates">0</button>
               </div>
               <div>
                 <p class="label">Usuarios totales</p>
@@ -3627,6 +3635,16 @@
       </div>
     </div>
 
+    <div id="newAthletesModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="newAthletesModalTitle">
+      <div class="modal-content card">
+        <div class="detail-header">
+          <h3 id="newAthletesModalTitle">Altas nuevas</h3>
+          <button id="newAthletesModalClose" class="btn ghost small" type="button">Cerrar</button>
+        </div>
+        <ul id="newAthletesList" class="list" aria-live="polite"></ul>
+      </div>
+    </div>
+
     <!-- Password change modal -->
     <div id="passwordChangeModal" class="modal hidden">
       <div class="modal-content card">
@@ -3653,7 +3671,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- FullCalendar CDN -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script type="module" src="js/main.js?v=20261114summary1" defer></script>
+    <script type="module" src="js/main.js?v=20261119newnamesall" defer></script>
     
     <!-- Script de debugging simplificado -->
     <script>
