@@ -73,6 +73,7 @@ function setup(role = 'OWNER', entries = {}, { now, beforeTransaction } = {}) {
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8'), {
     exports: exported,
     require(name) {
+      if (name === './monthly-repeat') return require('./monthly-repeat');
       if (name === 'firebase-functions') {
         const https = { onCall: (handler) => handler, HttpsError };
         return { https, runWith: (options) => { assert.equal(options.invoker, 'public'); return { https }; } };
@@ -669,6 +670,52 @@ function removableSchedule() {
   entries['nest_monthly_usage/student__pilates__2099-01'] = { bookedCount: 2 };
   return entries;
 }
+
+test('staff first-week booking repeats each matching December weekday without changing November usage', async () => {
+  const entries = studentEntries(1);
+  delete entries['athlete_pilates_months/month0'];
+  const { handlers, records } = setup('OWNER', entries, { now: '2026-11-26T10:00:00Z' });
+  const result = await handlers.bookNestClass({ ...bookingInput, dateKey: '2026-11-30', athleteId: 'athlete0' }, context);
+  assert.equal(result.repeatMonth, '2026-12');
+  assert.deepEqual(Array.from(result.repeated, (item) => item.dateKey), ['2026-12-07', '2026-12-14', '2026-12-21', '2026-12-28']);
+  assert.ok(result.repeated.every((item) => item.status === 'BOOKED'));
+  assert.equal(records.get('nest_monthly_usage/athlete0__pilates__2026-11').bookedCount, 1);
+  assert.equal(records.get('nest_monthly_usage/athlete0__pilates__2026-12').bookedCount, 4);
+  const copied = await handlers.copyNestMonthBookings({ family: 'pilates', sourceMonday: '2026-11-30', month: '2026-12' }, context);
+  assert.equal(copied.results[0].repeated.filter((item) => item.status === 'BOOKED').length, 0);
+  assert.equal(records.get('nest_monthly_usage/athlete0__pilates__2026-12').bookedCount, 4);
+});
+
+test('monthly copy preserves cancellations, capacity and quota and reports blocked dates', async () => {
+  const entries = studentEntries(1);
+  entries['athlete_pilates_months/month0'] = { athleteId: 'athlete0', month: '2026-12', tariff: 'Reformer 4', paid: false };
+  const sourceId = `pilates__2026-11-30__${slot.id}`;
+  entries[`nest_bookings/${sourceId}__athlete0`] = { family: 'pilates', dateKey: '2026-11-30',
+    slotId: slot.id, startTime: '18:00', athleteId: 'athlete0', status: 'BOOKED' };
+  entries[`nest_class_sessions/pilates__2026-12-07__${slot.id}`] = { reservedCount: 6 };
+  entries[`nest_bookings/pilates__2026-12-14__${slot.id}__athlete0`] = { status: 'CANCELLED' };
+  entries['nest_monthly_usage/athlete0__pilates__2026-12'] = { bookedCount: 3 };
+  const { handlers, records } = setup('OWNER', entries, { now: '2026-11-26T10:00:00Z' });
+  const result = await handlers.copyNestMonthBookings({ family: 'pilates', sourceMonday: '2026-11-30', month: '2026-12' }, context);
+  assert.deepEqual(Array.from(result.results[0].repeated, (item) => item.status), ['FAILED', 'SKIPPED', 'BOOKED', 'FAILED']);
+  assert.equal(records.get('nest_monthly_usage/athlete0__pilates__2026-12').bookedCount, 4);
+});
+
+test('students and instructors cannot copy a monthly roster', async () => {
+  for (const role of ['NEST_STUDENT', 'NEST_INSTRUCTOR', 'PENDING']) {
+    const { handlers } = setup(role);
+    await assert.rejects(handlers.copyNestMonthBookings({ family: 'pilates', sourceMonday: '2026-11-30', month: '2026-12' }, context), { code: 'permission-denied' });
+  }
+});
+
+test('students booking in the first week get only the selected class', async () => {
+  const entries = studentEntries(1);
+  entries['athlete_pilates_months/month0'].month = '2026-12';
+  const { handlers, records } = setup('OWNER', entries, { now: '2026-12-01T10:00:00Z' });
+  const result = await handlers.bookNestClass({ ...bookingInput, dateKey: '2026-12-02' }, studentContext);
+  assert.equal(result.repeated, undefined);
+  assert.equal([...records.keys()].filter((key) => key.startsWith('nest_bookings/')).length, 1);
+});
 
 test('individual weekday deletion requires explicit confirmation with reserved classes', async () => {
   const { handlers, records } = setup('OWNER', removableSchedule(), { now: '2099-01-01T10:00:00Z' });

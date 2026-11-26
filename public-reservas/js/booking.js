@@ -159,7 +159,7 @@ async function chooseBookingAthlete(session, family, bookingButton) {
   dialog.addEventListener('cancel', (event) => { if (saving) event.preventDefault(); });
   heading.append(title, close);
   const detail = element('p', 'booking-athlete-detail',
-    `${family === 'barre' ? 'Barre' : 'Pilates'} · ${dateFromKey(session.dateKey).toLocaleDateString('es-ES')} · ${session.startTime}`);
+    `${family === 'barre' ? 'Barre' : 'Pilates'} · ${dateFromKey(session.dateKey).toLocaleDateString('es-ES')} · ${session.startTime}. Las altas en la primera semana se repiten el mismo día y hora hasta fin de mes, respetando aforo y bono.`);
   const label = element('label', 'booking-athlete-search', 'Buscar alumna por nombre');
   const search = element('input');
   search.type = 'search';
@@ -236,6 +236,7 @@ async function chooseBookingAthlete(session, family, bookingButton) {
       if (saving || !selectedIds.size || pendingActions.has(session.id)) return;
       if (auth.currentUser?.uid !== uid) { dialog.close(); return; }
       const athleteIds = [...selectedIds];
+      const repetitionErrors = [];
       const monthCacheKey = cacheKey(family, session.dateKey.slice(0, 7));
       saving = true;
       pendingActions.add(session.id);
@@ -250,6 +251,15 @@ async function chooseBookingAthlete(session, family, bookingButton) {
           onResult: ({ athleteId, result, error }, completed) => {
             if (auth.currentUser?.uid !== uid) return;
             if (!error || error.code === 'functions/already-exists') {
+              if (result?.data?.repeatMonth) {
+                invalidateMonthCache(family);
+                for (const item of result.data.repeated || []) {
+                  if (item.status === 'FAILED') {
+                    const name = athletes.find((athlete) => athlete.id === athleteId)?.name || 'Alumna';
+                    repetitionErrors.push(`${name}, ${dateFromKey(item.dateKey).toLocaleDateString('es-ES')}: ${item.message}`);
+                  }
+                }
+              }
               selectedIds.delete(athleteId);
               assignedIds.add(athleteId);
               reservedCount = result?.data?.reservedCount ?? reservedCount + 1;
@@ -266,12 +276,14 @@ async function chooseBookingAthlete(session, family, bookingButton) {
         });
         if (auth.currentUser?.uid !== uid) { dialog.close(); return; }
         const added = outcomes.filter((outcome) => !outcome.error).length;
-        if (!failures.size) {
+        if (!failures.size && !repetitionErrors.length) {
           dialog.close();
           showToast(added ? `${added} ${added === 1 ? 'alumna añadida' : 'alumnas añadidas'}` : 'Las alumnas ya tenían plaza', 'success');
+        } else if (repetitionErrors.length && !failures.size) {
+          message.textContent = `Altas guardadas en la clase elegida. No se pudieron repetir algunas fechas: ${repetitionErrors.join(' · ')}`;
         } else {
           search.value = '';
-          message.textContent = `${added} ${added === 1 ? 'alumna añadida' : 'alumnas añadidas'}. No se han guardado ${failures.size}. Revisa los errores de cada ficha; puedes reintentar sin repetir las reservas confirmadas.`;
+          message.textContent = `${added} ${added === 1 ? 'alumna añadida' : 'alumnas añadidas'}. No se han guardado ${failures.size}. Revisa los errores de cada ficha; puedes reintentar sin repetir las reservas confirmadas. ${repetitionErrors.join(' · ')}`;
         }
       } finally {
         saving = false;

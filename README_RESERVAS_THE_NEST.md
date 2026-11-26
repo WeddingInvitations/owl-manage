@@ -47,6 +47,15 @@ Cada persona puede abrir **Mi perfil** y añadir o quitar su foto. La imagen se 
 
 ## Para el personal y las profesoras
 
+### Repetición durante el mes
+
+- Al añadir alumnas como personal en la **primera semana laborable del mes**, se reservan también las clases del mismo día de la semana y hora durante el resto de ese mes. No añade otros días del mismo horario compartido ni genera reservas en el mes siguiente.
+- Si la semana cruza meses, se usa el mes cuyo día 1 cae en esa semana: la semana **30 de noviembre–4 de diciembre de 2026** sirve de referencia para diciembre, incluidos los lunes de diciembre. Si el día 1 es sábado o domingo se usa la primera semana laborable completa.
+- Se mantienen los requisitos de aforo y bono, aunque el personal pueda reservar sin pago. Algunas tarifas de 4 u 8 sesiones no cubren todos los días de un mes con cinco semanas. Se confirman las fechas posibles y se muestran los motivos de las restantes. No se modifican tarifas ni pagos.
+- La repetición no duplica plazas ni vuelve a añadir reservas canceladas. Quitar una alumna de una clase concreta sigue afectando solo a esa fecha. Las reservas personales de alumnas no se repiten automáticamente.
+- Para activar la automatización del servidor se despliega **bookNestClass**; **copyNestMonthBookings** permite al personal copiar una semana ya existente. Los avisos y explicación del selector requieren publicar Hosting.
+- Mantenimiento autorizado del 26/11/2026: se copiaron **91 reservas nuevas** desde la semana 30/11–04/12 al resto de diciembre (Pilates y Barre). Otras **21** se dejaron pendientes porque superaban el bono; se confirmó expresamente mantener ese límite. La copia incluyó las fechas programadas festivas: no se excluyen automáticamente festivos.
+
 - En **Administración**, cada día y hora aparece como una clase individual. Eliminar los lunes a las 19:00 conserva los miércoles a las 19:00, aunque antes compartieran una franja. Pulsa **Guardar cambios** para aplicar el borrado semanal.
 - Si las clases eliminadas tienen reservas futuras, al guardar aparece un aviso con los días y el número de reservas. Solo al aceptar se cancelan esas reservas y se devuelven las sesiones al bono. Rechazar el aviso no guarda ningún cambio. Las reservas de otros días y el historial pasado se conservan; no se permite mover clases con reservas ni reducir su aforo por debajo de las plazas ocupadas.
 - Para activar este cambio hay que actualizar **saveNestAdminSchedule** y **getNestBookingSchedule** antes del push del frontend; el pipeline automático solo publica Hosting.

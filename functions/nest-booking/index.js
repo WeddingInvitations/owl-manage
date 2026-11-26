@@ -1,5 +1,6 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const { addDays, firstWeekMonth, remainingDates } = require('./monthly-repeat');
 
 const db = admin.firestore();
 const CAPACITY = 6;
@@ -812,7 +813,7 @@ exports.getNestBookingAthletes = functions.runWith({ invoker: 'public' }).https.
   };
 });
 
-exports.bookNestClass = functions.https.onCall(async (data, context) => {
+async function bookOneNestClass(data, context) {
   const uid = requireAuth(context);
   const family = validateFamily(data.family);
   const { dateKey, slotId } = data;
@@ -867,6 +868,12 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
       transaction.get(sessionRef), transaction.get(bookingRef), transaction.get(usageRef),
       findMonthlyMembership(athlete.ref.id, family, month, transaction, staffBooking), transaction.get(athlete.ref),
     ]);
+    if (data.preserveCancelled && data.repeatSource) {
+      const source = await transaction.get(db.collection('nest_bookings').doc(`${data.repeatSource}__${athlete.ref.id}`));
+      if (!source.exists || source.data().status !== 'BOOKED') {
+        fail('failed-precondition', 'La reserva de referencia ya no está activa.');
+      }
+    }
     if (!staffBooking) assertStudentPayment(await studentPaymentAccess(athlete.ref.id, family, transaction));
     const currentSlot = (await getEffectiveSlots(family, transaction)).find((slot) =>
       slot.id === slotId && slot.daysOfWeek.includes(new Date(`${dateKey}T12:00:00Z`).getUTCDay())
@@ -888,6 +895,9 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
     if (bookingSnap.exists && bookingSnap.data().status === 'BOOKED') {
       fail('already-exists', 'Ya tienes una plaza reservada en esta clase.');
     }
+    if (data.preserveCancelled && bookingSnap.exists && bookingSnap.data().status === 'CANCELLED') {
+      fail('already-exists', 'Esta reserva se canceló expresamente y no se repetirá.');
+    }
     const activeCapacity = Number(currentSlot.capacity || CAPACITY);
     const reservedCount = sessionSnap.exists ? Number(sessionSnap.data().reservedCount || 0) : 0;
     if (reservedCount >= activeCapacity) fail('resource-exhausted', 'La clase está completa.');
@@ -904,7 +914,9 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
       sessionId: id, family, dateKey, slotId, startTime: data.startTime,
       athleteId: athlete.ref.id, userId: athleteSnap.data().authUid || null,
       bookedBy: uid,
+      maintenanceOperator: context.auth.token?.maintenanceOperator || null,
       staffPaymentOverride: staffBooking && currentMembership?.data.paid !== true,
+      repeatedFrom: data.preserveCancelled ? data.repeatSource || null : null,
       athleteName: athlete.data.name || profile.displayName || '',
       status: 'BOOKED', attended: false,
       attendedAt: null, attendedBy: null, cancelledAt: null, cancelledBy: null, cancellationReason: null,
@@ -925,6 +937,61 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
     };
   });
   return { success: true, sessionId: id, ...confirmed };
+}
+
+async function repeatNestBooking(data, context, month) {
+  const results = [];
+  for (const dateKey of remainingDates(data.dateKey, month)) {
+    const id = sessionId(data.family, dateKey, data.slotId);
+    const existing = await db.collection('nest_bookings').doc(`${id}__${data.athleteId}`).get();
+    // Never resurrect a reservation intentionally removed by staff or the student.
+    if (existing.exists) {
+      results.push({ dateKey, status: 'SKIPPED', reason: existing.data().status });
+      continue;
+    }
+    try {
+      const result = await bookOneNestClass({ ...data, dateKey, preserveCancelled: true,
+        repeatSource: sessionId(data.family, data.dateKey, data.slotId) }, context);
+      results.push({ dateKey, status: 'BOOKED', sessionId: result.sessionId });
+    } catch (error) {
+      results.push({ dateKey, status: error.code === 'already-exists' ? 'SKIPPED' : 'FAILED',
+        code: error.code || 'internal', message: error.message });
+    }
+  }
+  return results;
+}
+
+exports.bookNestClass = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  const profile = await getProfile(uid);
+  const result = await bookOneNestClass(data, context);
+  const month = STAFF_ROLES.has(profile.role) ? firstWeekMonth(data.dateKey) : null;
+  if (!month) return result;
+  const repeated = await repeatNestBooking({ ...data, athleteId: result.attendee.athleteId }, context, month);
+  return { ...result, repeatMonth: month, repeated };
+});
+
+// Explicit, idempotent copy of a reference week, including a week crossing month boundaries.
+exports.copyNestMonthBookings = functions.runWith({ invoker: 'public', timeoutSeconds: 540 }).https.onCall(async (data, context) => {
+  const uid = requireAuth(context);
+  await requireNestStaff(uid);
+  const family = validateFamily(data.family);
+  const { sourceMonday, month } = data;
+  if (!validDateKey(sourceMonday) || new Date(`${sourceMonday}T12:00:00Z`).getUTCDay() !== 1 ||
+      !/^\d{4}-(0[1-9]|1[0-2])$/.test(month || '') || firstWeekMonth(sourceMonday) !== month) {
+    fail('invalid-argument', 'Selecciona el lunes de la primera semana y su mes.');
+  }
+  const source = await db.collection('nest_bookings').where('family', '==', family).get();
+  const sourceDocs = source.docs.filter((doc) => doc.data().status === 'BOOKED' &&
+    doc.data().dateKey >= sourceMonday && doc.data().dateKey <= addDays(sourceMonday, 4));
+  const results = [];
+  for (const doc of sourceDocs) {
+    const booking = doc.data();
+    const repeated = await repeatNestBooking({ family, dateKey: booking.dateKey, slotId: booking.slotId,
+      startTime: booking.startTime, athleteId: booking.athleteId }, context, month);
+    results.push({ sourceBookingId: doc.id, athleteId: booking.athleteId, repeated });
+  }
+  return { family, month, sourceCount: sourceDocs.length, results };
 });
 
 exports.cancelNestBooking = functions.https.onCall(async (data, context) => {
