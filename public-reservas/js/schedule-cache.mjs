@@ -59,7 +59,7 @@ export function applyBookingConfirmation(sessions, sessionId, result, { cancelle
     }
     const attendees = session.attendees || [];
     updated.attendees = cancelled
-      ? attendees.filter((attendee) => attendee.athleteId !== result.athleteId && !attendee.isCurrentUser)
+      ? attendees.filter((attendee) => attendee.athleteId !== result.athleteId && !(own && attendee.isCurrentUser))
       : [...attendees.filter((attendee) => attendee.athleteId !== result.attendee?.athleteId), { ...result.attendee, photoUrl }];
     return updated;
   });

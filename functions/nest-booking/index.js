@@ -140,23 +140,35 @@ function currentPaymentMonth(now = new Date()) {
   return `${parts.year}-${parts.month}`;
 }
 
-function membershipBookingAccess(record, family, month) {
+function membershipBookingAccess(record, family, month, allowUnpaid = false) {
   const monthlyLimit = tariffMonthlyLimit(record);
-  if (record?.month !== month || tariffFamily(record) !== family || !monthlyLimit || record.paid !== true) return null;
+  if (record?.month !== month || tariffFamily(record) !== family || !monthlyLimit || (!allowUnpaid && record.paid !== true)) return null;
   return { monthlyLimit };
 }
 
-async function findMonthlyMembership(athleteId, family, month, transaction = null) {
+async function findMonthlyMembership(athleteId, family, month, transaction = null, allowUnpaid = false) {
   const query = db.collection('athlete_pilates_months')
     .where('athleteId', '==', athleteId)
     .where('month', '==', month);
   const snap = await (transaction ? transaction.get(query) : query.get());
-  const currentMemberships = snap.docs
+  let currentMemberships = snap.docs
     .map((doc) => ({ ref: doc.ref, data: doc.data() }))
     .filter(({ data }) => tariffFamily(data) === family);
-  // Only an explicit paid record in Owl Manage authorizes this month.
+  // Staff may use the last registered tariff when the new month is not registered yet.
+  // This never copies a previous payment or grants self-service access to students.
+  if (allowUnpaid && !currentMemberships.length) {
+    const historyQuery = db.collection('athlete_pilates_months')
+      .where('athleteId', '==', athleteId).where('month', '<', month);
+    const history = await (transaction ? transaction.get(historyQuery) : historyQuery.get());
+    currentMemberships = history.docs.map((doc) => ({ ref: doc.ref, data: doc.data() }))
+      .filter(({ data }) => tariffFamily(data) === family && tariffMonthlyLimit(data))
+      .sort((a, b) => b.data.month.localeCompare(a.data.month) ||
+        (b.data.updatedAt?.toMillis?.() || b.data.createdAt?.toMillis?.() || 0) -
+        (a.data.updatedAt?.toMillis?.() || a.data.createdAt?.toMillis?.() || 0))
+      .slice(0, 1).map((membership) => ({ ...membership, data: { ...membership.data, month, paid: false } }));
+  }
   const memberships = currentMemberships
-    .map((membership) => ({ ...membership, access: membershipBookingAccess(membership.data, family, month) }))
+    .map((membership) => ({ ...membership, access: membershipBookingAccess(membership.data, family, month, allowUnpaid) }))
     .filter((membership) => membership.access)
     .map(({ access, ...membership }) => ({ ...membership, ...access }))
     .sort((first, second) => {
@@ -166,6 +178,17 @@ async function findMonthlyMembership(athleteId, family, month, transaction = nul
       return secondUpdated - firstUpdated;
     });
   return memberships[0] || null;
+}
+
+async function bookingPaymentFlags(bookings, family) {
+  const requests = new Map();
+  for (const booking of bookings) {
+    const { athleteId, dateKey } = booking.data();
+    const key = `${athleteId}__${monthKey(dateKey)}`;
+    if (!requests.has(key)) requests.set(key, findMonthlyMembership(athleteId, family, monthKey(dateKey))
+      .then((membership) => !membership));
+  }
+  return new Map(await Promise.all([...requests].map(async ([key, value]) => [key, await value])));
 }
 
 async function studentPaymentAccess(athleteId, family, transaction = null) {
@@ -697,6 +720,7 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
     snapshotsPromise, membershipsPromise, usagePromise, Promise.all(bookingQueries),
   ]);
   const activeBookingDocs = bookingSnapshots.flatMap((snap) => snap.docs);
+  const paymentFlags = isStaff ? await bookingPaymentFlags(activeBookingDocs, family) : new Map();
   const attendeeUids = Array.from(new Set(activeBookingDocs
     .map((booking) => booking.data().userId)
     .filter(Boolean)));
@@ -714,6 +738,7 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
       name: bookingData.athleteName || '',
       userId: bookingData.userId || null,
       attended: Boolean(bookingData.attended),
+      ...(isStaff ? { paymentPending: paymentFlags.get(`${bookingData.athleteId}__${monthKey(bookingData.dateKey)}`) } : {}),
       isCurrentUser: Boolean(athlete && bookingData.athleteId === athlete.ref.id),
     });
     attendeesBySession.set(bookingData.sessionId, attendees);
@@ -755,6 +780,7 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
       past: startAt.getTime() <= Date.now(),
       canManageRoster: isStaff || (isInstructor && hasFamily(profile, family)),
       canBookForOthers: isStaff,
+      canRemoveOthers: isStaff && startAt.getTime() > Date.now(),
     };
   });
   const memberPhotos = Object.fromEntries(attendeeUids
@@ -768,6 +794,8 @@ exports.getNestBookingAthletes = functions.runWith({ invoker: 'public' }).https.
   const uid = requireAuth(context);
   const family = validateFamily(data.family);
   await requireNestStaff(uid);
+  const month = data.month;
+  if (month !== undefined && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) fail('invalid-argument', 'Mes no válido.');
   const [athletes, history] = await Promise.all([
     db.collection('athletes_pilates').get(), db.collection('athlete_pilates_months').get(),
   ]);
@@ -777,7 +805,9 @@ exports.getNestBookingAthletes = functions.runWith({ invoker: 'public' }).https.
     athletes: athletes.docs.filter((doc) => familyIds.has(doc.id) ||
       familiesFromHistory([], doc.data()).includes(family))
       .map((doc) => ({ id: doc.id, name: String(doc.data().name || 'Sin nombre'),
-        email: normalizeEmail(doc.data().email) }))
+        email: normalizeEmail(doc.data().email),
+        ...(month ? { paymentPending: !history.docs.some((record) => record.data().athleteId === doc.id &&
+          membershipBookingAccess(record.data(), family, month)) } : {}) }))
       .sort((first, second) => first.name.localeCompare(second.name, 'es')),
   };
 });
@@ -821,8 +851,10 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
   }
   const month = monthKey(dateKey);
   if (!staffBooking) assertStudentPayment(await studentPaymentAccess(athlete.ref.id, family));
-  const membership = await findMonthlyMembership(athlete.ref.id, family, month);
-  if (!membership) fail('failed-precondition', `La cuota de ${family === 'barre' ? 'Barre' : 'Pilates'} de ${month} debe figurar como pagada en Owl Manage para reservar esta clase.`);
+  const membership = await findMonthlyMembership(athlete.ref.id, family, month, null, staffBooking);
+  if (!membership) fail('failed-precondition', staffBooking
+    ? 'Registra una tarifa de esta disciplina en Owl Manage antes de añadir a la alumna. No es necesario marcarla como pagada.'
+    : `La cuota de ${family === 'barre' ? 'Barre' : 'Pilates'} de ${month} debe figurar como pagada en Owl Manage para reservar esta clase.`);
   const startAt = localTimeToDate(dateKey, scheduledSlot.startTime);
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(data.startTime || '') || startAt.getTime() <= Date.now()) {
     fail('failed-precondition', 'No se pueden reservar clases pasadas o con un horario no válido.');
@@ -834,7 +866,7 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
   const confirmed = await db.runTransaction(async (transaction) => {
     const [sessionSnap, bookingSnap, usageSnap, currentMembership, athleteSnap] = await Promise.all([
       transaction.get(sessionRef), transaction.get(bookingRef), transaction.get(usageRef),
-      findMonthlyMembership(athlete.ref.id, family, month, transaction), transaction.get(athlete.ref),
+      findMonthlyMembership(athlete.ref.id, family, month, transaction, staffBooking), transaction.get(athlete.ref),
     ]);
     if (!staffBooking) assertStudentPayment(await studentPaymentAccess(athlete.ref.id, family, transaction));
     const currentSlot = (await getEffectiveSlots(family, transaction)).find((slot) =>
@@ -874,6 +906,7 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
       bookedBy: uid,
       athleteName: athlete.data.name || profile.displayName || '',
       status: 'BOOKED', attended: false,
+      attendedAt: null, attendedBy: null, cancelledAt: null, cancelledBy: null, cancellationReason: null,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
@@ -886,7 +919,8 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
       reservedCount: reservedCount + 1, capacity: activeCapacity,
       monthlyUsed: bookedCount + 1, monthlyLimit: activeMonthlyLimit,
       attendee: { id: bookingRef.id, athleteId: athlete.ref.id, userId: athleteSnap.data().authUid || null,
-        name: athlete.data.name || profile.displayName || '', isCurrentUser: !staffBooking },
+        name: athlete.data.name || profile.displayName || '', isCurrentUser: !staffBooking,
+        ...(staffBooking ? { paymentPending: currentMembership.data.paid !== true } : {}) },
     };
   });
   return { success: true, sessionId: id, ...confirmed };
@@ -895,31 +929,48 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
 exports.cancelNestBooking = functions.https.onCall(async (data, context) => {
   const uid = requireAuth(context);
   const profile = await getProfile(uid);
-  if (profile.role !== 'NEST_STUDENT') fail('permission-denied', 'Solo puedes cancelar tus propias reservas.');
+  const staffCancellation = STAFF_ROLES.has(profile.role);
+  if (!staffCancellation && profile.role !== 'NEST_STUDENT') fail('permission-denied', 'No tienes permiso para quitar alumnas de una clase.');
   const family = validateFamily(data.family);
-  const athlete = await getStudentAthlete(profile, uid);
+  let athleteId;
+  if (staffCancellation) {
+    if (typeof data.athleteId !== 'string' || !data.athleteId || data.athleteId.includes('/') || data.athleteId.length > 1500) {
+      fail('invalid-argument', 'Selecciona una ficha válida.');
+    }
+    athleteId = data.athleteId;
+  } else {
+    athleteId = (await getStudentAthlete(profile, uid)).ref.id;
+  }
   const dateKey = data.dateKey;
   const slotId = data.slotId;
-  if (!validDateKey(dateKey) || typeof slotId !== 'string' || !slotId) fail('invalid-argument', 'Reserva no válida.');
+  if (!validDateKey(dateKey) || typeof slotId !== 'string' || !slotId || slotId.includes('/') || slotId.includes('__')) fail('invalid-argument', 'Reserva no válida.');
   const id = sessionId(family, dateKey, slotId);
-  const bookingRef = db.collection('nest_bookings').doc(`${id}__${athlete.ref.id}`);
+  const bookingRef = db.collection('nest_bookings').doc(`${id}__${athleteId}`);
   const sessionRef = db.collection('nest_class_sessions').doc(id);
-  const usageRef = db.collection('nest_monthly_usage').doc(`${athlete.ref.id}__${family}__${monthKey(dateKey)}`);
-  const bookingSnap = await bookingRef.get();
-  if (!bookingSnap.exists) fail('not-found', 'No se encontró la reserva.');
-  const startAt = localTimeToDate(dateKey, bookingSnap.data().startTime);
-  if (startAt.getTime() - Date.now() < CANCELLATION_CUTOFF_HOURS * 60 * 60 * 1000) {
-    fail('failed-precondition', 'La cancelación debe realizarse al menos 2 horas antes de la clase.');
-  }
+  const usageRef = db.collection('nest_monthly_usage').doc(`${athleteId}__${family}__${monthKey(dateKey)}`);
   const confirmed = await db.runTransaction(async (transaction) => {
     const [currentBooking, sessionSnap, usageSnap] = await Promise.all([
       transaction.get(bookingRef), transaction.get(sessionRef), transaction.get(usageRef),
     ]);
-    assertStudentPayment(await studentPaymentAccess(athlete.ref.id, family, transaction));
+    if (!staffCancellation) assertStudentPayment(await studentPaymentAccess(athleteId, family, transaction));
     if (!currentBooking.exists || currentBooking.data().status !== 'BOOKED') {
       fail('failed-precondition', 'La reserva ya estaba cancelada.');
     }
-    transaction.update(bookingRef, { status: 'CANCELLED', cancelledAt: admin.firestore.FieldValue.serverTimestamp() });
+    const booking = currentBooking.data();
+    if (booking.athleteId !== athleteId || booking.family !== family || booking.dateKey !== dateKey || booking.slotId !== slotId) {
+      fail('failed-precondition', 'Los datos de la reserva no coinciden con la clase.');
+    }
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(booking.startTime || '')) {
+      fail('failed-precondition', 'La reserva no tiene una hora válida. Contacta con recepción.');
+    }
+    const startAt = localTimeToDate(dateKey, booking.startTime);
+    if (startAt.getTime() <= Date.now()) fail('failed-precondition', 'No se pueden quitar alumnas de clases pasadas.');
+    if (!staffCancellation && startAt.getTime() - Date.now() < CANCELLATION_CUTOFF_HOURS * 60 * 60 * 1000) {
+      fail('failed-precondition', 'La cancelación debe realizarse al menos 2 horas antes de la clase.');
+    }
+    transaction.update(bookingRef, { status: 'CANCELLED', cancelledBy: uid,
+      cancellationReason: staffCancellation ? 'STAFF_REMOVED' : 'STUDENT_CANCELLED',
+      cancelledAt: admin.firestore.FieldValue.serverTimestamp() });
     if (sessionSnap.exists) {
       transaction.update(sessionRef, { reservedCount: Math.max(0, Number(sessionSnap.data().reservedCount || 0) - 1) });
     }
@@ -929,7 +980,7 @@ exports.cancelNestBooking = functions.https.onCall(async (data, context) => {
     return {
       reservedCount: Math.max(0, Number(sessionSnap.data()?.reservedCount || 0) - 1),
       monthlyUsed: Math.max(0, Number(usageSnap.data()?.bookedCount || 0) - 1),
-      athleteId: athlete.ref.id,
+      athleteId,
     };
   });
   return { success: true, sessionId: id, ...confirmed };
@@ -943,6 +994,8 @@ exports.getNestClassRoster = functions.https.onCall(async (data, context) => {
   if (profile.role === 'NEST_STUDENT') fail('permission-denied', 'No tienes permiso para ver el listado de la clase.');
   const id = sessionId(family, data.dateKey, data.slotId);
   const snap = await db.collection('nest_bookings').where('sessionId', '==', id).where('status', '==', 'BOOKED').get();
+  const isStaff = STAFF_ROLES.has(profile.role);
+  const paymentFlags = isStaff ? await bookingPaymentFlags(snap.docs, family) : new Map();
   const userIds = Array.from(new Set(snap.docs.map((booking) => booking.data().userId).filter(Boolean)));
   const profiles = userIds.length
     ? await db.getAll(...userIds.map((userId) => db.collection('users').doc(userId)))
@@ -958,6 +1011,7 @@ exports.getNestClassRoster = functions.https.onCall(async (data, context) => {
       name: doc.data().athleteName || '',
       photoUrl: profileByUid.get(doc.data().userId)?.photoUrl || '',
       attended: Boolean(doc.data().attended),
+      ...(isStaff ? { paymentPending: paymentFlags.get(`${doc.data().athleteId}__${monthKey(doc.data().dateKey)}`) } : {}),
     })),
   };
 });

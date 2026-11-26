@@ -131,3 +131,23 @@ test('a confirmed paid booking enables cancellation without waiting for cache ex
     athleteId: 'athlete' }, { cancelled: true });
   assert.equal(cancelled[0].canCancel, false);
 });
+
+test('staff cancellation removes only the target attendee, preserving payment warnings and own flags', () => {
+  const input = [{ ...sessions[0], attendees: [
+    { athleteId: 'target', paymentPending: true },
+    { athleteId: 'other', paymentPending: true, isCurrentUser: true },
+  ] }];
+  const result = applyBookingConfirmation(input, 'one', { athleteId: 'target', reservedCount: 1, monthlyUsed: 0 },
+    { own: false, cancelled: true });
+  assert.equal(result[0].attendees.length, 1);
+  assert.equal(result[0].attendees[0].athleteId, 'other');
+  assert.equal(result[0].attendees[0].paymentPending, true);
+  assert.equal(result[0].monthlyUsed, input[0].monthlyUsed);
+  assert.equal(result[0].isBooked, input[0].isBooked);
+});
+
+test('staff confirmation immediately displays the server payment warning', () => {
+  const result = applyBookingConfirmation(sessions, 'one', { reservedCount: 1, monthlyUsed: 1,
+    attendee: { athleteId: 'unpaid', paymentPending: true } }, { own: false });
+  assert.equal(result[0].attendees[0].paymentPending, true);
+});

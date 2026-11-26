@@ -32,6 +32,11 @@
 .booking-content .nest-booking-attendee { display:flex; align-items:center; gap:.5rem; color:var(--text); font-size:.8rem; }
 .booking-content .nest-booking-roster-avatar { width:30px; min-width:30px; }
 .booking-content .nest-booking-roster-avatar .nest-booking-avatar-initials { font-size:.72rem; }
+.booking-content .nest-booking-avatar.is-payment-pending { border:2px solid #e5484d; box-shadow:0 0 0 2px color-mix(in srgb,#e5484d 24%,transparent); }
+.nest-payment-warning { display:block; margin:0; color:var(--danger,#b4232d); font-size:.75rem; font-weight:700; line-height:1.4; overflow-wrap:anywhere; }
+.booking-content .nest-booking-roster-row { display:flex; flex-direction:column; align-items:flex-start; gap:.4rem; padding:.45rem 0; border-top:1px solid var(--border); min-width:0; }
+.booking-content .nest-booking-attendee { min-width:0; overflow-wrap:anywhere; }
+.booking-content .nest-booking-remove { min-height:36px; width:100%; padding:.4rem; color:var(--danger,#b4232d); font-size:.72rem; white-space:normal; }
 @media (max-width:760px) {
   .booking-content { padding:.65rem; }
   .booking-content .nest-booking-sessions { display:none; }

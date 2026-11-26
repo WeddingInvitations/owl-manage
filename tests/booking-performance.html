@@ -11,6 +11,8 @@ window.testAuth = { currentUser: { uid: 'local-test-user' } };
 window.testFixtures = new Map();
 window.testAdmin = new URLSearchParams(location.search).has('admin');
 window.testUnpaid = new URLSearchParams(location.search).has('unpaid');
+window.testBookingErrors = {};
+window.testBookingAttempts = [];
 window.testCall = async (name, data) => {
   const delay = () => new Promise(resolve => setTimeout(resolve, 60));
   if (name === 'getNestBookingSchedule') {
@@ -35,30 +37,53 @@ window.testCall = async (name, data) => {
         if (window.testAdmin) {
           session.canManageRoster = true;
           session.canBookForOthers = true;
-          session.attendees = [{ athleteId: 'already-booked', name: 'Alumna con plaza' }];
+          session.canRemoveOthers = start > new Date();
+          session.attendees = [{ id: `${id}__already-booked`, athleteId: 'already-booked', name: 'Alumna con plaza', paymentPending: window.testUnpaid }];
           session.reservedCount = 1;
         }
-        sessions.push(session); window.testFixtures.set(id, session);
+        sessions.push(window.testFixtures.get(id) || session);
+        if (!window.testFixtures.has(id)) window.testFixtures.set(id, session);
       }
     }
     return { data: { sessions, memberPhotos: {} } };
   }
   if (name === 'getNestBookingAthletes') {
     return { data: { athletes: [
-      { id: 'already-booked', name: 'Alumna con plaza', email: 'reserved@example.com' },
-      { id: 'ana', name: 'Ana García', email: 'ana@example.com' },
-      { id: 'bea', name: 'Beatriz López', email: 'bea@example.com' },
+      { id: 'already-booked', name: 'Alumna con plaza', email: 'reserved@example.com', paymentPending: window.testUnpaid },
+      { id: 'ana', name: 'Ana García', email: 'ana@example.com', paymentPending: window.testUnpaid },
+      { id: 'bea', name: 'Beatriz López', email: 'bea@example.com', paymentPending: false },
+      { id: 'carla', name: 'Carla Pérez', email: 'carla@example.com', paymentPending: false },
+      { id: 'diana', name: 'Diana Ruiz', email: 'diana@example.com', paymentPending: false },
+      { id: 'elena', name: 'Elena Martín', email: 'elena@example.com', paymentPending: false },
+      { id: 'fatima', name: 'Fátima Díaz', email: 'fatima@example.com', paymentPending: false },
     ] } };
   }
   const id = `${data.family}__${data.dateKey}__${data.slotId}`;
+  if (name === 'getNestClassRoster') return { data: { attendees: window.testFixtures.get(id)?.attendees || [] } };
   if (name === 'bookNestClass') {
     window.testLastBooking = data;
     window.testCalls.book++; await delay();
-    return { data: { success: true, sessionId: id, reservedCount: window.testAdmin ? 2 : 1, capacity: 6, monthlyUsed: 1, monthlyLimit: 4, attendee: { athleteId: data.athleteId || 'local-athlete', name: 'Alumna ficticia', isCurrentUser: !window.testAdmin } } };
+    window.testBookingAttempts.push(data.athleteId || 'local-athlete');
+    if (window.testBookingErrors[data.athleteId]) {
+      const error = new Error(window.testBookingErrors[data.athleteId]);
+      error.code = 'functions/failed-precondition';
+      throw error;
+    }
+    const attendee = { id: `${id}__${data.athleteId || 'local-athlete'}`, athleteId: data.athleteId || 'local-athlete',
+      name: data.athleteId === 'ana' ? 'Ana García' : 'Alumna ficticia', isCurrentUser: !window.testAdmin,
+      ...(window.testAdmin ? { paymentPending: window.testUnpaid && data.athleteId !== 'bea' } : {}) };
+    const fixture = window.testFixtures.get(id);
+    fixture.attendees.push(attendee);
+    fixture.reservedCount++;
+    return { data: { success: true, sessionId: id, reservedCount: fixture.reservedCount, capacity: 6, monthlyUsed: 1, monthlyLimit: 4, attendee } };
   }
   if (name === 'cancelNestBooking') {
+    window.testLastCancellation = data;
     window.testCalls.cancel++; await delay();
-    return { data: { success: true, sessionId: id, reservedCount: 0, monthlyUsed: 0, athleteId: 'local-athlete' } };
+    const fixture = window.testFixtures.get(id);
+    fixture.attendees = fixture.attendees.filter((attendee) => attendee.athleteId !== (data.athleteId || 'local-athlete'));
+    fixture.reservedCount = Math.max(0, fixture.reservedCount - 1);
+    return { data: { success: true, sessionId: id, reservedCount: fixture.reservedCount, monthlyUsed: 0, athleteId: data.athleteId || 'local-athlete' } };
   }
   throw new Error('Unexpected callable: ' + name);
 };

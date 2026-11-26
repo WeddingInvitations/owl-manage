@@ -286,10 +286,10 @@ test('students cannot use another athlete ID to impersonate a classmate', async 
   assert.equal(result.attendee.athleteId, 'athlete0');
 });
 
-test('staff ID booking rejects invalid IDs, absent records and unpaid memberships', async () => {
+test('staff ID booking rejects invalid IDs, absent records and missing tariffs', async () => {
   const entries = studentEntries(1);
-  entries['athlete_pilates_months/month0'].paid = false;
-  const { handlers } = setup('OWNER', entries, { now: '2099-01-06T12:00:00Z' });
+  delete entries['athlete_pilates_months/month0'].tariff;
+  const { handlers } = setup('OWNER', entries);
   for (const athleteId of ['', '../athlete0', 123]) {
     await assert.rejects(handlers.bookNestClass({ ...bookingInput, athleteId }, context), { code: 'invalid-argument' });
   }
@@ -371,9 +371,7 @@ for (const family of ['pilates', 'barre']) {
       const { handlers, records } = setup('OWNER', entries, { now });
       const schedule = await handlers.getNestBookingSchedule({ ...januarySchedule, family }, studentContext);
       assert.ok(schedule.sessions.every((session) => session.actionsBlocked && !session.canBook && !session.canCancel && !session.paymentGrace));
-      for (const actor of [studentContext, context]) {
-        await assert.rejects(handlers.bookNestClass({ ...graceBooking, family, athleteId: 'athlete0' }, actor), { code: 'failed-precondition' });
-      }
+      await assert.rejects(handlers.bookNestClass({ ...graceBooking, family, athleteId: 'athlete0' }, studentContext), { code: 'failed-precondition' });
       assert.equal(records.has(`nest_monthly_usage/athlete0__${family}__2099-01`), false);
       records.get('athlete_pilates_months/month0').paid = true;
       const paid = await handlers.getNestBookingSchedule({ ...januarySchedule, family }, studentContext);
@@ -453,6 +451,163 @@ test('booking rechecks the current month if midnight passes inside the transacti
     beforeTransaction: (setTime) => setTime('2098-12-31T23:00:00Z') });
   await assert.rejects(handlers.bookNestClass({ ...bookingInput, dateKey: '2099-02-02' }, studentContext), { code: 'failed-precondition' });
   assert.equal(records.has('nest_monthly_usage/athlete0__pilates__2099-02'), false);
+});
+
+for (const family of ['pilates', 'barre']) {
+  for (const role of ['ADMIN', 'OWNER', 'RECEPTION', 'COACH', 'TEAM_LEADER']) {
+    test(`${role} can assign unpaid ${family} students, remove them and reserve another class`, async () => {
+      const entries = studentEntries(1);
+      entries[`nest_calendar/${family}__booking-slots`] = { slots: [slot], version: 1 };
+      entries['athlete_pilates_months/month0'].tariff = family === 'barre' ? 'Barre 4' : 'Reformer 4';
+      entries['athlete_pilates_months/month0'].paid = false;
+      const { handlers, records } = setup(role, entries);
+      const input = { ...bookingInput, family, athleteId: 'athlete0' };
+      const booked = await handlers.bookNestClass(input, context);
+      assert.equal(booked.attendee.paymentPending, true);
+      assert.equal(records.get('athlete_pilates_months/month0').paid, false);
+      const cancelled = await handlers.cancelNestBooking(input, context);
+      assert.equal(cancelled.reservedCount, 0);
+      assert.equal(cancelled.monthlyUsed, 0);
+      const record = records.get(`nest_bookings/${booked.sessionId}__athlete0`);
+      assert.equal(record.cancelledBy, 'staff');
+      assert.equal(record.cancellationReason, 'STAFF_REMOVED');
+      assert.equal((await handlers.bookNestClass({ ...input, dateKey: '2099-01-07' }, context)).monthlyUsed, 1);
+      assert.equal(records.get(`nest_monthly_usage/athlete0__${family}__2099-01`).bookedCount, 1);
+    });
+  }
+}
+
+test('staff can use a prior tariff without registering or copying a payment to the new month', async () => {
+  const entries = studentEntries(1);
+  entries['athlete_pilates_months/month0'].month = '2098-12';
+  entries['athlete_pilates_months/month0'].tariff = 'Reformer 8';
+  const { handlers, records } = setup('OWNER', entries);
+  const result = await handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete0' }, context);
+  assert.equal(result.monthlyLimit, 8);
+  assert.equal(result.attendee.paymentPending, true);
+  assert.equal([...records.keys()].filter((key) => key.startsWith('athlete_pilates_months/')).length, 1);
+  await assert.rejects(handlers.bookNestClass(graceBooking, studentContext), { code: 'failed-precondition' });
+});
+
+test('current unpaid tariff takes precedence over old tariff and is rechecked transactionally', async () => {
+  const entries = studentEntries(1);
+  entries['athlete_pilates_months/month0'].paid = false;
+  entries['athlete_pilates_months/old'] = { athleteId: 'athlete0', month: '2098-12', tariff: 'Reformer 12', paid: true };
+  const { handlers } = setup('OWNER', entries, { beforeTransaction: (_, records) => {
+    records.get('athlete_pilates_months/month0').tariff = 'Reformer 8';
+  } });
+  const result = await handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete0' }, context);
+  assert.equal(result.monthlyLimit, 8);
+  assert.equal(result.attendee.paymentPending, true);
+});
+
+test('staff bypass does not bypass monthly quota or class capacity', async () => {
+  for (const full of [true, false]) {
+    const entries = studentEntries(1);
+    entries['athlete_pilates_months/month0'].paid = false;
+    if (full) entries[`nest_class_sessions/pilates__${futureMonday}__${slot.id}`] = { reservedCount: 6 };
+    else entries['nest_monthly_usage/athlete0__pilates__2099-01'] = { bookedCount: 4 };
+    const { handlers, records } = setup('OWNER', entries);
+    await assert.rejects(handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete0' }, context), { code: 'resource-exhausted' });
+    assert.equal([...records.keys()].filter((key) => key.startsWith('nest_bookings/')).length, 0);
+  }
+});
+
+test('staff sees live payment warnings; students and external instructors never receive them', async () => {
+  const entries = studentEntries(1);
+  entries['athlete_pilates_months/month0'].paid = false;
+  entries['users/instructor'] = { role: 'NEST_INSTRUCTOR', teacherId: 'teacher', email: 'teacher@example.com', nestFamilies: ['pilates'] };
+  entries['teachers/teacher'] = { email: 'teacher@example.com', nestFamilies: ['pilates'] };
+  const { handlers, records } = setup('OWNER', entries);
+  const result = await handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete0' }, context);
+  const rosterInput = { ...bookingInput };
+  for (const paid of [false, true, false]) {
+    records.get('athlete_pilates_months/month0').paid = paid;
+    const schedule = await handlers.getNestBookingSchedule(januarySchedule, context);
+    const session = schedule.sessions.find((session) => session.id === result.sessionId);
+    assert.equal(session.attendees[0].paymentPending, !paid);
+    assert.equal(session.canRemoveOthers, true);
+    const roster = await handlers.getNestClassRoster(rosterInput, context);
+    assert.equal(roster.attendees[0].paymentPending, !paid);
+    const directory = await handlers.getNestBookingAthletes({ family: 'pilates', month: '2099-01' }, context);
+    assert.equal(directory.athletes[0].paymentPending, !paid);
+  }
+  for (const actor of [studentContext, { auth: { uid: 'instructor' } }]) {
+    const schedule = await handlers.getNestBookingSchedule(januarySchedule, actor);
+    const session = schedule.sessions.find((session) => session.id === result.sessionId);
+    assert.equal('paymentPending' in session.attendees[0], false);
+    assert.equal(session.canRemoveOthers, false);
+  }
+  const roster = await handlers.getNestClassRoster(rosterInput, { auth: { uid: 'instructor' } });
+  assert.equal('paymentPending' in roster.attendees[0], false);
+});
+
+test('unpaid student cannot cancel a staff-created booking; instructor cannot remove anyone', async () => {
+  const entries = studentEntries(1);
+  entries['athlete_pilates_months/month0'].paid = false;
+  entries['users/instructor'] = { role: 'NEST_INSTRUCTOR' };
+  const { handlers } = setup('OWNER', entries);
+  const input = { ...bookingInput, athleteId: 'athlete0' };
+  await handlers.bookNestClass(input, context);
+  await assert.rejects(handlers.cancelNestBooking(input, studentContext), { code: 'failed-precondition' });
+  await assert.rejects(handlers.cancelNestBooking(input, { auth: { uid: 'instructor' } }), { code: 'permission-denied' });
+  await assert.rejects(handlers.cancelNestBooking(input, {}), { code: 'unauthenticated' });
+});
+
+test('students cannot remove a classmate by passing her ID', async () => {
+  const { handlers, records } = setup('OWNER', studentEntries(2));
+  await handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete1' }, context);
+  await assert.rejects(handlers.cancelNestBooking({ ...bookingInput, athleteId: 'athlete1' }, studentContext), { code: 'failed-precondition' });
+  assert.equal(records.get(`nest_bookings/pilates__${futureMonday}__${slot.id}__athlete1`).status, 'BOOKED');
+});
+
+test('staff can remove within two hours but cannot erase past classes; students retain two-hour cutoff', async () => {
+  let time;
+  const { handlers, records } = setup('OWNER', studentEntries(1), { beforeTransaction: (setTime) => { if (time) setTime(time); } });
+  const input = { ...bookingInput, athleteId: 'athlete0' };
+  const result = await handlers.bookNestClass(input, context);
+  time = '2099-01-05T16:00:00Z'; // 18:00 Madrid class starts in one hour.
+  await assert.rejects(handlers.cancelNestBooking(input, studentContext), { code: 'failed-precondition' });
+  assert.equal((await handlers.cancelNestBooking(input, context)).monthlyUsed, 0);
+  await handlers.bookNestClass(input, context);
+  time = '2099-01-05T17:00:00Z';
+  await assert.rejects(handlers.cancelNestBooking(input, context), { code: 'failed-precondition' });
+  assert.equal(records.get(`nest_bookings/${result.sessionId}__athlete0`).status, 'BOOKED');
+});
+
+test('concurrent staff removals refund only once and rebooking clears cancellation metadata', async () => {
+  const { handlers, records } = setup('OWNER', studentEntries(1));
+  const input = { ...bookingInput, athleteId: 'athlete0' };
+  const booked = await handlers.bookNestClass(input, context);
+  const results = await Promise.allSettled(Array.from({ length: 10 }, () => handlers.cancelNestBooking(input, context)));
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(records.get('nest_monthly_usage/athlete0__pilates__2099-01').bookedCount, 0);
+  await handlers.bookNestClass(input, context);
+  const record = records.get(`nest_bookings/${booked.sessionId}__athlete0`);
+  assert.equal(record.cancellationReason, null);
+  assert.equal(record.cancelledBy, null);
+  assert.equal(record.attendedAt, null);
+});
+
+test('staff removal validates class and athlete identifiers without touching other records', async () => {
+  const { handlers } = setup('OWNER', studentEntries(1));
+  for (const athleteId of [undefined, '', '../athlete0', 123]) {
+    await assert.rejects(handlers.cancelNestBooking({ ...bookingInput, athleteId }, context), { code: 'invalid-argument' });
+  }
+  for (const slotId of ['', '../slot', 'class__other']) {
+    await assert.rejects(handlers.cancelNestBooking({ ...bookingInput, slotId, athleteId: 'athlete0' }, context), { code: 'invalid-argument' });
+  }
+});
+
+test('malformed legacy booking times cannot bypass removal date checks or modify usage', async () => {
+  for (const startTime of [null, '', '1800', '25:00']) {
+    const { handlers, records } = setup('OWNER', studentEntries(1));
+    const input = { ...bookingInput, athleteId: 'athlete0' };
+    const result = await handlers.bookNestClass(input, context);
+    records.get(`nest_bookings/${result.sessionId}__athlete0`).startTime = startTime;
+    await assert.rejects(handlers.cancelNestBooking(input, context), { code: 'failed-precondition' });
+    assert.equal(records.get('nest_monthly_usage/athlete0__pilates__2099-01').bookedCount, 1);
+  }
 });
 
 function removableSchedule() {

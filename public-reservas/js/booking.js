@@ -1,7 +1,8 @@
 import { auth, functions } from "./firebase.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-functions.js";
 import { showToast } from "./toast.js";
-import { createScheduleCache, applyBookingConfirmation, hasBookingAccess } from "./schedule-cache.mjs?v=20261126paid1";
+import { createScheduleCache, applyBookingConfirmation, hasBookingAccess } from "./schedule-cache.mjs?v=20261126staff2";
+import { saveBookingSelection } from "./booking-selection.mjs?v=20261126multi1";
 
 const views = { pilates: "pilates", barre: "barre" };
 const WEEKDAY_COUNT = 5;
@@ -139,17 +140,22 @@ function element(tag, className, text) {
 let athletePicker = null;
 
 async function chooseBookingAthlete(session, family, bookingButton) {
-  if (athletePicker?.open) return;
+  if (athletePicker?.open || pendingActions.has(session.id)) return;
   const uid = auth.currentUser?.uid;
+  const selectedIds = new Set();
+  const failures = new Map();
+  let saving = false;
+  let reservedCount = session.reservedCount;
   const dialog = element('dialog', 'booking-athlete-dialog');
   athletePicker = dialog;
   dialog.setAttribute('aria-labelledby', 'bookingAthleteTitle');
   const heading = element('div', 'booking-athlete-heading');
-  const title = element('h2', '', 'Reservar para una alumna');
+  const title = element('h2', '', 'Añadir alumnas a la clase');
   title.id = 'bookingAthleteTitle';
   const close = element('button', 'button button-quiet', 'Cerrar ×');
   close.type = 'button';
-  close.addEventListener('click', () => dialog.close());
+  close.addEventListener('click', () => { if (!saving) dialog.close(); });
+  dialog.addEventListener('cancel', (event) => { if (saving) event.preventDefault(); });
   heading.append(title, close);
   const detail = element('p', 'booking-athlete-detail',
     `${family === 'barre' ? 'Barre' : 'Pilates'} · ${dateFromKey(session.dateKey).toLocaleDateString('es-ES')} · ${session.startTime}`);
@@ -161,7 +167,16 @@ async function chooseBookingAthlete(session, family, bookingButton) {
   const list = element('div', 'booking-athlete-results');
   list.setAttribute('aria-live', 'polite');
   list.append(element('p', 'booking-athlete-detail', 'Cargando alumnas…'));
-  dialog.append(heading, detail, label, list);
+  const footer = element('div', 'booking-athlete-footer');
+  const summary = element('p', 'booking-athlete-detail');
+  summary.setAttribute('aria-live', 'polite');
+  const message = element('p', 'booking-athlete-error');
+  message.setAttribute('role', 'status');
+  const save = element('button', 'button button-primary', 'Guardar');
+  save.type = 'button';
+  save.disabled = true;
+  footer.append(summary, message, save);
+  dialog.append(heading, detail, label, list, footer);
   const previousOverflow = document.body.style.overflow;
   dialog.addEventListener('close', () => {
     document.body.style.overflow = previousOverflow;
@@ -174,34 +189,96 @@ async function chooseBookingAthlete(session, family, bookingButton) {
   document.body.style.overflow = 'hidden';
   search.focus();
   try {
-    const result = await callables.athletes({ family });
+    const result = await callables.athletes({ family, month: session.dateKey.slice(0, 7) });
     if (!dialog.open) return;
     if (auth.currentUser?.uid !== uid) { dialog.close(); return; }
     const athletes = result.data.athletes || [];
     const assignedIds = new Set((session.attendees || []).map((attendee) => attendee.athleteId));
     const normalize = (value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const render = () => {
+      const free = Math.max(0, session.capacity - reservedCount);
+      summary.textContent = `${selectedIds.size} seleccionadas · ${free} plazas disponibles`;
+      save.disabled = saving || !selectedIds.size;
+      save.textContent = saving ? 'Guardando…' : 'Guardar';
+      close.disabled = saving;
+      search.disabled = saving;
+      dialog.setAttribute('aria-busy', String(saving));
       list.replaceChildren();
       const matches = athletes.filter((athlete) => normalize(`${athlete.name} ${athlete.email}`).includes(normalize(search.value.trim())));
       if (!matches.length) list.append(element('p', 'booking-athlete-detail', athletes.length ? 'No hay alumnas con ese nombre.' : 'No hay alumnas registradas en esta disciplina.'));
       matches.forEach((athlete) => {
-        const row = element('div', 'booking-athlete-row');
+        const row = element('label', 'booking-athlete-row');
         const info = element('div');
         info.append(element('strong', '', athlete.name), element('small', '', athlete.email || 'Sin correo registrado'));
+        if (athlete.paymentPending) info.append(element('small', 'nest-payment-warning', 'Cuota pendiente · el personal puede reservar'));
         const assigned = assignedIds.has(athlete.id);
-        const reserve = element('button', 'button button-primary', assigned ? 'Ya reservada' : 'Reservar');
-        reserve.type = 'button';
-        reserve.disabled = assigned;
-        reserve.setAttribute('aria-label', `${assigned ? 'Ya reservada' : 'Reservar para'} ${athlete.name}`);
-        reserve.addEventListener('click', () => {
+        if (assigned) info.append(element('small', '', 'Ya reservada'));
+        if (failures.has(athlete.id)) info.append(element('small', 'booking-athlete-error', failures.get(athlete.id)));
+        const checkbox = element('input', 'booking-athlete-checkbox');
+        checkbox.type = 'checkbox';
+        checkbox.checked = assigned || selectedIds.has(athlete.id);
+        checkbox.disabled = saving || assigned || (!checkbox.checked && selectedIds.size >= free);
+        checkbox.setAttribute('aria-label', `${assigned ? 'Ya reservada' : 'Seleccionar a'} ${athlete.name}`);
+        checkbox.addEventListener('change', () => {
           if (auth.currentUser?.uid !== uid) { dialog.close(); return; }
-          dialog.close();
-          mutateBooking(session, family, bookingButton, { athleteId: athlete.id });
+          if (checkbox.checked) selectedIds.add(athlete.id);
+          else selectedIds.delete(athlete.id);
+          failures.delete(athlete.id);
+          render();
+          list.querySelector(`input[aria-label="${CSS.escape(checkbox.getAttribute('aria-label'))}"]`)?.focus();
         });
-        row.append(info, reserve);
+        row.append(info, checkbox);
         list.append(row);
       });
     };
+    save.addEventListener('click', async () => {
+      if (saving || !selectedIds.size || pendingActions.has(session.id)) return;
+      if (auth.currentUser?.uid !== uid) { dialog.close(); return; }
+      const athleteIds = [...selectedIds];
+      const monthCacheKey = cacheKey(family, session.dateKey.slice(0, 7));
+      saving = true;
+      pendingActions.add(session.id);
+      failures.clear();
+      message.textContent = '';
+      render();
+      try {
+        const outcomes = await saveBookingSelection(athleteIds, {
+          shouldContinue: () => auth.currentUser?.uid === uid,
+          book: (athleteId) => callables.book({ family, dateKey: session.dateKey,
+            slotId: session.slotId, startTime: session.startTime, athleteId }),
+          onResult: ({ athleteId, result, error }, completed) => {
+            if (auth.currentUser?.uid !== uid) return;
+            if (!error || error.code === 'functions/already-exists') {
+              selectedIds.delete(athleteId);
+              assignedIds.add(athleteId);
+              reservedCount = result?.data?.reservedCount ?? reservedCount + 1;
+              const updated = result?.data && monthScheduleCache.update(monthCacheKey,
+                (sessions) => applyBookingConfirmation(sessions, session.id, result.data, { own: false }));
+              if (!updated) invalidateMonthCache(family, session.dateKey);
+            } else {
+              failures.set(athleteId, error.message || 'No se pudo reservar. Vuelve a intentarlo.');
+              invalidateMonthCache(family, session.dateKey);
+            }
+            render();
+            summary.textContent = `Guardando ${completed} de ${athleteIds.length}…`;
+          },
+        });
+        if (auth.currentUser?.uid !== uid) { dialog.close(); return; }
+        const added = outcomes.filter((outcome) => !outcome.error).length;
+        if (!failures.size) {
+          dialog.close();
+          showToast(added ? `${added} ${added === 1 ? 'alumna añadida' : 'alumnas añadidas'}` : 'Las alumnas ya tenían plaza', 'success');
+        } else {
+          search.value = '';
+          message.textContent = `${added} ${added === 1 ? 'alumna añadida' : 'alumnas añadidas'}. No se han guardado ${failures.size}. Revisa los errores de cada ficha; puedes reintentar sin repetir las reservas confirmadas.`;
+        }
+      } finally {
+        saving = false;
+        pendingActions.delete(session.id);
+        if (dialog.open) render();
+        if (auth.currentUser?.uid === uid && activeFamily === family) await refreshFamily(family);
+      }
+    });
     search.addEventListener('input', render);
     render();
   } catch (error) {
@@ -235,6 +312,11 @@ function createSeatAvatar(attendee, index) {
   avatar.setAttribute("role", "img");
   avatar.setAttribute("aria-label", attendee ? `Plaza ocupada por ${name}` : `Plaza ${index + 1} disponible`);
   avatar.title = attendee ? name : `Plaza ${index + 1} disponible`;
+  if (attendee?.paymentPending) {
+    avatar.classList.add('is-payment-pending');
+    avatar.title = `${name} · Cuota pendiente`;
+    avatar.setAttribute('aria-label', `Plaza ocupada por ${name}. Cuota pendiente`);
+  }
 
   const photoUrl = String(attendee?.photoUrl || "");
   if (attendee && (photoUrl.startsWith("https://") || /^data:image\/(?:jpeg|png|webp);base64,/i.test(photoUrl))) {
@@ -269,6 +351,9 @@ function createClassCard(session, family) {
   }
   capacity.append(seats, element("span", "nest-booking-capacity-label", `${attendees.length || session.reservedCount}/${session.capacity} plazas ocupadas`));
   card.append(capacity);
+  attendees.filter((attendee) => attendee.paymentPending).forEach((attendee) => {
+    card.append(element('p', 'nest-payment-warning', `${attendee.name || 'Alumna'} · Cuota pendiente`));
+  });
 
   const full = session.reservedCount >= session.capacity;
   const isInstructor = session.canManageRoster;
@@ -330,6 +415,7 @@ function createClassCard(session, family) {
         roster.replaceChildren();
         if (!result.data.attendees.length) roster.append(element("p", "nest-booking-message", "Todavía no hay reservas."));
         result.data.attendees.forEach((attendee) => {
+          const row = element('div', 'nest-booking-roster-row');
           const label = element("label", "nest-booking-attendee");
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
@@ -348,7 +434,21 @@ function createClassCard(session, family) {
           const avatar = createSeatAvatar(attendee, 0);
           avatar.classList.add("nest-booking-roster-avatar");
           label.append(checkbox, avatar, document.createTextNode(attendee.name || "Alumna"));
-          roster.append(label);
+          row.append(label);
+          if (attendee.paymentPending) row.append(element('span', 'nest-payment-warning', 'Cuota pendiente'));
+          if (session.canRemoveOthers && !session.past) {
+            const remove = element('button', 'button button-secondary nest-booking-remove', 'Quitar de clase');
+            remove.type = 'button';
+            remove.dataset.sessionAction = session.id;
+            remove.disabled = pendingActions.has(session.id);
+            remove.setAttribute('aria-label', `Quitar a ${attendee.name || 'alumna'} de esta clase`);
+            remove.addEventListener('click', () => {
+              if (!window.confirm(`¿Quitar a ${attendee.name || 'esta alumna'} de la clase del ${dateFromKey(session.dateKey).toLocaleDateString('es-ES')} a las ${session.startTime}? Se liberará su plaza y se devolverá una sesión para poder reservar otra clase.`)) return;
+              mutateBooking(session, family, remove, { cancelled: true, athleteId: attendee.athleteId });
+            });
+            row.append(remove);
+          }
+          roster.append(row);
         });
         roster.classList.remove("hidden");
       } catch (error) {
