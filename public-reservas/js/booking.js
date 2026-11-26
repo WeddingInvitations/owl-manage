@@ -88,6 +88,7 @@ async function getMonthSessions(family, date) {
         ...session,
         attendees: (session.attendees || []).map((attendee) => ({
           ...attendee,
+          paymentPending: Boolean((session.canBookForOthers || attendee.isCurrentUser) && attendee.paymentPending),
           photoUrl: photos[attendee.userId] || attendee.photoUrl || "",
         })),
       }));
@@ -358,7 +359,7 @@ function createClassCard(session, family) {
   const full = session.reservedCount >= session.capacity;
   const isInstructor = session.canManageRoster;
   if (session.actionsBlocked && !isInstructor && !session.past) {
-    card.append(element("p", "nest-booking-message", "Acciones bloqueadas: la cuota del mes debe figurar como pagada en Owl Manage. Contacta con recepción y pulsa Actualizar horario cuando se registre el pago."));
+    card.append(element("p", "nest-booking-message nest-payment-warning", "Acciones bloqueadas: la cuota del mes debe figurar como pagada en Owl Manage. Contacta con recepción y pulsa Actualizar horario cuando se registre el pago."));
   } else if (session.past && session.myBookingStatus === "BOOKED") {
     const attendanceMessage = session.myAttendanceMarked
       ? (session.myAttended ? "Asististe a esta clase" : "Asistencia: no asististe")
@@ -401,7 +402,8 @@ function createClassCard(session, family) {
   }
 
   if (isInstructor) {
-    const rosterButton = element("button", "button button-secondary nest-booking-action", "Lista y asistencia");
+    const rosterButton = element("button", "button button-secondary nest-booking-action",
+      session.canRemoveOthers ? "Ver alumnas / Quitar alumna" : "Lista y asistencia");
     rosterButton.type = "button";
     const roster = element("div", "nest-booking-roster hidden");
     rosterButton.addEventListener("click", async () => {
@@ -437,7 +439,7 @@ function createClassCard(session, family) {
           row.append(label);
           if (attendee.paymentPending) row.append(element('span', 'nest-payment-warning', 'Cuota pendiente'));
           if (session.canRemoveOthers && !session.past) {
-            const remove = element('button', 'button button-secondary nest-booking-remove', 'Quitar de clase');
+            const remove = element('button', 'button button-secondary nest-booking-remove', 'Quitar alumna de esta clase');
             remove.type = 'button';
             remove.dataset.sessionAction = session.id;
             remove.disabled = pendingActions.has(session.id);

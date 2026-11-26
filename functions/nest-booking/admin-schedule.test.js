@@ -254,7 +254,7 @@ for (const role of ['NEST_STUDENT', 'NEST_INSTRUCTOR', 'PENDING']) {
   });
 }
 
-test('student directory requires auth, filters disciplines and returns only minimal fields', async () => {
+test('staff directory requires auth and lists all Nest athletes without exposing private fields', async () => {
   const entries = studentEntries(1);
   entries['athletes_pilates/athlete0'].privateNotes = 'Must not leave backend';
   entries['athletes_pilates/barre-only'] = { name: 'Ana', email: 'ANA@example.com', nestFamilies: ['barre'] };
@@ -263,8 +263,8 @@ test('student directory requires auth, filters disciplines and returns only mini
   await assert.rejects(handlers.getNestBookingAthletes({ family: 'pilates' }, {}), { code: 'unauthenticated' });
   await assert.rejects(handlers.getNestBookingAthletes({ family: 'other' }, context), { code: 'invalid-argument' });
   const pilates = await handlers.getNestBookingAthletes({ family: 'pilates' }, context);
-  assert.equal(pilates.athletes.length, 2);
-  assert.ok(!pilates.athletes.some((athlete) => athlete.id === 'barre-only'));
+  assert.equal(pilates.athletes.length, 3);
+  assert.ok(pilates.athletes.some((athlete) => athlete.id === 'barre-only'));
   assert.deepEqual(Object.keys(pilates.athletes[0]).sort(), ['email', 'id', 'name']);
   const barre = await handlers.getNestBookingAthletes({ family: 'barre' }, context);
   assert.equal(barre.athletes[0].email, 'ana@example.com');
@@ -286,7 +286,7 @@ test('students cannot use another athlete ID to impersonate a classmate', async 
   assert.equal(result.attendee.athleteId, 'athlete0');
 });
 
-test('staff ID booking rejects invalid IDs, absent records and missing tariffs', async () => {
+test('staff ID booking rejects invalid IDs and absent records but allows missing tariffs', async () => {
   const entries = studentEntries(1);
   delete entries['athlete_pilates_months/month0'].tariff;
   const { handlers } = setup('OWNER', entries);
@@ -294,7 +294,9 @@ test('staff ID booking rejects invalid IDs, absent records and missing tariffs',
     await assert.rejects(handlers.bookNestClass({ ...bookingInput, athleteId }, context), { code: 'invalid-argument' });
   }
   await assert.rejects(handlers.bookNestClass({ ...bookingInput, athleteId: 'missing' }, context), { code: 'not-found' });
-  await assert.rejects(handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete0' }, context), { code: 'failed-precondition' });
+  const result = await handlers.bookNestClass({ ...bookingInput, athleteId: 'athlete0' }, context);
+  assert.equal(result.attendee.paymentPending, true);
+  assert.equal(result.monthlyLimit, null);
 });
 
 test('staff ID booking rechecks the student still exists inside the transaction', async () => {
@@ -477,6 +479,30 @@ for (const family of ['pilates', 'barre']) {
   }
 }
 
+for (const role of ['ADMIN', 'OWNER', 'RECEPTION', 'COACH', 'TEAM_LEADER']) {
+  test(`${role} can book December 1 without a monthly record or any tariff, then remove only that athlete`, async () => {
+    const entries = studentEntries(2);
+    delete entries['athlete_pilates_months/month0'];
+    delete entries['athlete_pilates_months/month1'];
+    // December 1, 2026 is Tuesday. No memberships or historical tariffs exist.
+    entries[configKey] = { slots: [{ ...slot, daysOfWeek: [2] }], version: 1 };
+    const { handlers, records } = setup(role, entries, { now: '2026-11-26T10:00:00Z' });
+    const input = { ...bookingInput, dateKey: '2026-12-01' };
+    const first = await handlers.bookNestClass({ ...input, athleteId: 'athlete0' }, context);
+    await handlers.bookNestClass({ ...input, athleteId: 'athlete1' }, context);
+    assert.equal(first.attendee.paymentPending, true);
+    assert.equal(first.monthlyLimit, null);
+    assert.equal(records.get(`nest_bookings/${first.sessionId}__athlete0`).staffPaymentOverride, true);
+    assert.equal([...records.keys()].filter((key) => key.startsWith('athlete_pilates_months/')).length, 0);
+    await assert.rejects(handlers.bookNestClass(input, studentContext), { code: 'failed-precondition' });
+    const removed = await handlers.cancelNestBooking({ ...input, athleteId: 'athlete0' }, context);
+    assert.equal(removed.reservedCount, 1);
+    assert.equal(records.get(`nest_bookings/${first.sessionId}__athlete1`).status, 'BOOKED');
+    assert.equal(records.get(configKey).slots.length, 1);
+    assert.equal(records.get(configKey).version, 1);
+  });
+}
+
 test('staff can use a prior tariff without registering or copying a payment to the new month', async () => {
   const entries = studentEntries(1);
   entries['athlete_pilates_months/month0'].month = '2098-12';
@@ -513,7 +539,7 @@ test('staff bypass does not bypass monthly quota or class capacity', async () =>
   }
 });
 
-test('staff sees live payment warnings; students and external instructors never receive them', async () => {
+test('staff sees live payment warnings; students see only their own and external instructors see none', async () => {
   const entries = studentEntries(1);
   entries['athlete_pilates_months/month0'].paid = false;
   entries['users/instructor'] = { role: 'NEST_INSTRUCTOR', teacherId: 'teacher', email: 'teacher@example.com', nestFamilies: ['pilates'] };
@@ -535,11 +561,34 @@ test('staff sees live payment warnings; students and external instructors never 
   for (const actor of [studentContext, { auth: { uid: 'instructor' } }]) {
     const schedule = await handlers.getNestBookingSchedule(januarySchedule, actor);
     const session = schedule.sessions.find((session) => session.id === result.sessionId);
-    assert.equal('paymentPending' in session.attendees[0], false);
+    assert.equal('paymentPending' in session.attendees[0], actor === studentContext);
+    if (actor === studentContext) assert.equal(session.attendees[0].paymentPending, true);
     assert.equal(session.canRemoveOthers, false);
   }
   const roster = await handlers.getNestClassRoster(rosterInput, { auth: { uid: 'instructor' } });
   assert.equal('paymentPending' in roster.attendees[0], false);
+});
+
+test('each student receives only her own live payment flag, never a classmates payment status', async () => {
+  const entries = studentEntries(2);
+  entries['athlete_pilates_months/month0'].paid = false;
+  entries['athlete_pilates_months/month1'].paid = false;
+  const { handlers, records } = setup('OWNER', entries);
+  for (const athleteId of ['athlete0', 'athlete1']) {
+    await handlers.bookNestClass({ ...bookingInput, athleteId }, context);
+  }
+  for (const paid of [false, true]) {
+    records.get('athlete_pilates_months/month0').paid = paid;
+    for (const index of [0, 1]) {
+      const schedule = await handlers.getNestBookingSchedule(januarySchedule, { auth: { uid: `user${index}` } });
+      const session = schedule.sessions.find((item) => item.dateKey === futureMonday);
+      const own = session.attendees.find((attendee) => attendee.athleteId === `athlete${index}`);
+      const other = session.attendees.find((attendee) => attendee.athleteId !== `athlete${index}`);
+      assert.equal(own.paymentPending, index === 0 ? !paid : true);
+      assert.equal('paymentPending' in other, false);
+      assert.equal(session.canRemoveOthers, false);
+    }
+  }
 });
 
 test('unpaid student cannot cancel a staff-created booking; instructor cannot remove anyone', async () => {

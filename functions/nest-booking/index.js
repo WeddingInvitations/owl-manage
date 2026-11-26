@@ -729,8 +729,10 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
     : [];
   const profileByUid = new Map(attendeeProfiles.map((profile) => [profile.id, profile.exists ? profile.data() || {} : {}]));
   const attendeesBySession = new Map();
+  const memberships = new Map(membershipPairs);
   activeBookingDocs.forEach((booking) => {
     const bookingData = booking.data();
+    const isCurrentUser = Boolean(athlete && bookingData.athleteId === athlete.ref.id);
     const attendees = attendeesBySession.get(bookingData.sessionId) || [];
     attendees.push({
       id: booking.id,
@@ -738,12 +740,12 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
       name: bookingData.athleteName || '',
       userId: bookingData.userId || null,
       attended: Boolean(bookingData.attended),
-      ...(isStaff ? { paymentPending: paymentFlags.get(`${bookingData.athleteId}__${monthKey(bookingData.dateKey)}`) } : {}),
-      isCurrentUser: Boolean(athlete && bookingData.athleteId === athlete.ref.id),
+      ...(isStaff ? { paymentPending: paymentFlags.get(`${bookingData.athleteId}__${monthKey(bookingData.dateKey)}`) }
+        : isCurrentUser ? { paymentPending: !memberships.get(monthKey(bookingData.dateKey)) } : {}),
+      isCurrentUser,
     });
     attendeesBySession.set(bookingData.sessionId, attendees);
   });
-  const memberships = new Map(membershipPairs);
   const usageCounts = new Map(usagePairs);
   const sessions = sessionInputs.map((session, index) => {
     const sessionSnap = snapshots[index];
@@ -799,11 +801,9 @@ exports.getNestBookingAthletes = functions.runWith({ invoker: 'public' }).https.
   const [athletes, history] = await Promise.all([
     db.collection('athletes_pilates').get(), db.collection('athlete_pilates_months').get(),
   ]);
-  const familyIds = new Set(history.docs.filter((doc) => tariffFamily(doc.data()) === family)
-    .map((doc) => doc.data().athleteId));
   return {
-    athletes: athletes.docs.filter((doc) => familyIds.has(doc.id) ||
-      familiesFromHistory([], doc.data()).includes(family))
+    // Internal staff can assign any existing Nest athlete, even without a tariff yet.
+    athletes: athletes.docs
       .map((doc) => ({ id: doc.id, name: String(doc.data().name || 'Sin nombre'),
         email: normalizeEmail(doc.data().email),
         ...(month ? { paymentPending: !history.docs.some((record) => record.data().athleteId === doc.id &&
@@ -852,9 +852,8 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
   const month = monthKey(dateKey);
   if (!staffBooking) assertStudentPayment(await studentPaymentAccess(athlete.ref.id, family));
   const membership = await findMonthlyMembership(athlete.ref.id, family, month, null, staffBooking);
-  if (!membership) fail('failed-precondition', staffBooking
-    ? 'Registra una tarifa de esta disciplina en Owl Manage antes de añadir a la alumna. No es necesario marcarla como pagada.'
-    : `La cuota de ${family === 'barre' ? 'Barre' : 'Pilates'} de ${month} debe figurar como pagada en Owl Manage para reservar esta clase.`);
+  if (!staffBooking && !membership) fail('failed-precondition',
+    `La cuota de ${family === 'barre' ? 'Barre' : 'Pilates'} de ${month} debe figurar como pagada en Owl Manage para reservar esta clase.`);
   const startAt = localTimeToDate(dateKey, scheduledSlot.startTime);
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(data.startTime || '') || startAt.getTime() <= Date.now()) {
     fail('failed-precondition', 'No se pueden reservar clases pasadas o con un horario no válido.');
@@ -875,10 +874,11 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
     if (!currentSlot || currentSlot.startTime !== data.startTime) {
       fail('failed-precondition', 'El horario de la clase ha cambiado. Actualiza la agenda antes de reservar.');
     }
-    if (!currentMembership || currentMembership.data.athleteId !== athlete.ref.id) {
+    if ((!staffBooking && !currentMembership) ||
+        (currentMembership && currentMembership.data.athleteId !== athlete.ref.id)) {
       fail('failed-precondition', 'La mensualidad ya no está activa para este mes.');
     }
-    const activeMonthlyLimit = currentMembership.monthlyLimit;
+    const activeMonthlyLimit = currentMembership?.monthlyLimit || null;
     if (!athleteSnap.exists || (staffBooking
       ? (data.athleteId !== undefined ? athleteSnap.id !== data.athleteId :
         normalizeEmail(athleteSnap.data().email) !== normalizeEmail(data.athleteEmail))
@@ -892,7 +892,7 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
     const reservedCount = sessionSnap.exists ? Number(sessionSnap.data().reservedCount || 0) : 0;
     if (reservedCount >= activeCapacity) fail('resource-exhausted', 'La clase está completa.');
     const bookedCount = usageSnap.exists ? Number(usageSnap.data().bookedCount || 0) : 0;
-    if (bookedCount >= activeMonthlyLimit) {
+    if (activeMonthlyLimit && bookedCount >= activeMonthlyLimit) {
       fail('resource-exhausted', `Ya has usado las ${activeMonthlyLimit} reservas de tu tarifa este mes.`);
     }
     transaction.set(sessionRef, {
@@ -904,6 +904,7 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
       sessionId: id, family, dateKey, slotId, startTime: data.startTime,
       athleteId: athlete.ref.id, userId: athleteSnap.data().authUid || null,
       bookedBy: uid,
+      staffPaymentOverride: staffBooking && currentMembership?.data.paid !== true,
       athleteName: athlete.data.name || profile.displayName || '',
       status: 'BOOKED', attended: false,
       attendedAt: null, attendedBy: null, cancelledAt: null, cancelledBy: null, cancellationReason: null,
@@ -920,7 +921,7 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
       monthlyUsed: bookedCount + 1, monthlyLimit: activeMonthlyLimit,
       attendee: { id: bookingRef.id, athleteId: athlete.ref.id, userId: athleteSnap.data().authUid || null,
         name: athlete.data.name || profile.displayName || '', isCurrentUser: !staffBooking,
-        ...(staffBooking ? { paymentPending: currentMembership.data.paid !== true } : {}) },
+        ...(staffBooking ? { paymentPending: currentMembership?.data.paid !== true } : {}) },
     };
   });
   return { success: true, sessionId: id, ...confirmed };
