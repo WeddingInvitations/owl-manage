@@ -20,12 +20,12 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-import { showBookingFamily } from "./booking.js?v=20261112picker1";
+import { showBookingFamily } from "./booking.js?v=20261126paid1";
 import { expandAdminSlots, mergeAdminRows } from "./admin-schedule-draft.mjs?v=20261112delete1";
 import { showToast } from "./toast.js";
 
 const $ = (id) => document.getElementById(id);
-const staffRoles = new Set(["OWNER", "RECEPTION", "COACH", "TEAM_LEADER"]);
+const staffRoles = new Set(["ADMIN", "OWNER", "RECEPTION", "COACH", "TEAM_LEADER"]);
 const checkNestSignupEmail = httpsCallable(functions, "checkNestSignupEmail");
 const registerNestPortalAccount = httpsCallable(functions, "registerNestPortalAccount");
 const refreshNestPortalAccess = httpsCallable(functions, "refreshNestPortalAccess");
@@ -213,6 +213,7 @@ async function getProfile(user) {
     snapshot = await getDoc(profileRef);
   }
   const profileData = snapshot.data() || {};
+  profileData.role = String(profileData.role || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
   if (!profileData.photoUrl && user.photoURL) {
     await updateDoc(profileRef, { photoUrl: user.photoURL, updatedAt: serverTimestamp() });
     profileData.photoUrl = user.photoURL;

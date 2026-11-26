@@ -97,18 +97,37 @@ test('cancellation frees quota and seat; staff booking does not alter staff quot
   assert.equal(staff[0].isBooked, undefined);
 });
 
-test('cached unpaid access expires exactly at midnight Madrid on day 6', () => {
-  const session = { activeForMonth: true, bookingAccessExpiresAt: '2099-01-05T23:00:00.000Z' };
-  assert.equal(hasBookingAccess(session, Date.parse('2099-01-05T22:59:59.999Z')), true);
-  assert.equal(hasBookingAccess(session, Date.parse('2099-01-05T23:00:00.000Z')), false);
+test('cached paid access expires exactly at the Madrid month boundary', () => {
+  const session = { activeForMonth: true, bookingAccessExpiresAt: '2099-01-31T23:00:00.000Z' };
+  assert.equal(hasBookingAccess(session, Date.parse('2099-01-31T22:59:59.999Z')), true);
+  assert.equal(hasBookingAccess(session, Date.parse('2099-01-31T23:00:00.000Z')), false);
   assert.equal(hasBookingAccess({ activeForMonth: true }, Date.parse('2099-01-06T12:00:00Z')), true);
   assert.equal(hasBookingAccess({ activeForMonth: false }), false);
 });
 
-test('cancelling after grace expiration cannot restore cached booking access', () => {
+test('cancelling after payment access expiration cannot restore cached booking access', () => {
   const expiredSessions = sessions.map((session) => ({ ...session, bookingAccessExpiresAt: '2000-01-05T23:00:00Z' }));
   const result = applyBookingConfirmation(expiredSessions, 'one', { reservedCount: 0, monthlyUsed: 0,
     athleteId: 'athlete' }, { cancelled: true });
   assert.equal(result[0].canBook, false);
   assert.equal(result[1].canBook, false);
+});
+
+test('unpaid and legacy grace sessions cannot regain access through a cached confirmation', () => {
+  for (const blocked of [{ actionsBlocked: true }, { paymentGrace: true }]) {
+    assert.equal(hasBookingAccess({ activeForMonth: true, ...blocked }), false);
+    const result = applyBookingConfirmation(sessions.map((session) => ({ ...session, ...blocked })),
+      'one', { reservedCount: 0, monthlyUsed: 0, athleteId: 'athlete' }, { cancelled: true });
+    assert.ok(result.every((session) => !session.canBook));
+  }
+});
+
+test('a confirmed paid booking enables cancellation without waiting for cache expiration', () => {
+  const input = sessions.map((session) => ({ ...session, canCancel: false, startTimestamp: '2099-01-05T17:00:00Z' }));
+  const booked = applyBookingConfirmation(input, 'one', { reservedCount: 1, monthlyUsed: 1,
+    attendee: { athleteId: 'athlete', isCurrentUser: true } });
+  assert.equal(booked[0].canCancel, true);
+  const cancelled = applyBookingConfirmation(booked, 'one', { reservedCount: 0, monthlyUsed: 0,
+    athleteId: 'athlete' }, { cancelled: true });
+  assert.equal(cancelled[0].canCancel, false);
 });

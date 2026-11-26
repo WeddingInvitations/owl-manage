@@ -1,7 +1,7 @@
 import { auth, functions } from "./firebase.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-functions.js";
 import { showToast } from "./toast.js";
-import { createScheduleCache, applyBookingConfirmation, hasBookingAccess } from "./schedule-cache.mjs?v=20261112grace1";
+import { createScheduleCache, applyBookingConfirmation, hasBookingAccess } from "./schedule-cache.mjs?v=20261126paid1";
 
 const views = { pilates: "pilates", barre: "barre" };
 const WEEKDAY_COUNT = 5;
@@ -272,7 +272,9 @@ function createClassCard(session, family) {
 
   const full = session.reservedCount >= session.capacity;
   const isInstructor = session.canManageRoster;
-  if (session.past && session.myBookingStatus === "BOOKED") {
+  if (session.actionsBlocked && !isInstructor && !session.past) {
+    card.append(element("p", "nest-booking-message", "Acciones bloqueadas: la cuota del mes debe figurar como pagada en Owl Manage. Contacta con recepción y pulsa Actualizar horario cuando se registre el pago."));
+  } else if (session.past && session.myBookingStatus === "BOOKED") {
     const attendanceMessage = session.myAttendanceMarked
       ? (session.myAttended ? "Asististe a esta clase" : "Asistencia: no asististe")
       : "Asistencia pendiente de confirmar";
@@ -286,15 +288,12 @@ function createClassCard(session, family) {
     const cancel = element("button", "button button-secondary nest-booking-action", "Cancelar");
     cancel.type = "button";
     cancel.dataset.sessionAction = session.id;
-    cancel.disabled = session.past || pendingActions.has(session.id);
+    cancel.disabled = session.canCancel === false || session.past || pendingActions.has(session.id);
     cancel.addEventListener("click", () => mutateBooking(session, family, cancel, { cancelled: true }));
     card.append(cancel);
   } else if (session.canBook && !full && !session.past && !isInstructor) {
     const remaining = Math.max(0, session.monthlyLimit - (session.monthlyUsed || 0));
     card.append(element("p", "nest-booking-message", `${remaining} sesiones disponibles este mes`));
-    if (session.paymentGrace) {
-      card.append(element("p", "nest-booking-message", "Pago pendiente: puedes reservar hasta el día 5 incluido. Desde el día 6 debes tener el mes pagado."));
-    }
     const book = element("button", "button button-primary nest-booking-action", "Reservar plaza");
     book.type = "button";
     book.dataset.sessionAction = session.id;
@@ -311,7 +310,7 @@ function createClassCard(session, family) {
   } else if (session.past) {
     card.append(element("p", "nest-booking-message nest-booking-history-status", "No tenías una reserva para esta clase"));
   } else if (!session.activeForMonth && !session.canManageRoster) {
-    card.append(element("p", "nest-booking-message", "Necesitas una mensualidad pagada. Sin pagar, solo puedes reservar del día 1 al 5 del mes en curso con una tarifa registrada."));
+    card.append(element("p", "nest-booking-message", "La cuota de este mes debe figurar como pagada en Owl Manage para reservar."));
   } else if (full) {
     card.append(element("p", "nest-booking-message", "Clase completa"));
   }
@@ -501,7 +500,9 @@ async function refreshFamily(family, { focusSelectedDay = false } = {}) {
     const sessions = weekSessionsByMonth.flat().map((session) => {
       const past = new Date(session.startTimestamp).getTime() <= Date.now();
       const activeForMonth = hasBookingAccess(session);
-      return { ...session, activeForMonth, past, canBook: session.canBook && activeForMonth && !past };
+      const actionsBlocked = session.actionsBlocked || Boolean(session.paymentGrace) || Boolean(session.bookingAccessExpiresAt &&
+        new Date(session.bookingAccessExpiresAt).getTime() <= Date.now());
+      return { ...session, actionsBlocked, activeForMonth, past, canBook: session.canBook && activeForMonth && !past };
     });
     renderMiniMonth(family, monthSessions, selectedDate);
     renderWeekDaySelector(family, selectedDate, sessions);

@@ -10,6 +10,7 @@ window.testCalls = { schedule: 0, book: 0, cancel: 0 };
 window.testAuth = { currentUser: { uid: 'local-test-user' } };
 window.testFixtures = new Map();
 window.testAdmin = new URLSearchParams(location.search).has('admin');
+window.testUnpaid = new URLSearchParams(location.search).has('unpaid');
 window.testCall = async (name, data) => {
   const delay = () => new Promise(resolve => setTimeout(resolve, 60));
   if (name === 'getNestBookingSchedule') {
@@ -23,6 +24,14 @@ window.testCall = async (name, data) => {
         const id = `${data.family}__${dateKey}__slot-${hour}`;
         const start = new Date(date); start.setHours(hour, 0, 0, 0);
         const session = { id, dateKey, slotId: `slot-${hour}`, startTime: `${hour}:00`, endTime: `${hour+1}:00`, startTimestamp: start.toISOString(), capacity: 6, reservedCount: 0, attendees: [], monthlyUsed: 0, monthlyLimit: 4, activeForMonth: true, canBook: start > new Date(), past: start <= new Date() };
+        if (window.testUnpaid && !window.testAdmin) {
+          session.activeForMonth = false;
+          session.actionsBlocked = true;
+          session.canBook = false;
+          session.canCancel = false;
+          session.isBooked = hour === 18;
+          session.reservedCount = hour === 18 ? 1 : 0;
+        }
         if (window.testAdmin) {
           session.canManageRoster = true;
           session.canBookForOthers = true;

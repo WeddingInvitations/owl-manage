@@ -32,7 +32,7 @@ export function createScheduleCache({ ttl = 30_000, maxEntries = 6, now = Date.n
 }
 
 export function hasBookingAccess(session, now = Date.now()) {
-  return Boolean(session.activeForMonth && (!session.bookingAccessExpiresAt ||
+  return Boolean(!session.actionsBlocked && !session.paymentGrace && session.activeForMonth && (!session.bookingAccessExpiresAt ||
     new Date(session.bookingAccessExpiresAt).getTime() > now));
 }
 
@@ -47,12 +47,15 @@ export function applyBookingConfirmation(sessions, sessionId, result, { cancelle
       if (result.monthlyLimit) updated.monthlyLimit = result.monthlyLimit;
       updated.canBook = Boolean(hasBookingAccess(updated) && !updated.past && updated.monthlyUsed < updated.monthlyLimit);
     }
+    if (!hasBookingAccess(updated)) updated.canBook = false;
     if (session.id !== sessionId) return updated;
     updated.reservedCount = result.reservedCount;
     if (result.capacity) updated.capacity = result.capacity;
     if (own) {
       updated.isBooked = !cancelled;
       updated.myBookingStatus = cancelled ? 'CANCELLED' : 'BOOKED';
+      updated.canCancel = Boolean(!cancelled && hasBookingAccess(updated) &&
+        new Date(updated.startTimestamp).getTime() - Date.now() >= 2 * 60 * 60 * 1000);
     }
     const attendees = session.attendees || [];
     updated.attendees = cancelled

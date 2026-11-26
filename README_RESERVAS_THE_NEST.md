@@ -6,7 +6,7 @@ Esta guía describe el portal de reservas de Pilates y Barre dentro de OwlManage
 
 - **Alumnas:** crean una cuenta con email y contraseña. El email debe estar en su ficha de Pilates/Barre y deben verificarlo desde el correo que reciben. La cuenta queda limitada a las dos vistas de reservas.
 - **Profesoras externas:** OWNER o TEAM_LEADER registra su nombre, email y disciplina en **Equipo → Profesores**. Después crean una cuenta usando ese mismo email y lo verifican. Solo podrán ver la lista y marcar asistencia en las disciplinas autorizadas.
-- **Personal de OwlManage:** OWNER, RECEPTION, COACH y TEAM_LEADER pueden entrar desde el menú **Usuarios → Reservas · Pilates** o **Reservas · Barre**. En las clases pueden ver la lista y asistencia; OWNER/recepción y los demás roles internos también pueden reservar en nombre de una alumna usando el email de su ficha.
+- **Personal de OwlManage:** ADMIN, OWNER, RECEPTION, COACH y TEAM_LEADER pueden acceder a Reservas The Nest y añadir alumnas a clases concretas con **Reservar para alumna**. Los roles se reconocen también en minúsculas y `team leader` equivale a `TEAM_LEADER`. Las profesoras externas no reciben este permiso.
 
 Una cuenta sin ficha vinculada queda en **Acceso pendiente** y no puede consultar las áreas internas de OwlManage.
 
@@ -30,6 +30,15 @@ La ficha se asocia a la cuenta por email; la reserva no se autoriza solo por ten
 4. Solo se puede reservar en la disciplina cuya tarifa está activa y pagada para el mes de la clase.
 5. La tarifa mensual establece el máximo de reservas de ese mes: **Reformer/Barre 4, 8 o 12**. Una cancelación hecha al menos **2 horas antes** de empezar libera la plaza y devuelve una sesión al límite mensual.
 6. Si la clase está completa, no se puede reservar. No hay lista de espera en esta primera versión.
+
+### Pago obligatorio, sin días de gracia
+
+- Para reservar o cancelar, la alumna debe tener la cuota del **mes en curso** de esa disciplina marcada como **pagada en Owl Manage**. El mes se calcula en horario de Madrid.
+- No se permite actuar sin pagar los días 1–5. Una tarifa histórica, un pago del mes anterior o una cuota futura no sustituyen el pago del mes actual.
+- Además, cada reserva exige el pago del **mes de la clase**. Esta condición también se aplica al personal que reserva para otra alumna; no puede saltarse pago, bono ni aforo. El personal no necesita una cuota propia.
+- Sin pago, se pueden consultar horarios e historial, pero no reservar ni cancelar. Las reservas existentes se conservan; no se borran por un impago. El perfil y el cierre de sesión siguen disponibles.
+- Cuando recepción registre el pago, pulsa **Actualizar horario** para obtener el nuevo estado sin esperar a los 30 segundos de caché. El servidor comprueba el pago de nuevo en cada transacción, aunque la pantalla esté desactualizada.
+- Para activar estos cambios hay que publicar primero **getNestBookingSchedule**, **bookNestClass**, **cancelNestBooking**, **getNestBookingAthletes**, **getNestAdminSchedule**, **saveNestAdminSchedule**, **getNestClassRoster**, **setNestAttendance** y **registerNestPortalAccount**; después, el Hosting **nest-reservas**. No requiere nuevos índices ni cambios de reglas. El push solo publica Hosting, no Functions.
 
 En móvil, la reserva muestra un mini calendario mensual laboral (lunes a viernes) con marcas en los días reservados, una tira de los cinco días laborables y debajo las clases del día elegido. En ordenador, la semana también aparece de lunes a viernes en cinco columnas. Cada clase presenta sus seis plazas como avatares: al reservar, se ocupa una plaza; las vacías quedan disponibles. Si una alumna no tiene foto, se muestra la inicial de su nombre.
 

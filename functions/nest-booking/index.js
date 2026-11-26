@@ -5,7 +5,7 @@ const db = admin.firestore();
 const CAPACITY = 6;
 const CANCELLATION_CUTOFF_HOURS = 2;
 const TIME_ZONE = 'Europe/Madrid';
-const STAFF_ROLES = new Set(['OWNER', 'RECEPTION', 'COACH', 'TEAM_LEADER']);
+const STAFF_ROLES = new Set(['ADMIN', 'OWNER', 'RECEPTION', 'COACH', 'TEAM_LEADER']);
 const SCHEDULES = {
   pilates: [
     { id: 'mw-18-19', daysOfWeek: [1, 3], startTime: '18:00' },
@@ -49,7 +49,8 @@ function validateFamily(family) {
 async function getProfile(uid) {
   const snap = await db.collection('users').doc(uid).get();
   if (!snap.exists) fail('permission-denied', 'Tu cuenta todavía no tiene acceso autorizado a The Nest.');
-  return snap.data() || {};
+  const profile = snap.data() || {};
+  return { ...profile, role: String(profile.role || '').trim().toUpperCase().replace(/[\s-]+/g, '_') };
 }
 
 function hasFamily(profile, family) {
@@ -134,21 +135,15 @@ function localTimeToDate(dateKey, time) {
   return guess;
 }
 
-function isPaymentGraceOpen(month, now = new Date()) {
+function currentPaymentMonth(now = new Date()) {
   const parts = Object.fromEntries(madridTimeFormatter.formatToParts(now).map((part) => [part.type, part.value]));
-  return `${parts.year}-${parts.month}` === month && Number(parts.day) <= 5;
+  return `${parts.year}-${parts.month}`;
 }
 
-function membershipBookingAccess(record, family, month, now = new Date()) {
+function membershipBookingAccess(record, family, month) {
   const monthlyLimit = tariffMonthlyLimit(record);
-  if (record?.month !== month || tariffFamily(record) !== family || !monthlyLimit) return null;
-  const paymentGrace = record.paid !== true && isPaymentGraceOpen(month, now);
-  if (record.paid !== true && !paymentGrace) return null;
-  return {
-    monthlyLimit,
-    paymentGrace,
-    bookingAccessExpiresAt: paymentGrace ? localTimeToDate(`${month}-06`, '00:00').toISOString() : null,
-  };
+  if (record?.month !== month || tariffFamily(record) !== family || !monthlyLimit || record.paid !== true) return null;
+  return { monthlyLimit };
 }
 
 async function findMonthlyMembership(athleteId, family, month, transaction = null) {
@@ -159,22 +154,8 @@ async function findMonthlyMembership(athleteId, family, month, transaction = nul
   const currentMemberships = snap.docs
     .map((doc) => ({ ref: doc.ref, data: doc.data() }))
     .filter(({ data }) => tariffFamily(data) === family);
-  // The staff payment list carries forward the latest tariff when no month record exists.
-  // Mirror that behavior during grace only; never carry forward the paid flag.
-  let candidates = currentMemberships;
-  if (!candidates.length && isPaymentGraceOpen(month)) {
-    const historyQuery = db.collection('athlete_pilates_months')
-      .where('athleteId', '==', athleteId).where('month', '<', month);
-    const history = await (transaction ? transaction.get(historyQuery) : historyQuery.get());
-    candidates = history.docs.map((doc) => ({ ref: doc.ref, data: doc.data() }))
-      .filter(({ data }) => tariffFamily(data) === family)
-      .sort((first, second) => second.data.month.localeCompare(first.data.month) ||
-        (second.data.updatedAt?.toMillis?.() || second.data.createdAt?.toMillis?.() || 0) -
-        (first.data.updatedAt?.toMillis?.() || first.data.createdAt?.toMillis?.() || 0))
-      .slice(0, 1)
-      .map((membership) => ({ ...membership, data: { ...membership.data, month, paid: false } }));
-  }
-  const memberships = candidates
+  // Only an explicit paid record in Owl Manage authorizes this month.
+  const memberships = currentMemberships
     .map((membership) => ({ ...membership, access: membershipBookingAccess(membership.data, family, month) }))
     .filter((membership) => membership.access)
     .map(({ access, ...membership }) => ({ ...membership, ...access }))
@@ -185,6 +166,21 @@ async function findMonthlyMembership(athleteId, family, month, transaction = nul
       return secondUpdated - firstUpdated;
     });
   return memberships[0] || null;
+}
+
+async function studentPaymentAccess(athleteId, family, transaction = null) {
+  const month = currentPaymentMonth();
+  const membership = await findMonthlyMembership(athleteId, family, month, transaction);
+  const nextMonth = new Date(`${month}-01T12:00:00Z`);
+  nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+  return {
+    allowed: Boolean(membership),
+    expiresAt: localTimeToDate(nextMonth.toISOString().slice(0, 10), '00:00').toISOString(),
+  };
+}
+
+function assertStudentPayment(access) {
+  if (!access.allowed) fail('failed-precondition', 'Acciones bloqueadas: la cuota del mes en curso debe figurar como pagada en Owl Manage. Contacta con recepción.');
 }
 
 function scheduledSlots(family, customSlots) {
@@ -465,7 +461,7 @@ exports.registerNestPortalAccount = functions.https.onCall(async (_data, context
 
   const profileRef = db.collection('users').doc(uid);
   const profileSnap = await profileRef.get();
-  if (profileSnap.exists && STAFF_ROLES.has((profileSnap.data() || {}).role)) {
+  if (profileSnap.exists && STAFF_ROLES.has((await getProfile(uid)).role)) {
     return { role: (profileSnap.data() || {}).role, alreadyAuthorized: true };
   }
   if (profileSnap.exists && ['NEST_STUDENT', 'NEST_INSTRUCTOR'].includes((profileSnap.data() || {}).role)) {
@@ -679,6 +675,7 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
   }
   const refs = sessionInputs.map((session) => db.collection('nest_class_sessions').doc(session.id));
   const snapshotsPromise = refs.length ? db.getAll(...refs) : Promise.resolve([]);
+  const paymentAccess = athlete ? await studentPaymentAccess(athlete.ref.id, family) : null;
   const monthKeys = athlete ? Array.from(new Set(sessionInputs.map((session) => session.month))) : [];
   const membershipsPromise = athlete ? Promise.all(monthKeys.map(async (month) =>
     [month, await findMonthlyMembership(athlete.ref.id, family, month)])) : Promise.resolve([]);
@@ -745,10 +742,13 @@ exports.getNestBookingSchedule = functions.https.onCall(async (data, context) =>
         (bookingSnap.data().attended === true || bookingSnap.data().attendedAt)),
       attendees: (attendeesBySession.get(session.id) || [])
         .sort((first, second) => first.name.localeCompare(second.name, 'es')),
-      canBook: Boolean(membership && startAt.getTime() > Date.now() && monthlyUsed < membership.monthlyLimit),
+      canBook: Boolean(paymentAccess?.allowed && membership && startAt.getTime() > Date.now() && monthlyUsed < membership.monthlyLimit),
+      actionsBlocked: Boolean(athlete && !paymentAccess.allowed),
+      canCancel: Boolean(paymentAccess?.allowed && bookingSnap?.data()?.status === 'BOOKED' &&
+        startAt.getTime() - Date.now() >= CANCELLATION_CUTOFF_HOURS * 60 * 60 * 1000),
       activeForMonth: Boolean(membership),
-      paymentGrace: Boolean(membership?.paymentGrace),
-      bookingAccessExpiresAt: membership?.bookingAccessExpiresAt || null,
+      paymentGrace: false,
+      bookingAccessExpiresAt: paymentAccess?.expiresAt || null,
       monthlyLimit: membership?.monthlyLimit || 0,
       monthlyUsed,
       startTimestamp: startAt.toISOString(),
@@ -820,8 +820,9 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
     fail('permission-denied', 'No tienes permiso para reservar clases.');
   }
   const month = monthKey(dateKey);
+  if (!staffBooking) assertStudentPayment(await studentPaymentAccess(athlete.ref.id, family));
   const membership = await findMonthlyMembership(athlete.ref.id, family, month);
-  if (!membership) fail('failed-precondition', `Necesitas una mensualidad pagada de ${family === 'barre' ? 'Barre' : 'Pilates'} para ${month}. Solo se permite reservar sin pagar del día 1 al 5 del mes en curso, con una tarifa registrada.`);
+  if (!membership) fail('failed-precondition', `La cuota de ${family === 'barre' ? 'Barre' : 'Pilates'} de ${month} debe figurar como pagada en Owl Manage para reservar esta clase.`);
   const startAt = localTimeToDate(dateKey, scheduledSlot.startTime);
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(data.startTime || '') || startAt.getTime() <= Date.now()) {
     fail('failed-precondition', 'No se pueden reservar clases pasadas o con un horario no válido.');
@@ -835,6 +836,7 @@ exports.bookNestClass = functions.https.onCall(async (data, context) => {
       transaction.get(sessionRef), transaction.get(bookingRef), transaction.get(usageRef),
       findMonthlyMembership(athlete.ref.id, family, month, transaction), transaction.get(athlete.ref),
     ]);
+    if (!staffBooking) assertStudentPayment(await studentPaymentAccess(athlete.ref.id, family, transaction));
     const currentSlot = (await getEffectiveSlots(family, transaction)).find((slot) =>
       slot.id === slotId && slot.daysOfWeek.includes(new Date(`${dateKey}T12:00:00Z`).getUTCDay())
     );
@@ -913,6 +915,7 @@ exports.cancelNestBooking = functions.https.onCall(async (data, context) => {
     const [currentBooking, sessionSnap, usageSnap] = await Promise.all([
       transaction.get(bookingRef), transaction.get(sessionRef), transaction.get(usageRef),
     ]);
+    assertStudentPayment(await studentPaymentAccess(athlete.ref.id, family, transaction));
     if (!currentBooking.exists || currentBooking.data().status !== 'BOOKED') {
       fail('failed-precondition', 'La reserva ya estaba cancelada.');
     }
